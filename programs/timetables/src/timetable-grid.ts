@@ -10,7 +10,9 @@ export function guessCurrentTerm(date: Date = new Date()): Term {
   return month >= 4 && month <= 9 ? "spring" : "fall";
 }
 
-function entryKey(day: number, period: number): string {
+export type SlotMap = Map<string, { course_name: string; location: string }>;
+
+export function entryKey(day: number, period: number): string {
   return `${day}-${period}`;
 }
 
@@ -20,90 +22,16 @@ export function entriesToMap(entries: TimetableEntry[]): Map<string, TimetableEn
   return map;
 }
 
-/**
- * 編集可能な時間割グリッドを描画する。各セルに常時入力欄を表示する方式
- * （クリックで編集モードに切り替える方式より実装・操作ともに単純なため）。
- * courses は呼び出し側が保持する状態オブジェクトで、入力のたびにここで直接更新する。
- */
-export function renderEditableGrid(
-  container: HTMLElement,
-  initialEntries: TimetableEntry[],
-  courses: Map<string, { course_name: string; location: string }>,
-): void {
-  courses.clear();
-  for (const e of initialEntries) {
-    courses.set(entryKey(e.day_of_week, e.period), {
-      course_name: e.course_name,
-      location: e.location ?? "",
-    });
+/** サーバーから取得した時間割エントリ配列を、登録フォームが直接操作できるMap形式にする */
+export function buildSlotMap(entries: TimetableEntry[]): SlotMap {
+  const map: SlotMap = new Map();
+  for (const e of entries) {
+    map.set(entryKey(e.day_of_week, e.period), { course_name: e.course_name, location: e.location ?? "" });
   }
-
-  const table = document.createElement("table");
-  table.className = "timetable-grid editable";
-
-  const thead = document.createElement("thead");
-  const headRow = document.createElement("tr");
-  headRow.appendChild(document.createElement("th"));
-  for (const label of DAY_LABELS) {
-    const th = document.createElement("th");
-    th.textContent = label;
-    headRow.appendChild(th);
-  }
-  thead.appendChild(headRow);
-  table.appendChild(thead);
-
-  const tbody = document.createElement("tbody");
-  for (let period = 1; period <= PERIOD_COUNT; period += 1) {
-    const row = document.createElement("tr");
-    const periodTh = document.createElement("th");
-    periodTh.textContent = `${period}限`;
-    row.appendChild(periodTh);
-
-    for (let day = 0; day < DAY_LABELS.length; day += 1) {
-      const key = entryKey(day, period);
-      const current = courses.get(key) ?? { course_name: "", location: "" };
-
-      const td = document.createElement("td");
-      const courseInput = document.createElement("input");
-      courseInput.type = "text";
-      courseInput.placeholder = "科目名";
-      courseInput.value = current.course_name;
-      courseInput.maxLength = 100;
-      courseInput.className = "cell-course";
-
-      const locationInput = document.createElement("input");
-      locationInput.type = "text";
-      locationInput.placeholder = "教室(任意)";
-      locationInput.value = current.location;
-      locationInput.maxLength = 100;
-      locationInput.className = "cell-location";
-
-      const sync = () => {
-        const courseName = courseInput.value.trim();
-        const location = locationInput.value.trim();
-        if (!courseName) {
-          courses.delete(key);
-        } else {
-          courses.set(key, { course_name: courseName, location });
-        }
-      };
-      courseInput.addEventListener("input", sync);
-      locationInput.addEventListener("input", sync);
-
-      td.appendChild(courseInput);
-      td.appendChild(locationInput);
-      row.appendChild(td);
-    }
-    tbody.appendChild(row);
-  }
-  table.appendChild(tbody);
-
-  container.replaceChildren(table);
+  return map;
 }
 
-export function coursesMapToEntries(
-  courses: Map<string, { course_name: string; location: string }>,
-): TimetableEntry[] {
+export function slotMapToEntries(courses: SlotMap): TimetableEntry[] {
   const entries: TimetableEntry[] = [];
   for (const [key, value] of courses) {
     const [dayStr, periodStr] = key.split("-");
