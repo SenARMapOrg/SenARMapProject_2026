@@ -1,5 +1,5 @@
-import { api, ApiError, type Friend, type FriendRequest } from "./api";
-import { renderReadonlyGrid } from "./timetable-grid";
+import { api, ApiError, type Friend, type FriendRequest, type Term } from "./api";
+import { guessCurrentTerm, renderReadonlyGrid, TERM_LABELS } from "./timetable-grid";
 
 export async function renderFriendsPanel(container: HTMLElement): Promise<void> {
   container.replaceChildren();
@@ -184,15 +184,36 @@ async function showFriendTimetable(friend: Friend, viewerSection: HTMLElement): 
   h.textContent = `${friend.display_name} さんの時間割`;
   viewerSection.appendChild(h);
 
-  try {
-    const { entries } = await api.getFriendTimetable(friend.id);
-    const grid = document.createElement("div");
-    renderReadonlyGrid(grid, entries);
-    viewerSection.appendChild(grid);
-  } catch (err) {
-    const p = document.createElement("p");
-    p.className = "message message-error";
-    p.textContent = err instanceof ApiError ? err.message : "時間割を取得できませんでした";
-    viewerSection.appendChild(p);
+  const termTabs = document.createElement("div");
+  termTabs.className = "term-tabs";
+  const grid = document.createElement("div");
+  const errorEl = document.createElement("p");
+  errorEl.className = "message message-error";
+  errorEl.hidden = true;
+
+  const termButtons = (["spring", "fall"] as Term[]).map((term) => {
+    const btn = document.createElement("button");
+    btn.className = "term-tab";
+    btn.textContent = TERM_LABELS[term];
+    btn.dataset.term = term;
+    btn.addEventListener("click", () => void loadTerm(term));
+    termTabs.appendChild(btn);
+    return btn;
+  });
+
+  async function loadTerm(term: Term): Promise<void> {
+    termButtons.forEach((btn) => btn.classList.toggle("active", btn.dataset.term === term));
+    errorEl.hidden = true;
+    try {
+      const { entries } = await api.getFriendTimetable(friend.id, term);
+      renderReadonlyGrid(grid, entries);
+    } catch (err) {
+      errorEl.textContent = err instanceof ApiError ? err.message : "時間割を取得できませんでした";
+      errorEl.hidden = false;
+      grid.replaceChildren();
+    }
   }
+
+  viewerSection.append(termTabs, grid, errorEl);
+  await loadTerm(guessCurrentTerm());
 }

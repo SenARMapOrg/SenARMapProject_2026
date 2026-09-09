@@ -1,17 +1,26 @@
+import type { Context } from "hono";
 import { Hono } from "hono";
 
 import { areFriends, findUserById, listTimetable, replaceTimetable } from "../db";
 import { requireAuth } from "../session";
-import type { AppEnv } from "../types";
+import type { AppEnv, Term } from "../types";
 import {
-  MAX_TIMETABLE_ENTRIES, validateTimetableEntry, type RawTimetableEntry,
+  isValidTerm, MAX_TIMETABLE_ENTRIES, validateTimetableEntry, type RawTimetableEntry,
 } from "../validate";
 
 export const timetableRoutes = new Hono<AppEnv>();
 
+/** ?term=spring|fall を取り出して検証する。共通化してGET/PUT/friend閲覧で同じ挙動にする */
+function resolveTerm(c: Context): Term | null {
+  const term = c.req.query("term");
+  return isValidTerm(term) ? term : null;
+}
+
 timetableRoutes.get("/", requireAuth(), async (c) => {
+  const term = resolveTerm(c);
+  if (!term) return c.json({ error: "term は spring か fall を指定してください" }, 400);
   const user = c.get("user");
-  const entries = await listTimetable(c.env.DB, user.id);
+  const entries = await listTimetable(c.env.DB, user.id, term);
   return c.json({ entries });
 });
 
@@ -23,6 +32,11 @@ timetableRoutes.put("/", requireAuth(), async (c) => {
     body = await c.req.json();
   } catch {
     return c.json({ error: "リクエストボディが不正なJSONです" }, 400);
+  }
+
+  const term = (body as { term?: unknown } | null)?.term;
+  if (!isValidTerm(term)) {
+    return c.json({ error: "term は spring か fall を指定してください" }, 400);
   }
 
   const entries = (body as { entries?: unknown } | null)?.entries;
@@ -48,13 +62,16 @@ timetableRoutes.put("/", requireAuth(), async (c) => {
     validated.push(result.value);
   }
 
-  await replaceTimetable(c.env.DB, user.id, validated);
-  return c.json({ entries: await listTimetable(c.env.DB, user.id) });
+  await replaceTimetable(c.env.DB, user.id, term, validated);
+  return c.json({ entries: await listTimetable(c.env.DB, user.id, term) });
 });
 
 // 友達の時間割を閲覧する。承諾済みの友達関係がある場合のみ許可する（サーバー側で必ず検証すること。
 // フロント側の表示制御だけに頼ると、URLを直接叩かれた場合に他人の時間割が漏洩する）。
 timetableRoutes.get("/friend/:userId", requireAuth(), async (c) => {
+  const term = resolveTerm(c);
+  if (!term) return c.json({ error: "term は spring か fall を指定してください" }, 400);
+
   const me = c.get("user");
   const friendId = Number(c.req.param("userId"));
   if (!Number.isInteger(friendId)) {
@@ -74,7 +91,7 @@ timetableRoutes.get("/friend/:userId", requireAuth(), async (c) => {
     return c.json({ error: "ユーザーが見つかりません" }, 404);
   }
 
-  const entries = await listTimetable(c.env.DB, friendId);
+  const entries = await listTimetable(c.env.DB, friendId, term);
   return c.json({
     user: { id: friend.id, display_name: friend.display_name },
     entries,

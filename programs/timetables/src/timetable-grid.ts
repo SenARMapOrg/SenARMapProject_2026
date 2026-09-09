@@ -1,7 +1,14 @@
-import type { TimetableEntry } from "./api";
+import type { Term, TimetableEntry } from "./api";
 
 export const DAY_LABELS = ["月", "火", "水", "木", "金", "土"];
 export const PERIOD_COUNT = 7;
+export const TERM_LABELS: Record<Term, string> = { spring: "前期", fall: "後期" };
+
+/** 大学の一般的な年間スケジュール(4〜9月=前期, 10〜3月=後期)から今の学期を推測する。あくまで初期選択のヒント */
+export function guessCurrentTerm(date: Date = new Date()): Term {
+  const month = date.getMonth() + 1;
+  return month >= 4 && month <= 9 ? "spring" : "fall";
+}
 
 function entryKey(day: number, period: number): string {
   return `${day}-${period}`;

@@ -1,5 +1,5 @@
 import type {
-  FriendRequestRow, SessionRow, TimetableEntryRow, UserRow,
+  FriendRequestRow, SessionRow, Term, TimetableEntryRow, UserRow,
 } from "./types";
 
 const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30日
@@ -72,10 +72,10 @@ export async function deleteSession(db: D1Database, sessionId: string): Promise<
   await db.prepare("DELETE FROM sessions WHERE id = ?").bind(sessionId).run();
 }
 
-export async function listTimetable(db: D1Database, userId: number): Promise<TimetableEntryRow[]> {
+export async function listTimetable(db: D1Database, userId: number, term: Term): Promise<TimetableEntryRow[]> {
   const { results } = await db
-    .prepare("SELECT * FROM timetable_entries WHERE user_id = ? ORDER BY day_of_week, period")
-    .bind(userId)
+    .prepare("SELECT * FROM timetable_entries WHERE user_id = ? AND term = ? ORDER BY day_of_week, period")
+    .bind(userId, term)
     .all<TimetableEntryRow>();
   return results;
 }
@@ -87,19 +87,22 @@ export interface TimetableEntryInput {
   location: string | null;
 }
 
-/** ユーザーの時間割を丸ごと入れ替える（部分編集ではなく全件置き換え。フロントは常に全件を送る） */
+/**
+ * ユーザーの指定学期(term)の時間割を丸ごと入れ替える（部分編集ではなく全件置き換え。
+ * フロントは常にその学期の全件を送る）。他学期の行には触れない。
+ */
 export async function replaceTimetable(
-  db: D1Database, userId: number, entries: TimetableEntryInput[],
+  db: D1Database, userId: number, term: Term, entries: TimetableEntryInput[],
 ): Promise<void> {
   const stmts = [
-    db.prepare("DELETE FROM timetable_entries WHERE user_id = ?").bind(userId),
+    db.prepare("DELETE FROM timetable_entries WHERE user_id = ? AND term = ?").bind(userId, term),
     ...entries.map((e) =>
       db
         .prepare(
-          `INSERT INTO timetable_entries (user_id, day_of_week, period, course_name, location)
-           VALUES (?, ?, ?, ?, ?)`,
+          `INSERT INTO timetable_entries (user_id, term, day_of_week, period, course_name, location)
+           VALUES (?, ?, ?, ?, ?, ?)`,
         )
-        .bind(userId, e.day_of_week, e.period, e.course_name, e.location),
+        .bind(userId, term, e.day_of_week, e.period, e.course_name, e.location),
     ),
   ];
   await db.batch(stmts);

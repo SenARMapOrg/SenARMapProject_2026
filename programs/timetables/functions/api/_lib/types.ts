@@ -28,9 +28,12 @@ export interface SessionRow {
   expires_at: string;
 }
 
+export type Term = "spring" | "fall"; // spring=前期 fall=後期
+
 export interface TimetableEntryRow {
   id: number;
   user_id: number;
+  term: Term;
   day_of_week: number;
   period: number;
   course_name: string;

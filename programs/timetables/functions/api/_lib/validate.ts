@@ -1,3 +1,11 @@
+import type { Term } from "./types";
+
+export const TERMS: readonly Term[] = ["spring", "fall"]; // spring=前期 fall=後期
+
+export function isValidTerm(value: unknown): value is Term {
+  return typeof value === "string" && (TERMS as readonly string[]).includes(value);
+}
+
 export const MAX_DAY_OF_WEEK = 5; // 0=月 ... 5=土
 export const MAX_PERIOD = 7; // 1〜7限
 export const MAX_COURSE_NAME_LEN = 100;

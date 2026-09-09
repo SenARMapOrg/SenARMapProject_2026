@@ -14,6 +14,8 @@ export interface Me {
   display_name: string;
 }
 
+export type Term = "spring" | "fall"; // spring=前期 fall=後期
+
 export interface TimetableEntry {
   id?: number;
   day_of_week: number;
@@ -76,16 +78,18 @@ export const api = {
     return apiFetch("/api/me", { method: "DELETE" });
   },
 
-  getTimetable(): Promise<{ entries: TimetableEntry[] }> {
-    return apiFetch("/api/timetable");
+  getTimetable(term: Term): Promise<{ entries: TimetableEntry[] }> {
+    return apiFetch(`/api/timetable?term=${term}`);
   },
 
-  putTimetable(entries: TimetableEntry[]): Promise<{ entries: TimetableEntry[] }> {
-    return apiFetch("/api/timetable", { method: "PUT", body: JSON.stringify({ entries }) });
+  putTimetable(term: Term, entries: TimetableEntry[]): Promise<{ entries: TimetableEntry[] }> {
+    return apiFetch("/api/timetable", { method: "PUT", body: JSON.stringify({ term, entries }) });
   },
 
-  getFriendTimetable(userId: number): Promise<{ user: { id: number; display_name: string }; entries: TimetableEntry[] }> {
-    return apiFetch(`/api/timetable/friend/${userId}`);
+  getFriendTimetable(
+    userId: number, term: Term,
+  ): Promise<{ user: { id: number; display_name: string }; entries: TimetableEntry[] }> {
+    return apiFetch(`/api/timetable/friend/${userId}?term=${term}`);
   },
 
   listFriends(): Promise<{ friends: Friend[] }> {
