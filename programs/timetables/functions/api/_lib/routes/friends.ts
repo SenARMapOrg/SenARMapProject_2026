@@ -84,6 +84,7 @@ friendsRoutes.post("/requests", requireAuth(), async (c) => {
 friendsRoutes.post("/requests/:id/accept", requireAuth(), async (c) => {
   const user = c.get("user");
   const id = Number(c.req.param("id"));
+  if (!Number.isInteger(id)) return c.json({ error: "id が不正です" }, 400);
   const request = await findRequestById(c.env.DB, id);
   if (!request || request.to_user_id !== user.id || request.status !== "pending") {
     return c.json({ error: "申請が見つかりません" }, 404);
@@ -97,6 +98,7 @@ friendsRoutes.post("/requests/:id/accept", requireAuth(), async (c) => {
 friendsRoutes.post("/requests/:id/reject", requireAuth(), async (c) => {
   const user = c.get("user");
   const id = Number(c.req.param("id"));
+  if (!Number.isInteger(id)) return c.json({ error: "id が不正です" }, 400);
   const request = await findRequestById(c.env.DB, id);
   if (!request || request.status !== "pending") {
     return c.json({ error: "申請が見つかりません" }, 404);

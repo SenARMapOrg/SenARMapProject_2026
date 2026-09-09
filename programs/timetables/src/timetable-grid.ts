@@ -47,10 +47,34 @@ export function slotMapToEntries(courses: SlotMap): TimetableEntry[] {
 
 /** 閲覧専用（友達の時間割表示など）のグリッド */
 export function renderReadonlyGrid(container: HTMLElement, entries: TimetableEntry[]): void {
+  const table = buildGridTable(entries, null, null);
+  container.replaceChildren(table);
+}
+
+/**
+ * 編集画面用のクリック可能なグリッド。セルをクリックすると onCellClick(day, period) が呼ばれる。
+ * クリックしても即座に削除はしない（誤操作防止のため、削除は登録欄の明示的なボタンでのみ行う）。
+ * selectedSlot と一致するセルには選択中であることを示すクラスを付ける。
+ */
+export function renderInteractiveGrid(
+  container: HTMLElement,
+  entries: TimetableEntry[],
+  selectedSlot: { day: number; period: number } | null,
+  onCellClick: (day: number, period: number) => void,
+): void {
+  const table = buildGridTable(entries, selectedSlot, onCellClick);
+  container.replaceChildren(table);
+}
+
+function buildGridTable(
+  entries: TimetableEntry[],
+  selectedSlot: { day: number; period: number } | null,
+  onCellClick: ((day: number, period: number) => void) | null,
+): HTMLTableElement {
   const map = entriesToMap(entries);
 
   const table = document.createElement("table");
-  table.className = "timetable-grid readonly";
+  table.className = onCellClick ? "timetable-grid interactive" : "timetable-grid readonly";
 
   const thead = document.createElement("thead");
   const headRow = document.createElement("tr");
@@ -87,11 +111,17 @@ export function renderReadonlyGrid(container: HTMLElement, entries: TimetableEnt
       } else {
         td.className = "cell-empty";
       }
+      if (selectedSlot && selectedSlot.day === day && selectedSlot.period === period) {
+        td.classList.add("cell-selected");
+      }
+      if (onCellClick) {
+        td.addEventListener("click", () => onCellClick(day, period));
+      }
       row.appendChild(td);
     }
     tbody.appendChild(row);
   }
   table.appendChild(tbody);
 
-  container.replaceChildren(table);
+  return table;
 }

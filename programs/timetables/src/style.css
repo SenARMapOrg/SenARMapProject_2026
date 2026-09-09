@@ -139,6 +139,9 @@ body {
 .timetable-grid .cell-course-label { font-weight: 600; }
 .timetable-grid .cell-location-label { color: var(--muted); font-size: 11px; }
 .timetable-grid .cell-empty { background: #FAFBFC; }
+.timetable-grid.interactive td { cursor: pointer; transition: background 0.1s; }
+.timetable-grid.interactive td:hover { background: var(--accent-light, #EFF6FF); }
+.timetable-grid.interactive td.cell-selected { background: #DBEAFE; outline: 2px solid var(--accent); outline-offset: -2px; }
 
 .save-row { display: flex; align-items: center; gap: 12px; margin-top: 12px; }
 
