@@ -10,6 +10,7 @@ export const MAX_DAY_OF_WEEK = 5; // 0=月 ... 5=土
 export const MAX_PERIOD = 7; // 1〜7限
 export const MAX_COURSE_NAME_LEN = 100;
 export const MAX_LOCATION_LEN = 100;
+export const MAX_NICKNAME_LEN = 30;
 export const MAX_TIMETABLE_ENTRIES = (MAX_DAY_OF_WEEK + 1) * MAX_PERIOD; // 全コマ数の上限（重複防止用の上限チェックに使う）
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -24,6 +25,19 @@ export function isValidEmailFormat(email: string): boolean {
 
 export function isAllowedDomain(email: string, domain: string): boolean {
   return email.toLowerCase().endsWith(`@${domain.toLowerCase()}`);
+}
+
+/** あだ名入力を検証・正規化する。空文字/空白のみは「解除」扱いでnullにする */
+export function validateNickname(raw: unknown): { ok: true; value: string | null } | { ok: false; error: string } {
+  if (raw !== null && typeof raw !== "string") {
+    return { ok: false, error: "nickname は文字列かnullで指定してください" };
+  }
+  const trimmed = typeof raw === "string" ? raw.trim() : "";
+  if (trimmed.length === 0) return { ok: true, value: null };
+  if (trimmed.length > MAX_NICKNAME_LEN) {
+    return { ok: false, error: `nickname は${MAX_NICKNAME_LEN}文字以内で指定してください` };
+  }
+  return { ok: true, value: trimmed };
 }
 
 export interface RawTimetableEntry {

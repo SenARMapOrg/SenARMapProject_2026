@@ -12,6 +12,7 @@ export interface Me {
   id: number;
   email: string;
   display_name: string;
+  nickname: string | null;
 }
 
 export type Term = "spring" | "fall"; // spring=前期 fall=後期
@@ -76,6 +77,10 @@ export const api = {
 
   deleteAccount(): Promise<void> {
     return apiFetch("/api/me", { method: "DELETE" });
+  },
+
+  updateNickname(nickname: string | null): Promise<Me> {
+    return apiFetch("/api/me", { method: "PATCH", body: JSON.stringify({ nickname }) });
   },
 
   getTimetable(term: Term): Promise<{ entries: TimetableEntry[] }> {
