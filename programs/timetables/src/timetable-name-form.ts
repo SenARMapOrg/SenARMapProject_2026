@@ -4,7 +4,7 @@
 // 編集画面のグリッドで空きコマをクリックした時、setSlotFilter() でその曜日・時限に絞り込める
 // （「そのコマに入れられる科目」を見せるため）。
 
-import type { Term } from "./api";
+import { api, type Term } from "./api";
 import {
   groupOfferings, listFaculties, loadCatalog, searchOfferings, type CourseOffering, type OfferingTerm,
 } from "./course-catalog";
@@ -21,6 +21,7 @@ export interface NameFormHandle {
 
 export function buildNameForm(
   addSlot: (term: Term, day: number, period: number, courseName: string, location: string | null) => boolean,
+  getAutoFillLocationEnabled: () => boolean,
 ): NameFormHandle {
   const root = document.createElement("div");
   root.className = "reg-form";
@@ -28,7 +29,8 @@ export function buildNameForm(
     <p class="hint">
       シラバスの開講科目一覧（<a href="/../syllabus_courses/" target="_blank" rel="noopener">programs/syllabus_courses</a>のデータ）から検索して選ぶと、
       科目自身の学期（前期・後期・通年）に応じて自動で挿入されます。今表示している学期とは関係なく、前期タブを見ながら後期の科目を追加することもできます。
-      教室情報はシラバスに掲載がないため入りません（必要なら追加後に「時間を指定して追加」で上書きできます）。
+      教室情報はシラバスに掲載がないため入りません（必要なら追加後に「時間を指定して追加」で上書きできます。
+      「教室の自動入力」設定をONにしていれば、他の学生が同じ授業に登録した教室があれば自動で入力されます）。
       下のグリッドの空いているマスをクリックすると、そのコマに入れられる科目だけに絞り込めます。
     </p>
     <p class="hint slot-filter-badge" hidden></p>
@@ -142,20 +144,37 @@ export function buildNameForm(
       const addBtn = document.createElement("button");
       addBtn.className = "btn btn-primary btn-sm";
       addBtn.textContent = "追加";
-      addBtn.addEventListener("click", () => {
-        const targetTerms: Term[] = o.term === "both" ? ["spring", "fall"] : [o.term];
-        let addedCount = 0;
-        for (const term of targetTerms) {
-          for (const s of o.slots) {
-            if (addSlot(term, s.day_of_week, s.period, o.course_name, null)) addedCount += 1;
+      addBtn.addEventListener("click", async () => {
+        addBtn.disabled = true;
+        try {
+          const targetTerms: Term[] = o.term === "both" ? ["spring", "fall"] : [o.term];
+          const autoFill = getAutoFillLocationEnabled();
+          let addedCount = 0;
+          let autoFilledAny = false;
+          for (const term of targetTerms) {
+            for (const s of o.slots) {
+              let location: string | null = null;
+              if (autoFill) {
+                try {
+                  const suggestion = await api.getLocationSuggestion(term, s.day_of_week, s.period, o.course_name);
+                  location = suggestion.location;
+                  if (location) autoFilledAny = true;
+                } catch {
+                  // 候補が取得できなくても追加自体は続行する
+                }
+              }
+              if (addSlot(term, s.day_of_week, s.period, o.course_name, location)) addedCount += 1;
+            }
           }
+          const termLabel = OFFERING_TERM_LABELS[o.term];
+          messageEl.textContent = addedCount > 0
+            ? `「${o.course_name}」を${termLabel}に追加しました（${slotsLabel}）${autoFilledAny ? " 教室を自動入力しました" : ""}`
+            : "追加しませんでした";
+          messageEl.className = `message ${addedCount > 0 ? "message-ok" : "message-error"} reg-message`;
+          messageEl.hidden = false;
+        } finally {
+          addBtn.disabled = false;
         }
-        const termLabel = OFFERING_TERM_LABELS[o.term];
-        messageEl.textContent = addedCount > 0
-          ? `「${o.course_name}」を${termLabel}に追加しました（${slotsLabel}）`
-          : "追加しませんでした";
-        messageEl.className = `message ${addedCount > 0 ? "message-ok" : "message-error"} reg-message`;
-        messageEl.hidden = false;
       });
       li.appendChild(addBtn);
       listEl.appendChild(li);

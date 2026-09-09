@@ -1,11 +1,14 @@
 import type { Context } from "hono";
 import { Hono } from "hono";
 
-import { areFriends, findUserById, listTimetable, replaceTimetable } from "../db";
+import {
+  areFriends, findCommonLocationForCourse, findUserById, listTimetable, replaceTimetable,
+} from "../db";
 import { requireAuth } from "../session";
 import type { AppEnv, Term } from "../types";
 import {
-  isValidTerm, MAX_TIMETABLE_ENTRIES, validateTimetableEntry, type RawTimetableEntry,
+  isValidTerm, MAX_COURSE_NAME_LEN, MAX_DAY_OF_WEEK, MAX_PERIOD, MAX_TIMETABLE_ENTRIES,
+  validateTimetableEntry, type RawTimetableEntry,
 } from "../validate";
 
 export const timetableRoutes = new Hono<AppEnv>();
@@ -64,6 +67,33 @@ timetableRoutes.put("/", requireAuth(), async (c) => {
 
   await replaceTimetable(c.env.DB, user.id, term, validated);
   return c.json({ entries: await listTimetable(c.env.DB, user.id, term) });
+});
+
+// 「科目名から追加」の自動入力候補。同じ学期・曜日・時限・科目名で、自分以外の学生が
+// 登録している教室のうち最も多いものを返す（個人を特定できる情報は返さない）。
+timetableRoutes.get("/location-suggestion", requireAuth(), async (c) => {
+  const term = resolveTerm(c);
+  if (!term) return c.json({ error: "term は spring か fall を指定してください" }, 400);
+
+  const day = Number(c.req.query("day_of_week"));
+  const period = Number(c.req.query("period"));
+  const courseName = (c.req.query("course_name") ?? "").trim();
+
+  if (!Number.isInteger(day) || day < 0 || day > MAX_DAY_OF_WEEK) {
+    return c.json({ error: `day_of_week は 0〜${MAX_DAY_OF_WEEK} の整数で指定してください` }, 400);
+  }
+  if (!Number.isInteger(period) || period < 1 || period > MAX_PERIOD) {
+    return c.json({ error: `period は 1〜${MAX_PERIOD} の整数で指定してください` }, 400);
+  }
+  if (!courseName || courseName.length > MAX_COURSE_NAME_LEN) {
+    return c.json({ error: "course_name を正しく指定してください" }, 400);
+  }
+
+  const user = c.get("user");
+  const location = await findCommonLocationForCourse(c.env.DB, {
+    term, dayOfWeek: day, period, courseName, excludeUserId: user.id,
+  });
+  return c.json({ location });
 });
 
 // 友達の時間割を閲覧する。承諾済みの友達関係がある場合のみ許可する（サーバー側で必ず検証すること。

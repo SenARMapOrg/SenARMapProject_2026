@@ -72,10 +72,11 @@ function renderAppView(me: Me): void {
   content.className = "app-tab-content";
   appRoot.appendChild(content);
 
-  const nicknameSection = document.createElement("section");
-  nicknameSection.className = "panel";
-  nicknameSection.innerHTML = `
-    <h2>あだ名</h2>
+  const settingsSection = document.createElement("section");
+  settingsSection.className = "panel";
+  settingsSection.innerHTML = `
+    <h2>設定</h2>
+    <h3>あだ名</h3>
     <p class="hint">
       友達には本名の代わりにここで設定したあだ名が表示されます（未設定の場合はGoogleアカウントの名前が使われます）。
     </p>
@@ -84,10 +85,21 @@ function renderAppView(me: Me): void {
       <button type="submit" class="btn btn-primary">保存</button>
     </form>
     <p class="message nickname-message" hidden></p>
+    <h3>教室の自動入力</h3>
+    <p class="hint">
+      「科目名から追加」で科目を追加するとき、同じ授業(学期・曜日・時限・科目名が一致するもの)に
+      他の学生が登録した教室があれば自動で入力します。教室情報は他の学生の入力によるもので、
+      正確性は保証されません。
+    </p>
+    <label class="checkbox-row">
+      <input type="checkbox" class="auto-fill-checkbox">
+      他の学生が登録した教室を自動で入力する
+    </label>
+    <p class="message auto-fill-message" hidden></p>
   `;
-  const nicknameForm = nicknameSection.querySelector<HTMLFormElement>("form")!;
-  const nicknameInput = nicknameSection.querySelector<HTMLInputElement>(".nickname-input")!;
-  const nicknameMessageEl = nicknameSection.querySelector<HTMLParagraphElement>(".nickname-message")!;
+  const nicknameForm = settingsSection.querySelector<HTMLFormElement>("form")!;
+  const nicknameInput = settingsSection.querySelector<HTMLInputElement>(".nickname-input")!;
+  const nicknameMessageEl = settingsSection.querySelector<HTMLParagraphElement>(".nickname-message")!;
   nicknameInput.value = me.nickname ?? "";
   nicknameForm.addEventListener("submit", async (e) => {
     e.preventDefault();
@@ -106,7 +118,28 @@ function renderAppView(me: Me): void {
       nicknameMessageEl.hidden = false;
     }
   });
-  appRoot.appendChild(nicknameSection);
+
+  const autoFillCheckbox = settingsSection.querySelector<HTMLInputElement>(".auto-fill-checkbox")!;
+  const autoFillMessageEl = settingsSection.querySelector<HTMLParagraphElement>(".auto-fill-message")!;
+  autoFillCheckbox.checked = me.auto_fill_location;
+  autoFillCheckbox.addEventListener("change", async () => {
+    const desired = autoFillCheckbox.checked;
+    autoFillCheckbox.disabled = true;
+    autoFillMessageEl.hidden = true;
+    try {
+      const updated = await api.updateAutoFillLocation(desired);
+      me.auto_fill_location = updated.auto_fill_location;
+      autoFillCheckbox.checked = updated.auto_fill_location;
+    } catch (err) {
+      autoFillCheckbox.checked = !desired;
+      autoFillMessageEl.textContent = err instanceof ApiError ? err.message : "設定の変更に失敗しました";
+      autoFillMessageEl.className = "message message-error auto-fill-message";
+      autoFillMessageEl.hidden = false;
+    } finally {
+      autoFillCheckbox.disabled = false;
+    }
+  });
+  appRoot.appendChild(settingsSection);
 
   const settings = document.createElement("div");
   settings.className = "settings-link";
@@ -126,7 +159,7 @@ function renderAppView(me: Me): void {
   const showTimetableTab = () => {
     tabTimetable.classList.add("active");
     tabFriends.classList.remove("active");
-    void renderTimetableTab(content);
+    void renderTimetableTab(content, me);
   };
   const showFriendsTab = () => {
     tabFriends.classList.add("active");

@@ -18,6 +18,7 @@ export interface UserRow {
   email: string;
   display_name: string;
   nickname: string | null;
+  auto_fill_location: number; // SQLiteはbooleanを持たないため0/1
   created_at: string;
   updated_at: string;
 }

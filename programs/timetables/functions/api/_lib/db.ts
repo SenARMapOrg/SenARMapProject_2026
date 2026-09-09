@@ -56,6 +56,39 @@ export async function updateNickname(db: D1Database, userId: number, nickname: s
   return result;
 }
 
+/** 「科目名から追加」時に他の学生の教室を自動入力するかどうかの設定を切り替える */
+export async function updateAutoFillLocation(db: D1Database, userId: number, enabled: boolean): Promise<UserRow> {
+  const result = await db
+    .prepare("UPDATE users SET auto_fill_location = ?, updated_at = datetime('now') WHERE id = ? RETURNING *")
+    .bind(enabled ? 1 : 0, userId)
+    .first<UserRow>();
+  if (!result) throw new Error("設定の更新に失敗しました");
+  return result;
+}
+
+/**
+ * 同じ学期・曜日・時限・科目名の授業について、自分以外の学生が登録した教室のうち
+ * もっとも多く使われているものを返す（「科目名から追加」の自動入力候補に使う）。
+ * 個人を特定できる情報は返さず、教室名そのものだけを返す。
+ */
+export async function findCommonLocationForCourse(
+  db: D1Database,
+  params: { term: Term; dayOfWeek: number; period: number; courseName: string; excludeUserId: number },
+): Promise<string | null> {
+  const row = await db
+    .prepare(
+      `SELECT location FROM timetable_entries
+       WHERE term = ? AND day_of_week = ? AND period = ? AND course_name = ?
+         AND user_id != ? AND location IS NOT NULL AND location != ''
+       GROUP BY location
+       ORDER BY COUNT(*) DESC, MAX(updated_at) DESC
+       LIMIT 1`,
+    )
+    .bind(params.term, params.dayOfWeek, params.period, params.courseName, params.excludeUserId)
+    .first<{ location: string }>();
+  return row?.location ?? null;
+}
+
 export async function createSession(db: D1Database, userId: number): Promise<SessionRow> {
   const id = randomToken(32);
   const expiresAt = new Date(Date.now() + SESSION_TTL_MS).toISOString();

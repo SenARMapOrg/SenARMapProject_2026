@@ -13,6 +13,7 @@ export interface Me {
   email: string;
   display_name: string;
   nickname: string | null;
+  auto_fill_location: boolean;
 }
 
 export type Term = "spring" | "fall"; // spring=前期 fall=後期
@@ -81,6 +82,19 @@ export const api = {
 
   updateNickname(nickname: string | null): Promise<Me> {
     return apiFetch("/api/me", { method: "PATCH", body: JSON.stringify({ nickname }) });
+  },
+
+  updateAutoFillLocation(enabled: boolean): Promise<Me> {
+    return apiFetch("/api/me", { method: "PATCH", body: JSON.stringify({ auto_fill_location: enabled }) });
+  },
+
+  getLocationSuggestion(
+    term: Term, day: number, period: number, courseName: string,
+  ): Promise<{ location: string | null }> {
+    const params = new URLSearchParams({
+      term, day_of_week: String(day), period: String(period), course_name: courseName,
+    });
+    return apiFetch(`/api/timetable/location-suggestion?${params.toString()}`);
   },
 
   getTimetable(term: Term): Promise<{ entries: TimetableEntry[] }> {
