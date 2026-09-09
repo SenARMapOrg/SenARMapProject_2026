@@ -208,7 +208,17 @@ body {
   border: 1px solid var(--border);
   border-radius: 8px;
 }
-.offering-main { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
+.offering-main { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; flex: 1; min-width: 0; }
+.offering-term-badge {
+  flex-shrink: 0;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--accent-dark);
+  background: #EFF6FF;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1px 8px;
+}
 .offering-name { font-weight: 600; font-size: 13px; }
 .offering-slots { font-size: 12px; color: var(--accent-dark); }
 .offering-sub { flex-basis: 100%; font-size: 11px; color: var(--muted); order: 3; }

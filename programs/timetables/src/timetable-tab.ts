@@ -1,9 +1,13 @@
 // 「自分の時間割」タブ: 上部に表示欄(読み取り専用グリッド)、下部に登録欄(2種類の追加方法)を分けて表示する。
+//
+// 前期・後期のデータは常に両方メモリに保持する（表示は選択中の学期だけだが、
+// 「科目名から追加」は学期をまたいで全件を検索対象にし、選んだ科目自身の学期に挿入するため、
+// 表示中の学期と挿入先の学期が食い違うことがある。片方だけ持つ設計だとここでバグる）。
 
-import { api, ApiError, type TimetableEntry, type Term } from "./api";
+import { api, ApiError, type Term } from "./api";
 import {
   groupOfferings, listDepartments, listFaculties, loadCatalog, searchOfferings,
-  type CourseOffering,
+  type CourseOffering, type OfferingTerm,
 } from "./course-catalog";
 import {
   buildSlotMap, DAY_LABELS, entryKey, guessCurrentTerm, PERIOD_COUNT, renderReadonlyGrid,
@@ -11,11 +15,12 @@ import {
 } from "./timetable-grid";
 
 const MAX_OFFERING_RESULTS = 30;
+const OFFERING_TERM_LABELS: Record<OfferingTerm, string> = { spring: "前期", fall: "後期", both: "通年" };
 
 export async function renderTimetableTab(content: HTMLElement): Promise<void> {
   content.replaceChildren();
   let currentTerm: Term = guessCurrentTerm();
-  let slots: SlotMap = new Map();
+  const slotsByTerm: Record<Term, SlotMap> = { spring: new Map(), fall: new Map() };
 
   // ---------------------------------------------------------------- 表示欄
   const displaySection = document.createElement("section");
@@ -41,7 +46,7 @@ export async function renderTimetableTab(content: HTMLElement): Promise<void> {
   saveRow.className = "save-row";
   const saveBtn = document.createElement("button");
   saveBtn.className = "btn btn-primary";
-  saveBtn.textContent = "保存";
+  saveBtn.textContent = "保存（前期・後期まとめて）";
   const saveMessageEl = document.createElement("span");
   saveMessageEl.className = "message";
   saveMessageEl.hidden = true;
@@ -51,31 +56,41 @@ export async function renderTimetableTab(content: HTMLElement): Promise<void> {
   content.appendChild(displaySection);
 
   function refreshDisplay(): void {
-    renderReadonlyGrid(grid, slotMapToEntries(slots));
+    renderReadonlyGrid(grid, slotMapToEntries(slotsByTerm[currentTerm]));
   }
 
-  async function loadTerm(term: Term): Promise<void> {
+  function showTerm(term: Term): void {
     currentTerm = term;
     termButtons.forEach((btn) => btn.classList.toggle("active", btn.dataset.term === term));
-    saveMessageEl.hidden = true;
-    const { entries } = await api.getTimetable(term);
-    slots = buildSlotMap(entries);
     refreshDisplay();
   }
 
   termButtons.forEach((btn) => {
-    btn.addEventListener("click", () => void loadTerm(btn.dataset.term as Term));
+    btn.addEventListener("click", () => showTerm(btn.dataset.term as Term));
   });
+
+  async function loadAllTerms(): Promise<void> {
+    const [springRes, fallRes] = await Promise.all([
+      api.getTimetable("spring"),
+      api.getTimetable("fall"),
+    ]);
+    slotsByTerm.spring = buildSlotMap(springRes.entries);
+    slotsByTerm.fall = buildSlotMap(fallRes.entries);
+    showTerm(currentTerm);
+  }
 
   saveBtn.addEventListener("click", async () => {
     saveBtn.disabled = true;
     saveMessageEl.hidden = true;
     try {
-      const payload: TimetableEntry[] = slotMapToEntries(slots);
-      const { entries } = await api.putTimetable(currentTerm, payload);
-      slots = buildSlotMap(entries);
+      const [springRes, fallRes] = await Promise.all([
+        api.putTimetable("spring", slotMapToEntries(slotsByTerm.spring)),
+        api.putTimetable("fall", slotMapToEntries(slotsByTerm.fall)),
+      ]);
+      slotsByTerm.spring = buildSlotMap(springRes.entries);
+      slotsByTerm.fall = buildSlotMap(fallRes.entries);
       refreshDisplay();
-      saveMessageEl.textContent = "保存しました";
+      saveMessageEl.textContent = "前期・後期どちらも保存しました";
       saveMessageEl.className = "message message-ok";
     } catch (err) {
       saveMessageEl.textContent = err instanceof ApiError ? err.message : "保存に失敗しました";
@@ -87,19 +102,24 @@ export async function renderTimetableTab(content: HTMLElement): Promise<void> {
   });
 
   /**
-   * 1コマ追加する。既に別の科目が入っている場合は確認する。
-   * 呼び出し後は表示欄を更新するが、サーバーへの保存は「保存」ボタンを押すまで行わない。
+   * 1コマ追加する。term を明示的に指定するため、表示中の学期と異なる学期にも追加できる
+   * （「科目名から追加」で前期タブを見ながら後期の科目を選んだ場合など）。
+   * 既に別の科目が入っている場合は確認する。表示欄は「今表示している学期」の分だけ更新する。
    */
-  function addSlot(day: number, period: number, courseName: string, location: string | null): boolean {
+  function addSlot(
+    term: Term, day: number, period: number, courseName: string, location: string | null,
+  ): boolean {
     const key = entryKey(day, period);
+    const slots = slotsByTerm[term];
     const existing = slots.get(key);
     if (existing && existing.course_name !== courseName) {
       const ok = confirm(
-        `${DAY_LABELS[day]}曜${period}限には既に「${existing.course_name}」が入っています。上書きしますか？`,
+        `${TERM_LABELS[term]}の${DAY_LABELS[day]}曜${period}限には既に「${existing.course_name}」が入っています。上書きしますか？`,
       );
       if (!ok) return false;
     }
     slots.set(key, { course_name: courseName, location: location ?? "" });
+    if (term === currentTerm) refreshDisplay();
     return true;
   }
 
@@ -119,8 +139,8 @@ export async function renderTimetableTab(content: HTMLElement): Promise<void> {
   regTabs.append(slotModeBtn, nameModeBtn);
   regSection.appendChild(regTabs);
 
-  const slotForm = buildSlotForm(addSlot, refreshDisplay);
-  const nameForm = buildNameForm(() => currentTerm, addSlot, refreshDisplay);
+  const slotForm = buildSlotForm(() => currentTerm, addSlot);
+  const nameForm = buildNameForm(addSlot);
   nameForm.root.hidden = true;
   regSection.append(slotForm.root, nameForm.root);
   content.appendChild(regSection);
@@ -139,20 +159,20 @@ export async function renderTimetableTab(content: HTMLElement): Promise<void> {
     nameForm.onShow();
   });
 
-  await loadTerm(currentTerm);
+  await loadAllTerms();
 }
 
 // ================================================================
-// 登録欄 その1: 時間を指定して追加（曜日・時限・科目名・教室を手入力）
+// 登録欄 その1: 時間を指定して追加（曜日・時限・科目名・教室を手入力。表示中の学期に追加する）
 // ================================================================
 function buildSlotForm(
-  addSlot: (day: number, period: number, courseName: string, location: string | null) => boolean,
-  refreshDisplay: () => void,
+  getCurrentTerm: () => Term,
+  addSlot: (term: Term, day: number, period: number, courseName: string, location: string | null) => boolean,
 ): { root: HTMLElement } {
   const root = document.createElement("div");
   root.className = "reg-form";
   root.innerHTML = `
-    <p class="hint">曜日・時限を選び、科目名を入力して追加します。シラバスに載っていない科目（学外の予定など）にも使えます。</p>
+    <p class="hint">曜日・時限を選び、科目名を入力して追加します。今表示している学期（上のタブ）に追加されます。シラバスに載っていない科目（学外の予定など）にも使えます。</p>
     <form class="slot-form">
       <label>曜日 <select class="reg-day"></select></label>
       <label>時限 <select class="reg-period"></select></label>
@@ -188,12 +208,12 @@ function buildSlotForm(
     e.preventDefault();
     const courseName = courseNameInput.value.trim();
     if (!courseName) return;
+    const term = getCurrentTerm();
     const added = addSlot(
-      Number(daySelect.value), Number(periodSelect.value), courseName, locationInput.value.trim() || null,
+      term, Number(daySelect.value), Number(periodSelect.value), courseName, locationInput.value.trim() || null,
     );
     if (added) {
-      refreshDisplay();
-      messageEl.textContent = `${DAY_LABELS[Number(daySelect.value)]}曜${periodSelect.value}限に追加しました`;
+      messageEl.textContent = `${TERM_LABELS[term]}の${DAY_LABELS[Number(daySelect.value)]}曜${periodSelect.value}限に追加しました`;
       messageEl.className = "message message-ok reg-message";
       messageEl.hidden = false;
       courseNameInput.value = "";
@@ -206,19 +226,21 @@ function buildSlotForm(
 }
 
 // ================================================================
-// 登録欄 その2: 科目名から追加（シラバスデータを検索し、選ぶと該当コマ全てに自動挿入）
+// 登録欄 その2: 科目名から追加
+// シラバスデータ(前期・後期・通年 全件)を検索し、選ぶと該当コマに自動挿入する。
+// 表示中の学期に関わらず全学期を検索対象にする（前期タブを見ながら後期の予定も組めるように）。
+// 挿入先は科目自身の学期（通年なら前期・後期の両方）であり、表示中の学期とは独立している。
 // ================================================================
 function buildNameForm(
-  getCurrentTerm: () => Term,
-  addSlot: (day: number, period: number, courseName: string, location: string | null) => boolean,
-  refreshDisplay: () => void,
+  addSlot: (term: Term, day: number, period: number, courseName: string, location: string | null) => boolean,
 ): { root: HTMLElement; onShow: () => void } {
   const root = document.createElement("div");
   root.className = "reg-form";
   root.innerHTML = `
     <p class="hint">
       シラバスの開講科目一覧（<a href="/../syllabus_courses/" target="_blank" rel="noopener">programs/syllabus_courses</a>のデータ）から検索して選ぶと、
-      曜日・時限に自動で挿入されます。教室情報はシラバスに掲載がないため入りません（必要なら追加後に「時間を指定して追加」で上書きできます）。
+      科目自身の学期（前期・後期・通年）に応じて自動で挿入されます。今表示している学期とは関係なく、前期タブを見ながら後期の科目を追加することもできます。
+      教室情報はシラバスに掲載がないため入りません（必要なら追加後に「時間を指定して追加」で上書きできます）。
     </p>
     <div class="filters">
       <label>学部 <select class="reg-faculty"><option value="">すべての学部</option></select></label>
@@ -251,7 +273,7 @@ function buildNameForm(
         opt.textContent = f;
         facultySelect.appendChild(opt);
       }
-      offerings = groupOfferings(catalog, getCurrentTerm());
+      offerings = groupOfferings(catalog);
       loaded = true;
       render();
     } catch {
@@ -265,7 +287,6 @@ function buildNameForm(
     departmentSelect.innerHTML = '<option value="">すべての学科</option>';
     departmentSelect.disabled = !facultySelect.value;
     if (!facultySelect.value || offerings.length === 0) return;
-    // offerings はまだ絞り込まれていない全件から学科一覧を作る必要があるため、catalogではなくofferings由来のdepartmentsを使う
     const depts = new Set<string>();
     for (const o of offerings) {
       for (const d of o.departments) if (d.faculty === facultySelect.value) depts.add(d.department);
@@ -296,6 +317,7 @@ function buildNameForm(
       const deptLabel = o.departments.map((d) => `${d.faculty}/${d.department}`).join(", ");
       li.innerHTML = `
         <div class="offering-main">
+          <span class="offering-term-badge">${escapeHtml(OFFERING_TERM_LABELS[o.term])}</span>
           <span class="offering-name">${escapeHtml(o.course_name)}</span>
           <span class="offering-slots">${escapeHtml(slotsLabel)}</span>
         </div>
@@ -305,13 +327,16 @@ function buildNameForm(
       addBtn.className = "btn btn-primary btn-sm";
       addBtn.textContent = "追加";
       addBtn.addEventListener("click", () => {
+        const targetTerms: Term[] = o.term === "both" ? ["spring", "fall"] : [o.term];
         let addedCount = 0;
-        for (const s of o.slots) {
-          if (addSlot(s.day_of_week, s.period, o.course_name, null)) addedCount += 1;
+        for (const term of targetTerms) {
+          for (const s of o.slots) {
+            if (addSlot(term, s.day_of_week, s.period, o.course_name, null)) addedCount += 1;
+          }
         }
-        refreshDisplay();
+        const termLabel = OFFERING_TERM_LABELS[o.term];
         messageEl.textContent = addedCount > 0
-          ? `「${o.course_name}」を追加しました（${slotsLabel}）`
+          ? `「${o.course_name}」を${termLabel}に追加しました（${slotsLabel}）`
           : "追加しませんでした";
         messageEl.className = `message ${addedCount > 0 ? "message-ok" : "message-error"} reg-message`;
         messageEl.hidden = false;

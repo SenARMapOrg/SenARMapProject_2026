@@ -132,6 +132,13 @@ Pagesプロジェクト → Custom domains から追加する（手動でDNSレ�
 `migrations/` に新しいファイルを追加し `npx wrangler d1 migrations apply timetables-db --remote` を
 手動で実行する必要がある（マイグレーションの自動適用はCI化していない）。
 
+⚠️ **実際にやらかした教訓**: `0002_add_term.sql`（前期/後期対応）を追加した際、`--local` でしか
+動作確認せず `--remote` の適用を忘れてデプロイしてしまい、本番で時間割の読み書きが全部
+「サーバー内部エラー」になった。**新しいマイグレーションを追加したら、コミット・デプロイの
+前後どちらかで必ず `npm run db:migrate:remote` を実行したことを確認すること。**
+（`npx wrangler d1 execute timetables-db --remote --command "SELECT * FROM d1_migrations;"` で
+本番に適用済みのマイグレーション一覧を確認できる）
+
 ---
 
 ## 4. 本番投入前に確認すること（重要）
