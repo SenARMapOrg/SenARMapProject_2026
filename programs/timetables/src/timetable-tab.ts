@@ -6,15 +6,20 @@
 // 「科目名から追加」は学期をまたいで全件を検索対象にし、選んだ科目自身の学期に挿入するため、
 // 表示中の学期と挿入先の学期が食い違うことがある。片方だけ持つ設計だとここでバグる）。
 
-import { api, ApiError, type Term } from "./api";
+import { api, ApiError, type Me, type Term } from "./api";
 import {
-  buildSlotMap, DAY_LABELS, entryKey, guessCurrentTerm, renderInteractiveGrid, renderReadonlyGrid,
-  slotMapToEntries, TERM_LABELS, type SlotMap,
+  buildSlotMap, DAY_LABELS, entryKey, getNowInfo, guessCurrentTerm, PERIOD_TIMES, renderInteractiveGrid,
+  renderReadonlyGrid, slotMapToEntries, TERM_LABELS, type SlotMap,
 } from "./timetable-grid";
 import { buildNameForm } from "./timetable-name-form";
 import { buildSlotForm } from "./timetable-slot-form";
 
-export async function renderTimetableTab(content: HTMLElement): Promise<void> {
+// ナビ(programs/html/navi)は別サブドメインで公開されている。?from=&to= で教室名を渡すと
+// 自動でルート検索まで行ってくれる（該当する教室が見つからない場合は入力済みの状態で開くだけ）。
+const NAVI_BASE_URL = "https://iku-navi.net/navi/";
+const NAV_REFRESH_INTERVAL_MS = 30_000;
+
+export async function renderTimetableTab(content: HTMLElement, me: Me): Promise<void> {
   content.replaceChildren();
   let currentTerm: Term = guessCurrentTerm();
   let selectedSlot: { day: number; period: number } | null = null;
@@ -47,6 +52,10 @@ export async function renderTimetableTab(content: HTMLElement): Promise<void> {
   editToggleBtn.textContent = "科目を追加・削除する";
   viewActionsRow.appendChild(editToggleBtn);
   displaySection.appendChild(viewActionsRow);
+
+  const navPanel = document.createElement("div");
+  navPanel.className = "nav-panel";
+  displaySection.appendChild(navPanel);
 
   content.appendChild(displaySection);
 
@@ -116,6 +125,61 @@ export async function renderTimetableTab(content: HTMLElement): Promise<void> {
     renderInteractiveGrid(editGrid, slotMapToEntries(slotsByTerm[currentTerm]), selectedSlot, onGridCellClick);
   }
 
+  /**
+   * 「今の教室→次の教室」ナビボタン。表示中の学期タブとは無関係に、実際の「今」の学期
+   * (guessCurrentTerm)のデータを見る。次の時限に教室が登録されていない場合はナビを開けない
+   * （行き先が無いと案内できないため）。今の時限に教室が無い場合は「空」のまま出発地なしで開く。
+   */
+  function refreshNavPanel(): void {
+    navPanel.replaceChildren();
+    const now = getNowInfo();
+
+    if (now.todayIndex === null) {
+      const p = document.createElement("p");
+      p.className = "hint";
+      p.textContent = "本日(日曜)は時限がありません。";
+      navPanel.appendChild(p);
+      return;
+    }
+
+    const todaySlots = slotsByTerm[guessCurrentTerm()];
+    const currentEntry = now.currentPeriod !== null
+      ? todaySlots.get(entryKey(now.todayIndex, now.currentPeriod)) ?? null : null;
+    const nextEntry = now.nextPeriod !== null
+      ? todaySlots.get(entryKey(now.todayIndex, now.nextPeriod)) ?? null : null;
+
+    const describe = (period: number | null, entry: { course_name: string; location: string } | null): string => {
+      if (period === null) return "";
+      const time = `${PERIOD_TIMES[period].start}〜${PERIOD_TIMES[period].end}`;
+      if (!entry) return `${period}限 (${time}) 空きコマ`;
+      return `${period}限 (${time}) ${entry.course_name}${entry.location ? ` / ${entry.location}` : ""}`;
+    };
+
+    const statusEl = document.createElement("p");
+    statusEl.className = "hint nav-status";
+    statusEl.textContent = `現在: ${now.currentPeriod !== null ? describe(now.currentPeriod, currentEntry) : "授業時間外"}　次: ${now.nextPeriod !== null ? describe(now.nextPeriod, nextEntry) : "本日はこれ以上時限がありません"}`;
+    navPanel.appendChild(statusEl);
+
+    if (now.nextPeriod === null) return;
+    if (!nextEntry?.location) {
+      const hint = document.createElement("p");
+      hint.className = "hint";
+      hint.textContent = "次のコマの教室が登録されていないため、ナビを開けません。";
+      navPanel.appendChild(hint);
+      return;
+    }
+
+    const link = document.createElement("a");
+    link.className = "btn btn-primary";
+    link.target = "_blank";
+    link.rel = "noopener";
+    const params = new URLSearchParams({ to: nextEntry.location });
+    if (currentEntry?.location) params.set("from", currentEntry.location);
+    link.href = `${NAVI_BASE_URL}?${params.toString()}`;
+    link.textContent = "次の教室へのナビを開く";
+    navPanel.appendChild(link);
+  }
+
   function onGridCellClick(day: number, period: number): void {
     selectedSlot = { day, period };
     const existing = slotsByTerm[currentTerm].get(entryKey(day, period)) ?? null;
@@ -132,6 +196,7 @@ export async function renderTimetableTab(content: HTMLElement): Promise<void> {
     nameForm.setSlotFilter(null);
     refreshViewGrid();
     refreshEditGrid();
+    refreshNavPanel();
   }
 
   termButtons.forEach((btn) => {
@@ -163,6 +228,7 @@ export async function renderTimetableTab(content: HTMLElement): Promise<void> {
       slotsByTerm.fall = buildSlotMap(fallRes.entries);
       refreshViewGrid();
       refreshEditGrid();
+      refreshNavPanel();
       saveMessageEl.textContent = "前期・後期どちらも保存しました";
       saveMessageEl.className = "message message-ok";
     } catch (err) {
@@ -196,6 +262,7 @@ export async function renderTimetableTab(content: HTMLElement): Promise<void> {
       refreshViewGrid();
       refreshEditGrid();
     }
+    refreshNavPanel();
     return true;
   }
 
@@ -209,6 +276,7 @@ export async function renderTimetableTab(content: HTMLElement): Promise<void> {
       refreshViewGrid();
       refreshEditGrid();
     }
+    refreshNavPanel();
     return true;
   }
 
@@ -229,7 +297,7 @@ export async function renderTimetableTab(content: HTMLElement): Promise<void> {
   editSection.appendChild(regTabs);
 
   const slotForm = buildSlotForm(() => currentTerm, addSlot, removeSlot);
-  const nameForm = buildNameForm(addSlot);
+  const nameForm = buildNameForm(addSlot, () => me.auto_fill_location);
   nameForm.root.hidden = true;
   editSection.append(slotForm.root, nameForm.root);
 
@@ -246,6 +314,18 @@ export async function renderTimetableTab(content: HTMLElement): Promise<void> {
     slotForm.root.hidden = true;
     nameForm.onShow();
   });
+
+  // 今日の曜日・現在時刻のハイライトとナビ状況は時間経過で変わるため、定期的に再描画する。
+  // このタブから離れて画面から外れたら(要素がDOMから消えたら)自動的に止める。
+  const refreshTimerId = setInterval(() => {
+    if (!document.body.contains(displaySection)) {
+      clearInterval(refreshTimerId);
+      return;
+    }
+    refreshViewGrid();
+    refreshEditGrid();
+    refreshNavPanel();
+  }, NAV_REFRESH_INTERVAL_MS);
 
   await loadAllTerms();
 }
