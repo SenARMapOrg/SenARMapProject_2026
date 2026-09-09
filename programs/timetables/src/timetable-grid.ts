@@ -48,7 +48,7 @@ export function slotMapToEntries(courses: SlotMap): TimetableEntry[] {
 /** 閲覧専用（友達の時間割表示など）のグリッド */
 export function renderReadonlyGrid(container: HTMLElement, entries: TimetableEntry[]): void {
   const table = buildGridTable(entries, null, null);
-  container.replaceChildren(table);
+  container.replaceChildren(wrapGridScroll(table));
 }
 
 /**
@@ -63,7 +63,15 @@ export function renderInteractiveGrid(
   onCellClick: (day: number, period: number) => void,
 ): void {
   const table = buildGridTable(entries, selectedSlot, onCellClick);
-  container.replaceChildren(table);
+  container.replaceChildren(wrapGridScroll(table));
+}
+
+/** 幅の狭い画面では表全体を縮めず、この枠の中だけを横スクロールさせる */
+function wrapGridScroll(table: HTMLTableElement): HTMLDivElement {
+  const wrapper = document.createElement("div");
+  wrapper.className = "timetable-grid-scroll";
+  wrapper.appendChild(table);
+  return wrapper;
 }
 
 function buildGridTable(
