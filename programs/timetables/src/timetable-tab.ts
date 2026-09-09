@@ -42,18 +42,64 @@ export async function renderTimetableTab(content: HTMLElement): Promise<void> {
   const grid = document.createElement("div");
   displaySection.appendChild(grid);
 
-  const saveRow = document.createElement("div");
-  saveRow.className = "save-row";
+  const viewActionsRow = document.createElement("div");
+  viewActionsRow.className = "save-row";
+  const editToggleBtn = document.createElement("button");
+  editToggleBtn.className = "btn btn-primary";
+  editToggleBtn.textContent = "科目を追加・削除する";
+  viewActionsRow.appendChild(editToggleBtn);
+  displaySection.appendChild(viewActionsRow);
+
+  content.appendChild(displaySection);
+
+  // ---------------------------------------------------------------- 編集欄（誤操作防止のため「科目を追加・削除する」を押すまで表示しない）
+  const editSection = document.createElement("section");
+  editSection.className = "panel";
+  editSection.hidden = true;
+
+  const editHeaderRow = document.createElement("div");
+  editHeaderRow.className = "save-row";
+  const backToViewBtn = document.createElement("button");
+  backToViewBtn.className = "btn btn-ghost";
+  backToViewBtn.textContent = "← 表示に戻る";
   const saveBtn = document.createElement("button");
   saveBtn.className = "btn btn-primary";
   saveBtn.textContent = "保存（前期・後期まとめて）";
   const saveMessageEl = document.createElement("span");
   saveMessageEl.className = "message";
   saveMessageEl.hidden = true;
-  saveRow.append(saveBtn, saveMessageEl);
-  displaySection.appendChild(saveRow);
+  editHeaderRow.append(backToViewBtn, saveBtn, saveMessageEl);
+  editSection.appendChild(editHeaderRow);
 
-  content.appendChild(displaySection);
+  const editTermHint = document.createElement("p");
+  editTermHint.className = "hint";
+  editTermHint.textContent = "ここで選んだ学期に追加・削除されます:";
+  editSection.appendChild(editTermHint);
+
+  const editTermTabs = document.createElement("div");
+  editTermTabs.className = "term-tabs";
+  const editTermButtons = (["spring", "fall"] as Term[]).map((term) => {
+    const btn = document.createElement("button");
+    btn.className = "term-tab";
+    btn.textContent = TERM_LABELS[term];
+    btn.dataset.term = term;
+    editTermTabs.appendChild(btn);
+    return btn;
+  });
+  editSection.appendChild(editTermTabs);
+
+  content.appendChild(editSection);
+
+  function enterEditMode(): void {
+    editSection.hidden = false;
+    displaySection.hidden = true;
+  }
+  function exitEditMode(): void {
+    editSection.hidden = true;
+    displaySection.hidden = false;
+  }
+  editToggleBtn.addEventListener("click", enterEditMode);
+  backToViewBtn.addEventListener("click", exitEditMode);
 
   function refreshDisplay(): void {
     renderReadonlyGrid(grid, slotMapToEntries(slotsByTerm[currentTerm]));
@@ -62,10 +108,14 @@ export async function renderTimetableTab(content: HTMLElement): Promise<void> {
   function showTerm(term: Term): void {
     currentTerm = term;
     termButtons.forEach((btn) => btn.classList.toggle("active", btn.dataset.term === term));
+    editTermButtons.forEach((btn) => btn.classList.toggle("active", btn.dataset.term === term));
     refreshDisplay();
   }
 
   termButtons.forEach((btn) => {
+    btn.addEventListener("click", () => showTerm(btn.dataset.term as Term));
+  });
+  editTermButtons.forEach((btn) => {
     btn.addEventListener("click", () => showTerm(btn.dataset.term as Term));
   });
 
@@ -123,27 +173,36 @@ export async function renderTimetableTab(content: HTMLElement): Promise<void> {
     return true;
   }
 
-  // ---------------------------------------------------------------- 登録欄
-  const regSection = document.createElement("section");
-  regSection.className = "panel";
-  regSection.innerHTML = "<h2>科目を追加</h2>";
+  /** 1コマ削除する。何も入っていなければ何もしない */
+  function removeSlot(term: Term, day: number, period: number): boolean {
+    const key = entryKey(day, period);
+    const slots = slotsByTerm[term];
+    if (!slots.has(key)) return false;
+    slots.delete(key);
+    if (term === currentTerm) refreshDisplay();
+    return true;
+  }
+
+  // ---------------------------------------------------------------- 登録欄（編集欄の中身）
+  const regHeading = document.createElement("h2");
+  regHeading.textContent = "科目を追加・削除";
+  editSection.appendChild(regHeading);
 
   const regTabs = document.createElement("div");
   regTabs.className = "term-tabs";
   const slotModeBtn = document.createElement("button");
   slotModeBtn.className = "term-tab active";
-  slotModeBtn.textContent = "時間を指定して追加";
+  slotModeBtn.textContent = "時間を指定して追加・削除";
   const nameModeBtn = document.createElement("button");
   nameModeBtn.className = "term-tab";
   nameModeBtn.textContent = "科目名から追加";
   regTabs.append(slotModeBtn, nameModeBtn);
-  regSection.appendChild(regTabs);
+  editSection.appendChild(regTabs);
 
-  const slotForm = buildSlotForm(() => currentTerm, addSlot);
+  const slotForm = buildSlotForm(() => currentTerm, addSlot, removeSlot);
   const nameForm = buildNameForm(addSlot);
   nameForm.root.hidden = true;
-  regSection.append(slotForm.root, nameForm.root);
-  content.appendChild(regSection);
+  editSection.append(slotForm.root, nameForm.root);
 
   slotModeBtn.addEventListener("click", () => {
     slotModeBtn.classList.add("active");
@@ -168,17 +227,19 @@ export async function renderTimetableTab(content: HTMLElement): Promise<void> {
 function buildSlotForm(
   getCurrentTerm: () => Term,
   addSlot: (term: Term, day: number, period: number, courseName: string, location: string | null) => boolean,
+  removeSlot: (term: Term, day: number, period: number) => boolean,
 ): { root: HTMLElement } {
   const root = document.createElement("div");
   root.className = "reg-form";
   root.innerHTML = `
-    <p class="hint">曜日・時限を選び、科目名を入力して追加します。今表示している学期（上のタブ）に追加されます。シラバスに載っていない科目（学外の予定など）にも使えます。</p>
+    <p class="hint">曜日・時限を選び、科目名を入力して追加します。今表示している学期（上のタブ）に追加されます。シラバスに載っていない科目（学外の予定など）にも使えます。「削除」で指定した曜日・時限のコマを消せます。</p>
     <form class="slot-form">
       <label>曜日 <select class="reg-day"></select></label>
       <label>時限 <select class="reg-period"></select></label>
       <label>科目名 <input type="text" class="reg-course-name" maxlength="100" placeholder="科目名" required></label>
       <label>教室(任意) <input type="text" class="reg-location" maxlength="100" placeholder="教室"></label>
       <button type="submit" class="btn btn-primary">追加</button>
+      <button type="button" class="btn btn-ghost reg-delete-btn">このコマを削除</button>
     </form>
     <p class="message reg-message" hidden></p>
   `;
@@ -202,6 +263,7 @@ function buildSlotForm(
   const form = root.querySelector<HTMLFormElement>(".slot-form")!;
   const courseNameInput = root.querySelector<HTMLInputElement>(".reg-course-name")!;
   const locationInput = root.querySelector<HTMLInputElement>(".reg-location")!;
+  const deleteBtn = root.querySelector<HTMLButtonElement>(".reg-delete-btn")!;
   const messageEl = root.querySelector<HTMLParagraphElement>(".reg-message")!;
 
   form.addEventListener("submit", (e) => {
@@ -220,6 +282,18 @@ function buildSlotForm(
       locationInput.value = "";
       courseNameInput.focus();
     }
+  });
+
+  deleteBtn.addEventListener("click", () => {
+    const term = getCurrentTerm();
+    const day = Number(daySelect.value);
+    const period = Number(periodSelect.value);
+    const removed = removeSlot(term, day, period);
+    messageEl.textContent = removed
+      ? `${TERM_LABELS[term]}の${DAY_LABELS[day]}曜${period}限を削除しました`
+      : `${TERM_LABELS[term]}の${DAY_LABELS[day]}曜${period}限には何も入っていません`;
+    messageEl.className = `message ${removed ? "message-ok" : "message-error"} reg-message`;
+    messageEl.hidden = false;
   });
 
   return { root };
