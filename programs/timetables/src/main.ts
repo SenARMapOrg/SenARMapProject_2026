@@ -1,6 +1,6 @@
-import { api, ApiError, type Term, type TimetableEntry } from "./api";
+import { api } from "./api";
 import { renderFriendsPanel } from "./friends-view";
-import { coursesMapToEntries, guessCurrentTerm, renderEditableGrid, TERM_LABELS } from "./timetable-grid";
+import { renderTimetableTab } from "./timetable-tab";
 
 const appRoot = document.getElementById("app")!;
 const userBox = document.getElementById("user-box")!;
@@ -102,77 +102,6 @@ function renderAppView(): void {
   tabFriends.addEventListener("click", showFriendsTab);
 
   showTimetableTab();
-}
-
-async function renderTimetableTab(content: HTMLElement): Promise<void> {
-  content.replaceChildren();
-  let currentTerm: Term = guessCurrentTerm();
-
-  const section = document.createElement("section");
-  section.className = "panel";
-  section.innerHTML = "<h2>自分の時間割</h2><p class=\"hint\">科目名を入力すると自動的に保存対象になります。空欄にするとそのコマは削除されます。</p>";
-
-  const termTabs = document.createElement("div");
-  termTabs.className = "term-tabs";
-  const termButtons = (["spring", "fall"] as Term[]).map((term) => {
-    const btn = document.createElement("button");
-    btn.className = "term-tab";
-    btn.textContent = TERM_LABELS[term];
-    btn.dataset.term = term;
-    termTabs.appendChild(btn);
-    return btn;
-  });
-  section.appendChild(termTabs);
-
-  const grid = document.createElement("div");
-  section.appendChild(grid);
-
-  const saveRow = document.createElement("div");
-  saveRow.className = "save-row";
-  const saveBtn = document.createElement("button");
-  saveBtn.className = "btn btn-primary";
-  saveBtn.textContent = "保存";
-  const messageEl = document.createElement("span");
-  messageEl.className = "message";
-  messageEl.hidden = true;
-  saveRow.append(saveBtn, messageEl);
-  section.appendChild(saveRow);
-
-  content.appendChild(section);
-
-  let courses = new Map<string, { course_name: string; location: string }>();
-
-  async function loadTerm(term: Term): Promise<void> {
-    currentTerm = term;
-    termButtons.forEach((btn) => btn.classList.toggle("active", btn.dataset.term === term));
-    messageEl.hidden = true;
-    courses = new Map();
-    const { entries } = await api.getTimetable(term);
-    renderEditableGrid(grid, entries, courses);
-  }
-
-  termButtons.forEach((btn) => {
-    btn.addEventListener("click", () => void loadTerm(btn.dataset.term as Term));
-  });
-
-  await loadTerm(currentTerm);
-
-  saveBtn.addEventListener("click", async () => {
-    saveBtn.disabled = true;
-    messageEl.hidden = true;
-    try {
-      const payload: TimetableEntry[] = coursesMapToEntries(courses);
-      await api.putTimetable(currentTerm, payload);
-      messageEl.textContent = "保存しました";
-      messageEl.className = "message message-ok";
-    } catch (err) {
-      messageEl.textContent = err instanceof ApiError ? err.message : "保存に失敗しました";
-      messageEl.className = "message message-error";
-    } finally {
-      messageEl.hidden = false;
-      saveBtn.disabled = false;
-    }
-  });
 }
 
 void boot();

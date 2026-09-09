@@ -9,7 +9,8 @@
     "deploy": "vite build && wrangler pages deploy dist",
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p functions/tsconfig.json",
     "db:migrate:local": "wrangler d1 migrations apply timetables-db --local",
-    "db:migrate:remote": "wrangler d1 migrations apply timetables-db --remote"
+    "db:migrate:remote": "wrangler d1 migrations apply timetables-db --remote",
+    "sync-courses": "sh scripts/sync-courses.sh"
   },
   "dependencies": {
     "hono": "^4.6.9",
