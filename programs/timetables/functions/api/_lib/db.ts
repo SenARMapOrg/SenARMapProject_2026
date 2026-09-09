@@ -46,6 +46,16 @@ export async function upsertUser(
   return result;
 }
 
+/** あだ名を設定・解除する。null(または空)で解除し、以後は display_name(Googleの本名)が表示される */
+export async function updateNickname(db: D1Database, userId: number, nickname: string | null): Promise<UserRow> {
+  const result = await db
+    .prepare("UPDATE users SET nickname = ?, updated_at = datetime('now') WHERE id = ? RETURNING *")
+    .bind(nickname, userId)
+    .first<UserRow>();
+  if (!result) throw new Error("あだ名の更新に失敗しました");
+  return result;
+}
+
 export async function createSession(db: D1Database, userId: number): Promise<SessionRow> {
   const id = randomToken(32);
   const expiresAt = new Date(Date.now() + SESSION_TTL_MS).toISOString();
@@ -122,15 +132,17 @@ export async function areFriends(db: D1Database, userA: number, userB: number): 
   return row !== null;
 }
 
+// 友達に見せる名前は「あだ名(nickname)があればそれ、無ければGoogle由来の本名(display_name)」。
+// フロントは従来通り display_name というキーで受け取るだけでよいよう、ここで解決してから返す。
 export async function listFriends(
   db: D1Database, userId: number,
 ): Promise<{ id: number; email: string; display_name: string }[]> {
   const { results } = await db
     .prepare(
-      `SELECT u.id, u.email, u.display_name FROM friend_requests fr
+      `SELECT u.id, u.email, COALESCE(u.nickname, u.display_name) AS display_name FROM friend_requests fr
        JOIN users u ON u.id = CASE WHEN fr.from_user_id = ? THEN fr.to_user_id ELSE fr.from_user_id END
        WHERE fr.status = 'accepted' AND (fr.from_user_id = ? OR fr.to_user_id = ?)
-       ORDER BY u.display_name`,
+       ORDER BY display_name`,
     )
     .bind(userId, userId, userId)
     .all<{ id: number; email: string; display_name: string }>();
@@ -142,7 +154,7 @@ export async function listIncomingRequests(db: D1Database, userId: number): Prom
 > {
   const { results } = await db
     .prepare(
-      `SELECT fr.*, u.email AS from_email, u.display_name AS from_display_name
+      `SELECT fr.*, u.email AS from_email, COALESCE(u.nickname, u.display_name) AS from_display_name
        FROM friend_requests fr JOIN users u ON u.id = fr.from_user_id
        WHERE fr.to_user_id = ? AND fr.status = 'pending'
        ORDER BY fr.created_at DESC`,

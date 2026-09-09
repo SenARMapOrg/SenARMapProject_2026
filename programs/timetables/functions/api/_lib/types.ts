@@ -17,6 +17,7 @@ export interface UserRow {
   google_sub: string;
   email: string;
   display_name: string;
+  nickname: string | null;
   created_at: string;
   updated_at: string;
 }

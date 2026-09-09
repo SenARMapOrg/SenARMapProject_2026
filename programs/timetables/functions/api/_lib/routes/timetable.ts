@@ -93,7 +93,7 @@ timetableRoutes.get("/friend/:userId", requireAuth(), async (c) => {
 
   const entries = await listTimetable(c.env.DB, friendId, term);
   return c.json({
-    user: { id: friend.id, display_name: friend.display_name },
+    user: { id: friend.id, display_name: friend.nickname ?? friend.display_name },
     entries,
   });
 });

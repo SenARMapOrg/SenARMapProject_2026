@@ -1,4 +1,4 @@
-import { api } from "./api";
+import { api, ApiError, type Me } from "./api";
 import { renderFriendsPanel } from "./friends-view";
 import { renderTimetableTab } from "./timetable-tab";
 
@@ -23,8 +23,8 @@ async function boot(): Promise<void> {
     return;
   }
   userBox.hidden = false;
-  userNameEl.textContent = `${me.display_name} さん`;
-  renderAppView();
+  userNameEl.textContent = `${me.nickname ?? me.display_name} さん`;
+  renderAppView(me);
 }
 
 function renderLoginView(loginError: string | null): void {
@@ -54,7 +54,7 @@ function describeLoginError(code: string): string {
   }
 }
 
-function renderAppView(): void {
+function renderAppView(me: Me): void {
   appRoot.replaceChildren();
 
   const tabs = document.createElement("div");
@@ -71,6 +71,42 @@ function renderAppView(): void {
   const content = document.createElement("div");
   content.className = "app-tab-content";
   appRoot.appendChild(content);
+
+  const nicknameSection = document.createElement("section");
+  nicknameSection.className = "panel";
+  nicknameSection.innerHTML = `
+    <h2>あだ名</h2>
+    <p class="hint">
+      友達には本名の代わりにここで設定したあだ名が表示されます（未設定の場合はGoogleアカウントの名前が使われます）。
+    </p>
+    <form class="inline-form">
+      <input type="text" class="nickname-input" maxlength="30" placeholder="あだ名（未設定なら本名を表示）">
+      <button type="submit" class="btn btn-primary">保存</button>
+    </form>
+    <p class="message nickname-message" hidden></p>
+  `;
+  const nicknameForm = nicknameSection.querySelector<HTMLFormElement>("form")!;
+  const nicknameInput = nicknameSection.querySelector<HTMLInputElement>(".nickname-input")!;
+  const nicknameMessageEl = nicknameSection.querySelector<HTMLParagraphElement>(".nickname-message")!;
+  nicknameInput.value = me.nickname ?? "";
+  nicknameForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    nicknameMessageEl.hidden = true;
+    try {
+      const updated = await api.updateNickname(nicknameInput.value.trim() || null);
+      me.nickname = updated.nickname;
+      nicknameInput.value = updated.nickname ?? "";
+      userNameEl.textContent = `${updated.nickname ?? updated.display_name} さん`;
+      nicknameMessageEl.textContent = "あだ名を保存しました";
+      nicknameMessageEl.className = "message message-ok nickname-message";
+    } catch (err) {
+      nicknameMessageEl.textContent = err instanceof ApiError ? err.message : "保存に失敗しました";
+      nicknameMessageEl.className = "message message-error nickname-message";
+    } finally {
+      nicknameMessageEl.hidden = false;
+    }
+  });
+  appRoot.appendChild(nicknameSection);
 
   const settings = document.createElement("div");
   settings.className = "settings-link";
