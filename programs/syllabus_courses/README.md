@@ -209,9 +209,16 @@ python -m http.server 8000   # このディレクトリで簡易サーバーを�
 - 初期状態では何も表示しない（検索語か学部を指定するまで一覧を出さない。9,533件を無条件で
   描画すると重いため）。1回の検索結果は最大500件まで表示し、それ以上は絞り込みを促すメッセージを出す
 
-## timetables アプリへの組み込みについて（今後の作業）
+## timetables アプリへの組み込みについて
 
-このツール自体は `programs/timetables/` を変更しない。`courses.json` を D1 の参照テーブル
-（例: `courses` テーブル）に取り込んだり、科目名オートコンプリートAPIを生やしたりする統合作業は
-別途 `programs/timetables/` 側で行う想定。組み込む際は、このデータが「開講予定」であって
-「個人の履修状況」ではないことをUI上でも誤解を招かない形にすること。
+`courses.json` は `programs/timetables/scripts/sync-courses.sh` によって
+`programs/timetables/public/courses.json` へコピーされ、Viteのビルドでそのまま `dist/` 直下に
+含まれる静的アセットとして配信される（D1には取り込んでいない。モノレポの Root directory 制約上
+`programs/timetables` から `programs/syllabus_courses` を直接参照できないための静的コピー方式）。
+timetables側の `src/course-catalog.ts` がこれを `fetch("/courses.json")` して、科目名オートコンプリート・
+曜日/時限の自動入力、および「他の学生が同じ授業に登録した教室を自動入力する」機能（ユーザー設定
+`auto_fill_location`、既定オフ）の参考データとして使っている。
+
+シラバスを再スクレイピングした後は、`programs/timetables` で `npm run sync-courses` を実行して
+コピーを更新し、差分をコミットする（自動化はしておらず手動運用）。組み込み先のUIでも、このデータが
+「開講予定」であって「個人の履修状況」ではないことを誤解を招かない形にしている。
