@@ -396,6 +396,21 @@ def _display_name(building, name):
     )
 
 
+def _first_display_label(building, raw_value):
+    """
+    ";"区切りの生の名前（name/right/left列の値）の先頭要素だけを、読み上げ用の表示名に変換する。
+    トイレ（M_Toilet等）はname.csvに表示名が無く_display_nameのフォールバックだと不自然になる
+    （例: "M_Toilet教室"）ため、_TOILET_LABEL（後方で定義、モジュール読み込み後に参照するので
+    問題ない）を先に見る。それ以外はname.csv（_display_name）に委ねる。
+    """
+    first = str(raw_value or "").split(";")[0].strip()
+    if not first:
+        return ""
+    if first in _TOILET_LABEL:
+        return _TOILET_LABEL[first]
+    return _display_name(building, first)
+
+
 _cached_building_name_map = None   # building_name.csv: {building: display_name}
 
 
@@ -758,11 +773,18 @@ def _path_result(G, path, length):
         u, v = path[i], path[i + 1]
         edata = G.edges[u, v]
         n0, n1 = G.nodes[u], G.nodes[v]
+        building = edata.get("building")
+        name, right, left = edata.get("name", ""), edata.get("right", ""), edata.get("left", "")
         path_edges.append({
             "from": u, "to": v,
-            "name":   edata.get("name", ""),
-            "right":  edata.get("right", ""),
-            "left":   edata.get("left", ""),
+            "name":   name,
+            "right":  right,
+            "left":   left,
+            # 読み上げ用の表示名（先頭要素のみ、トイレ等の内部コードも日本語表記に変換済み）。
+            # 生の name/right/left はそのままエッジ照合用に残す。
+            "name_display":  _first_display_label(building, name),
+            "right_display": _first_display_label(building, right),
+            "left_display":  _first_display_label(building, left),
             "length": edata.get("length", 0),
             "type":   edata.get("edge_type", "1"),
             "x0": n0["x"], "y0": n0["y"], "z0": n0["z"],
