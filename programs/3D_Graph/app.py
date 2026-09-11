@@ -274,11 +274,13 @@ def load_data():
     edges_combined["name"] = edges_combined["name"].fillna("").astype(str)
     # 空行によりfloat化したtype列を整数に正規化 ("1.0" → "1" となるよう)
     edges_combined["type"] = pd.to_numeric(edges_combined["type"], errors="coerce").fillna(1).astype(int)
-    # side列（教室が進行方向の左右どちらにあるか。nameと同じく";"区切りで複数対応）は
-    # まだ一部の建物（edge.csv）にしか無い任意列。無い建物の行はNaNになるので空文字にする。
-    if "side" not in edges_combined.columns:
-        edges_combined["side"] = ""
-    edges_combined["side"] = edges_combined["side"].fillna("").astype(str)
+    # right/left列（進行方向の右側・左側にある教室名を、nameとは独立にfrom→toの正しい順序で
+    # ";"区切りで入れたもの。nameのリストは順序通りとは限らないため別立てにしている）は
+    # まだ一部の建物のedge.csvにしか無い任意列。無い建物の行はNaNになるので空文字にする。
+    for col in ("right", "left"):
+        if col not in edges_combined.columns:
+            edges_combined[col] = ""
+        edges_combined[col] = edges_combined[col].fillna("").astype(str)
     return nodes_combined, edges_combined
 
 
@@ -312,7 +314,8 @@ def build_graph(nodes_df, edges_df, use_elevator=True):
         edge_attrs = dict(
             edge_id=int(row["id"]),
             name=str(row["name"]),
-            side=str(row.get("side", "")),
+            right=str(row.get("right", "")),
+            left=str(row.get("left", "")),
             building=int(row["building"]),
             floor=int(row["floor"]),
             weight=float(row["weight"]) * float(row["length"]) + (ENTRANCE_PENALTY if edge_type == "7" else 0.0),
@@ -696,7 +699,8 @@ def _edge_to_dict(row):
     return {
         "id":       int(row["id"]),
         "name":     str(row["name"]),
-        "side":     str(row.get("side", "")),
+        "right":    str(row.get("right", "")),
+        "left":     str(row.get("left", "")),
         "from":     int(row["from"]),
         "to":       int(row["to"]),
         "building": int(row["building"]),
@@ -755,7 +759,8 @@ def _path_result(G, path, length):
         path_edges.append({
             "from": u, "to": v,
             "name":   edata.get("name", ""),
-            "side":   edata.get("side", ""),
+            "right":  edata.get("right", ""),
+            "left":   edata.get("left", ""),
             "length": edata.get("length", 0),
             "type":   edata.get("edge_type", "1"),
             "x0": n0["x"], "y0": n0["y"], "z0": n0["z"],
