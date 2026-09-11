@@ -824,7 +824,10 @@ function updateDirectionArrow(step) {
   // 最終区間（目的地エッジを歩く区間）は矢印だと「まだ先へ進む」と誤解されるため、
   // 矢印の代わりに「目的地周辺です」バッジを表示する
   const isFinalSegment = step === pathCoords.length - 2;
-  if (nearEl) nearEl.style.display = isFinalSegment ? "block" : "none";
+  if (nearEl) {
+    nearEl.style.display = isFinalSegment ? "block" : "none";
+    if (isFinalSegment) nearEl.textContent = buildNearGoalText(pathEdges[step]);
+  }
   if (isFinalSegment) {
     arrowEl.style.display = "none";
     return;
@@ -1067,6 +1070,23 @@ function buildSidePhrase(edge) {
   if (r) return `右手に${r}があります`;
   if (l) return `左手に${l}があります`;
   return "";
+}
+
+/**
+ * 目的地エッジ（最終区間）の right_display/left_display から、目的地バッジの文言を決める。
+ * 片方だけに教室（トイレ等含む）が設定されていればその側を目的地とみなして
+ * 「右手に目的地です」/「左手に目的地です」を返す。両方に設定がある（このエッジに複数の
+ * 部屋が面していてどちらが目的地か特定できない）場合や、どちらも未設定の場合は
+ * 従来通りの汎用文言にフォールバックする。
+ */
+function buildNearGoalText(edge) {
+  const FALLBACK = "この通路沿いが目的地周辺です";
+  if (!edge) return FALLBACK;
+  const r = edge.right_display || (edge.right || "").split(";")[0].trim();
+  const l = edge.left_display  || (edge.left  || "").split(";")[0].trim();
+  if (r && !l) return "右手に目的地です";
+  if (l && !r) return "左手に目的地です";
+  return FALLBACK;
 }
 
 /**
