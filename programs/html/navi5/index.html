@@ -1,0 +1,771 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="description" content="専修大学 生田キャンパスの教室検索ナビ。教室名を入力すると、階段・エレベータまで考慮した最短ルートをAR写真ガイドで案内します。">
+  <title>教室検索ナビ | IKU NAVI</title>
+  <link rel="icon" href="../images/favicon.ico">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;500;700;800;900&family=IBM+Plex+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+  <script src="../navi/script/config.js"></script>
+  <style>
+    /* ==================================================================
+       IKU NAVI — navi5 「総合案内板 (terminal wayfinding signage)」
+
+       方向性:
+       空港・駅の頭上に吊られた青いウェイファインディング・サイン
+       （JISの案内用図記号に準じる「案内=青」「非常口・到着=緑」
+       「注意=黄」の配色規範）をそのままUIの機能色として採用する。
+       建材そのものはコンコース床のような冷ややかな淡いグレーとし、
+       そこに白い掲示パネル（検索まわり）と青いサインパネル（見出し・
+       主要操作・現在のご案内バナー）を「吊り下げて」構成する——という
+       一貫した素材関係だけで全体を組み立てる。他案（navi/紙色×朱、
+       navi1グレースケール×ティール、navi3サフラン×紺×苺レッド、
+       navi4ガンメタル×クリーム×琥珀）とは色域・素材とも重ならない。
+       一番力を入れるのはAR領域上部の「現在のご案内」バナー。頭上から
+       吊るされた青い誘導サインそのものとして描き、白い縁取りキーライン
+       と方向シェブロンを持たせる。他のUIは細い罫線とニュートラルな
+       白/グレーだけに抑え、青はサイン要素だけに使う。
+    ================================================================== */
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      /* コンコース建材（暖色を含まない、床材寄りの冷グレー） */
+      --concourse:      #E6E9ED;
+      --concourse-deep: #C9CFD6;
+      --panel:          #FFFFFF;
+      --hairline:       #D3D8DE;
+      --hairline-strong:#AEB6C0;
+      --ink:            #1A2029;
+      --ink-soft:       #5B6472;
+      --ink-faint:      #8A93A0;
+
+      /* サインパネル色（JIS案内用図記号の規範に準拠） */
+      --sign-blue:       #0B4DA6; /* 案内・主要操作 */
+      --sign-blue-deep:  #063169;
+      --sign-blue-light: #E4EDFA;
+      --sign-green:      #157A43; /* 到着・非常口/安全 */
+      --sign-green-deep: #0C4B2A;
+      --sign-amber:      #C98A00; /* 注意（GPS精度低下など）のみに限定使用 */
+      --sign-amber-bg:   #FFF3D6;
+      --sign-red:        #B5342A; /* 強い警告のみ */
+      --sign-red-bg:     #FBE7E4;
+
+      --ar-void:         #14171C; /* カメラ/ARのプレースホルダ面 */
+
+      --font-sans: 'M PLUS Rounded 1c', 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', sans-serif;
+      --font-mono: 'IBM Plex Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
+    }
+
+    /* イベントモード (?event=1): サイン色を青→臙脂へ切り替え（通常案内色と混同しないため） */
+    body.event-mode {
+      --sign-blue:       #A62B4A;
+      --sign-blue-deep:  #6E1B31;
+      --sign-blue-light: #FBE6EB;
+    }
+
+    html { height: 100%; overscroll-behavior: none; }
+    body {
+      height: 100%; overflow: hidden;
+      overscroll-behavior: none;
+      background: var(--concourse);
+      color: var(--ink);
+      font-family: var(--font-sans);
+      display: flex;
+      flex-direction: column;
+    }
+    button, a, select, input, label { touch-action: manipulation; }
+    button, input, select { font-family: inherit; }
+    button { cursor: pointer; }
+    :focus-visible { outline: 3px solid var(--sign-blue); outline-offset: 2px; }
+
+    @media (prefers-reduced-motion: reduce) {
+      * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+    }
+
+    /* ================================================================
+       Topbar — 頭上に掲げられた青い館内サインそのもの
+    ================================================================ */
+    #topbar {
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      height: 52px;
+      padding: 0 10px;
+      background: var(--sign-blue);
+      border-bottom: 3px solid var(--sign-blue-deep);
+      color: #fff;
+      z-index: 300;
+    }
+    #topbar .home-link {
+      flex-shrink: 0;
+      width: 32px; height: 32px;
+      border: 1.5px solid rgba(255,255,255,0.55);
+      border-radius: 4px;
+      display: flex; align-items: center; justify-content: center;
+      color: #fff; text-decoration: none; font-size: 15px;
+      background: rgba(255,255,255,0.08);
+    }
+    #topbar .home-link:active { background: rgba(255,255,255,0.22); }
+    #topbar .brand {
+      flex-shrink: 0;
+      font-weight: 900;
+      font-size: 15px;
+      letter-spacing: 0.01em;
+      color: #fff;
+      text-decoration: none;
+      display: none;
+    }
+    #topbar .brand small {
+      display: block;
+      font-family: var(--font-mono);
+      font-weight: 600;
+      font-size: 9px;
+      letter-spacing: 0.08em;
+      color: rgba(255,255,255,0.7);
+    }
+
+    .cat-tabs { display: flex; gap: 4px; flex: 1; min-width: 0; }
+    .cat-tab {
+      flex: 1; min-width: 0;
+      height: 34px;
+      border: 1.5px solid rgba(255,255,255,0.5);
+      border-radius: 4px;
+      background: transparent;
+      color: rgba(255,255,255,0.92);
+      font-size: 12.5px;
+      font-weight: 700;
+      white-space: nowrap;
+      overflow: hidden; text-overflow: ellipsis;
+    }
+    .cat-tab.active {
+      background: #fff;
+      color: var(--sign-blue-deep);
+      border-color: #fff;
+    }
+
+    #event-badge {
+      display: none;
+      flex-shrink: 0;
+      align-items: center;
+      font-size: 11px; font-weight: 800;
+      color: var(--sign-blue-deep);
+      background: #FFD24C;
+      padding: 4px 9px; border-radius: 4px;
+      white-space: nowrap;
+    }
+
+    #search-toggle {
+      flex-shrink: 0;
+      display: flex; align-items: center; gap: 4px;
+      height: 34px; padding: 0 10px;
+      border: 1.5px solid rgba(255,255,255,0.55);
+      border-radius: 4px;
+      background: rgba(255,255,255,0.1);
+      color: #fff;
+      font-size: 12.5px; font-weight: 700;
+    }
+    #search-toggle:active { background: rgba(255,255,255,0.25); }
+    #search-chevron {
+      display: inline-block;
+      font-size: 10px;
+      transition: transform 0.25s ease;
+    }
+    #search-chevron.open { transform: rotate(180deg); }
+
+    /* ================================================================
+       Shell — 検索掲示パネル + AR面 + 地図/フロア面
+    ================================================================ */
+    #shell {
+      flex: 1; min-height: 0;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* --- 検索掲示パネル（白い掲示パネル、案内カウンターのイメージ） --- */
+    #search-content {
+      order: 1;
+      flex-shrink: 0;
+      display: grid;
+      grid-template-rows: 0fr;
+      transition: grid-template-rows 0.28s ease;
+      background: var(--panel);
+      border-bottom: 3px solid var(--concourse-deep);
+    }
+    #search-content.open { grid-template-rows: 1fr; }
+    .search-content-inner {
+      overflow: hidden;
+      padding: 12px 12px 14px;
+      position: relative;
+    }
+    .search-content-inner::before {
+      /* 掲示パネルの「取っ手」を示す小さな水平バー */
+      content: "";
+      display: block;
+      width: 40px; height: 4px;
+      border-radius: 2px;
+      background: var(--hairline-strong);
+      margin: 0 auto 10px;
+    }
+
+    .mode-tabs { display: flex; gap: 14px; border-bottom: 1.5px solid var(--hairline); margin-bottom: 10px; }
+    .mode-tab {
+      border: none; background: none;
+      padding: 0 2px 9px;
+      font-size: 13.5px; font-weight: 700;
+      color: var(--ink-faint);
+      border-bottom: 3px solid transparent;
+      margin-bottom: -1.5px;
+    }
+    .mode-tab.active { color: var(--sign-blue); border-bottom-color: var(--sign-blue); }
+
+    .route-row { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; }
+    .route-label {
+      flex-shrink: 0; width: 34px; text-align: center;
+      font-size: 11px; font-weight: 800; color: var(--ink-soft);
+      background: var(--concourse);
+      border-radius: 3px;
+      padding: 6px 0;
+    }
+    .building-select {
+      flex-shrink: 0; width: 74px; height: 40px;
+      border: 1.5px solid var(--hairline-strong);
+      border-radius: 4px;
+      font-size: 12px; color: var(--ink);
+      background: #fff;
+      padding: 0 3px;
+    }
+    .ac-wrap { flex: 1; min-width: 0; position: relative; }
+    .ac-wrap input {
+      width: 100%; height: 40px;
+      padding: 0 12px;
+      border: 1.5px solid var(--hairline-strong);
+      border-radius: 4px;
+      font-size: 15px; color: var(--ink);
+      background: #fff;
+      outline: none;
+    }
+    .ac-wrap input:focus { border-color: var(--sign-blue); }
+    .building-select:focus { outline: none; border-color: var(--sign-blue); }
+
+    .suggestions {
+      display: none;
+      position: absolute;
+      top: calc(100% + 4px); left: 0; right: 0;
+      background: #fff;
+      border: 1.5px solid var(--hairline-strong);
+      border-radius: 4px;
+      max-height: 190px; overflow-y: auto;
+      z-index: 250;
+      box-shadow: 0 10px 24px rgba(20,30,45,0.18);
+    }
+    .suggestions .item {
+      padding: 10px 12px;
+      font-size: 14px; color: var(--ink);
+      border-bottom: 1px solid var(--hairline);
+    }
+    .suggestions .item:last-child { border-bottom: none; }
+    .suggestions .item:active, .suggestions .item:hover {
+      background: var(--sign-blue-light); color: var(--sign-blue-deep);
+    }
+
+    .btn-swap {
+      display: block; width: 30px; height: 30px;
+      margin: 0 0 6px auto;
+      background: var(--concourse);
+      border: 1.5px solid var(--hairline-strong);
+      border-radius: 50%;
+      font-size: 15px; color: var(--ink-soft);
+    }
+    .btn-swap:active { background: var(--sign-blue-light); color: var(--sign-blue-deep); }
+
+    .gps-wrapper {
+      border: 1.5px solid var(--hairline-strong); border-radius: 6px;
+      overflow: hidden; margin-bottom: 8px;
+    }
+    .gps-row {
+      display: flex; align-items: center; gap: 8px;
+      padding: 9px 12px; background: var(--concourse);
+    }
+    .gps-row span { flex: 1; font-size: 12.5px; color: var(--ink-soft); font-family: var(--font-mono); word-break: break-all; }
+    .btn-gps {
+      flex-shrink: 0; height: 32px; padding: 0 14px;
+      border: none; border-radius: 4px;
+      background: var(--ink); color: #fff;
+      font-size: 12.5px; font-weight: 700;
+    }
+    .btn-gps:active { background: #333c48; }
+
+    #accuracy-warn, #fac-accuracy-warn {
+      display: none;
+      padding: 8px 12px; font-size: 12px; line-height: 1.6;
+    }
+    #accuracy-warn.warn-low, #fac-accuracy-warn.warn-low { background: var(--sign-amber-bg); color: #6b4a00; }
+    #accuracy-warn.warn-high, #fac-accuracy-warn.warn-high { background: var(--sign-red-bg); color: #7a241c; }
+
+    .bottom-row { display: flex; align-items: center; gap: 10px; margin-top: 2px; }
+    .ev-label {
+      flex-shrink: 0;
+      display: flex; align-items: center; gap: 6px;
+      font-size: 12.5px; color: var(--ink-soft); white-space: nowrap;
+    }
+    .ev-label input { width: 17px; height: 17px; accent-color: var(--sign-blue); }
+
+    .btn-primary {
+      flex: 1; height: 44px;
+      border: none; border-radius: 5px;
+      background: var(--sign-blue);
+      color: #fff; font-size: 15px; font-weight: 800;
+      letter-spacing: 0.01em;
+    }
+    .btn-primary:active { background: var(--sign-blue-deep); }
+
+    .fac-select {
+      flex: 1; height: 40px;
+      border: 1.5px solid var(--hairline-strong); border-radius: 4px;
+      font-size: 12.5px; color: var(--ink); background: #fff;
+      padding: 0 6px;
+    }
+    .fac-select:focus { outline: none; border-color: var(--sign-blue); }
+
+    /* Desktop: 掲示パネルは常時展開・小型の固定サイドパネルとして表示 */
+    @media (min-width: 768px) {
+      #shell { flex-direction: row; }
+      #search-content {
+        order: 0;
+        display: block;
+        width: 328px; flex-shrink: 0;
+        height: 100%; overflow-y: auto;
+        border-bottom: none;
+        border-right: 3px solid var(--concourse-deep);
+      }
+      .search-content-inner { padding: 16px 16px 20px; overflow: visible; }
+      .search-content-inner::before { display: none; }
+      #search-toggle { display: none; }
+      #topbar .brand { display: block; }
+    }
+
+    /* ================================================================
+       AR面 — 頭上の「現在のご案内」バナーが主役
+    ================================================================ */
+    #ar-area {
+      order: 2;
+      flex: 1; min-height: 0;
+      position: relative;
+      overflow: hidden;
+      background: var(--ar-void);
+    }
+    #ar-bg-video {
+      display: none; position: absolute; inset: 0;
+      width: 100%; height: 100%; object-fit: cover; z-index: 1;
+    }
+    #ar-gl-canvas {
+      display: none; position: absolute; inset: 0;
+      width: 100%; height: 100%; z-index: 2; pointer-events: none;
+    }
+    .ar-cached-img {
+      display: none; position: absolute; inset: 0;
+      width: 100%; height: 100%; object-fit: cover;
+    }
+    .ar-cached-img.active { display: block; }
+
+    #ar-placeholder {
+      width: 100%; height: 100%;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 10px; color: rgba(255,255,255,0.7);
+    }
+    #ar-placeholder .ph-text {
+      font-family: var(--font-mono);
+      font-size: 12px; letter-spacing: 0.08em;
+      color: rgba(255,255,255,0.4);
+    }
+    #ar-placeholder.arrival {
+      background: linear-gradient(170deg, var(--sign-green) 0%, var(--sign-green-deep) 100%);
+      gap: 14px;
+    }
+    #ar-placeholder.arrival .arrival-icon { font-size: 46px; line-height: 1; }
+    #ar-placeholder.arrival .arrival-title { font-size: 19px; font-weight: 900; color: #fff; }
+    #ar-placeholder.arrival .arrival-desc { font-size: 13.5px; color: rgba(255,255,255,0.9); text-align: center; line-height: 1.7; padding: 0 24px; }
+
+    #ar-label {
+      display: none;
+      position: absolute; bottom: 12px; left: 12px;
+      background: rgba(10,12,16,0.65);
+      color: rgba(255,255,255,0.9);
+      font-size: 11.5px; font-weight: 700;
+      padding: 5px 12px; border-radius: 4px;
+      backdrop-filter: blur(4px);
+      pointer-events: none;
+    }
+    #direction-arrow {
+      display: none; position: absolute; left: 50%; top: 80%;
+      transform: translate(-50%, -50%);
+      width: clamp(130px, 50vmin, 220px); height: auto;
+      opacity: 0.92; pointer-events: none; z-index: 10;
+      filter: drop-shadow(0 3px 10px rgba(0,0,0,0.65));
+    }
+    #near-goal-badge {
+      display: none; position: absolute; left: 50%; top: 80%;
+      transform: translate(-50%, -50%);
+      background: var(--sign-green);
+      border: 2px solid rgba(255,255,255,0.85);
+      color: #fff; font-size: 16px; font-weight: 800;
+      padding: 11px 22px; border-radius: 5px;
+      white-space: nowrap; pointer-events: none; z-index: 10;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.4);
+    }
+
+    /* 「現在のご案内」バナー — 吊り下げ型サインパネルとして描く */
+    #step-info {
+      position: absolute; top: 14px; left: 50%;
+      transform: translateX(-50%);
+      max-width: calc(100% - 28px);
+      z-index: 20; text-align: center;
+      background: var(--sign-blue);
+      border: 2px solid rgba(255,255,255,0.85);
+      border-radius: 6px;
+      padding: 9px 20px 8px;
+      pointer-events: none;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.35);
+    }
+    #step-info::before {
+      /* 天井から吊るす支持棒のイメージ */
+      content: "";
+      position: absolute; top: -14px; left: 50%;
+      transform: translateX(-50%);
+      width: 2px; height: 14px;
+      background: rgba(255,255,255,0.5);
+    }
+    #step-label {
+      font-size: 15px; font-weight: 800; color: #fff;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    #step-count {
+      margin-top: 2px;
+      font-family: var(--font-mono); font-size: 12px; font-weight: 600;
+      color: rgba(255,255,255,0.85);
+      font-variant-numeric: tabular-nums;
+    }
+    @media (min-width: 768px) {
+      #step-info { padding: 13px 30px 11px; }
+      #step-label { font-size: 20px; }
+      #step-count { font-size: 13px; }
+    }
+
+    .nav-arrow {
+      position: absolute; top: 50%; transform: translateY(-50%);
+      width: 48px; height: 48px; border-radius: 50%;
+      border: none; background: rgba(255,255,255,0.95);
+      font-size: 18px; color: var(--ink-soft);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 20; box-shadow: 0 3px 12px rgba(0,0,0,0.4);
+    }
+    #prev-btn { left: 12px; }
+    #next-btn { right: 12px; }
+    .nav-arrow:not(:disabled):active { transform: translateY(-50%) scale(0.9); }
+    .nav-arrow:disabled { opacity: 0.32; }
+
+    #voice-toggle-btn {
+      position: absolute; bottom: 12px; right: 12px;
+      width: 40px; height: 40px; border-radius: 50%;
+      border: none; background: rgba(255,255,255,0.95);
+      font-size: 16px; color: var(--ink-soft);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 20; box-shadow: 0 3px 12px rgba(0,0,0,0.4);
+    }
+    #voice-toggle-btn.active { background: var(--sign-blue); color: #fff; }
+
+    /* ================================================================
+       地図 / 屋内フロアマップ — コンコースに置かれた明るい案内モニタ
+    ================================================================ */
+    #map-pane {
+      order: 3;
+      flex: 1; min-height: 0;
+      position: relative;
+      overflow: hidden;
+      background: var(--concourse);
+    }
+    #map { width: 100%; height: 100%; }
+    #svg-area {
+      display: none; width: 100%; height: 100%;
+      position: absolute; inset: 0;
+      background: #fff;
+      overflow: hidden;
+    }
+    #svg-container {
+      width: 100%; height: 100%;
+      touch-action: none; user-select: none; cursor: grab;
+    }
+    #svg-container:active { cursor: grabbing; }
+    #svg-container svg { width: 100%; height: 100%; overflow: visible; }
+
+    .err-box {
+      width: 100%; height: 100%; min-height: 180px;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 10px; padding: 24px; text-align: center;
+      color: var(--ink-soft);
+    }
+    .err-box .err-title { font-size: 15px; font-weight: 800; color: var(--ink); }
+    .err-box .err-desc { font-size: 13px; line-height: 1.7; }
+    .err-box .err-hint {
+      font-size: 12px; color: var(--ink-soft);
+      background: var(--concourse); border: 1px solid var(--hairline-strong);
+      padding: 8px 16px; border-radius: 4px; margin-top: 4px;
+    }
+
+    #floor-badge {
+      position: absolute; top: 12px; left: 12px; z-index: 10;
+      display: flex; align-items: center; justify-content: center;
+      min-width: 44px; height: 44px;
+      background: var(--sign-blue);
+      border: 2px solid #fff;
+      border-radius: 8px;
+      font-family: var(--font-mono);
+      font-size: 16px; font-weight: 700; color: #fff;
+      font-variant-numeric: tabular-nums;
+      box-shadow: 0 3px 10px rgba(20,30,45,0.3);
+    }
+
+    @media (min-width: 768px) {
+      #ar-area { border-right: 3px solid var(--concourse-deep); }
+    }
+
+    /* ================================================================
+       完了モーダル / ローディング
+    ================================================================ */
+    #completion-modal {
+      display: none; position: fixed; inset: 0; z-index: 600;
+      align-items: center; justify-content: center; padding: 20px;
+      background: rgba(20,26,34,0.6);
+    }
+    #completion-modal.show { display: flex; }
+    #completion-box {
+      background: #fff; border-radius: 8px;
+      border-top: 5px solid var(--sign-green);
+      padding: 32px 30px 26px;
+      max-width: 360px; width: 100%;
+      box-shadow: 0 24px 60px rgba(20,26,34,0.32);
+      display: flex; flex-direction: column; align-items: center; gap: 8px;
+      text-align: center;
+    }
+    .modal-icon {
+      width: 58px; height: 58px; border-radius: 50%;
+      background: #E5F3EB; color: var(--sign-green);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 26px; margin-bottom: 4px;
+    }
+    .modal-title { font-size: 19px; font-weight: 900; color: var(--ink); margin-bottom: 2px; }
+    .modal-desc { font-size: 14px; color: var(--ink-soft); line-height: 1.7; margin-bottom: 10px; }
+    .modal-btn-continue {
+      width: 100%; height: 46px;
+      border: none; border-radius: 5px;
+      background: var(--sign-blue); color: #fff;
+      font-size: 14.5px; font-weight: 800;
+    }
+    .modal-btn-continue:active { background: var(--sign-blue-deep); }
+
+    #loading {
+      display: none; position: fixed; inset: 0; z-index: 500;
+      background: rgba(20,26,34,0.45);
+      align-items: center; justify-content: center;
+    }
+    #loading.show { display: flex; }
+    #loading-box {
+      background: #fff; border-radius: 8px; padding: 20px 34px;
+      font-size: 15px; font-weight: 700; color: var(--ink);
+      box-shadow: 0 12px 40px rgba(20,26,34,0.28);
+      display: flex; align-items: center; gap: 12px;
+    }
+    #loading-box::before {
+      content: "";
+      width: 16px; height: 16px; border-radius: 50%;
+      border: 3px solid var(--sign-blue-light);
+      border-top-color: var(--sign-blue);
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+
+<header id="topbar">
+  <a class="home-link" href="../index.html" aria-label="トップページに戻る">&#8962;</a>
+  <a class="brand" href="../index.html">IKU NAVI<small>SENSHU IKUTA CAMPUS</small></a>
+  <div class="cat-tabs">
+    <button class="cat-tab active" id="cat-room" onclick="setCategory('room')">教室</button>
+    <button class="cat-tab" id="cat-facility" onclick="setCategory('facility')">設備検索</button>
+  </div>
+  <span id="event-badge">&#127914; イベント</span>
+  <button id="search-toggle" onclick="toggleSearchPanel()" aria-label="検索パネルを開閉">
+    検索 <span id="search-chevron" class="open">&#9662;</span>
+  </button>
+</header>
+
+<div id="shell">
+
+  <div id="search-content" class="open">
+    <div class="search-content-inner">
+
+      <div id="cat-content-room">
+        <div class="mode-tabs">
+          <button class="mode-tab active" id="tab-room" onclick="setMode('room')">教室 → 教室</button>
+          <button class="mode-tab" id="tab-gps" onclick="setMode('gps')">現在地(屋外) → 教室</button>
+        </div>
+
+        <div id="panel-room">
+          <div class="route-row">
+            <span class="route-label">出発</span>
+            <select class="building-select" id="from-bldg"><option value="">全</option></select>
+            <div class="ac-wrap">
+              <input id="from-input" placeholder="教室名" autocomplete="off">
+              <div class="suggestions" id="from-sugg"></div>
+            </div>
+          </div>
+          <button class="btn-swap" onclick="swapFromTo()" title="出発地と目的地を入れ替え">&#8645;</button>
+          <div class="route-row">
+            <span class="route-label">目的</span>
+            <select class="building-select" id="to-bldg"><option value="">全</option></select>
+            <div class="ac-wrap">
+              <input id="to-input" placeholder="教室名" autocomplete="off">
+              <div class="suggestions" id="to-sugg"></div>
+            </div>
+          </div>
+        </div>
+
+        <div id="panel-gps" style="display:none">
+          <div class="gps-wrapper">
+            <div class="gps-row">
+              <span id="gps-text">GPS未取得 — 右のボタンで現在地を取得</span>
+              <button class="btn-gps" onclick="captureGPS()">取得</button>
+            </div>
+            <div id="accuracy-warn"></div>
+          </div>
+          <div class="route-row">
+            <span class="route-label">目的</span>
+            <select class="building-select" id="gps-to-bldg"><option value="">全</option></select>
+            <div class="ac-wrap">
+              <input id="to-input-gps" placeholder="教室名" autocomplete="off">
+              <div class="suggestions" id="gps-to-sugg"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="bottom-row">
+          <label class="ev-label">
+            <input type="checkbox" id="use-elevator" checked>
+            エレベーター使用
+          </label>
+          <button class="btn-primary" onclick="doSearch()">経路を探す</button>
+        </div>
+      </div><!-- /#cat-content-room -->
+
+      <div id="cat-content-facility" style="display:none">
+        <div class="mode-tabs">
+          <button class="mode-tab active" id="fac-tab-room" onclick="setFacMode('room')">教室 → 設備</button>
+          <button class="mode-tab" id="fac-tab-gps" onclick="setFacMode('gps')">現在地(屋外) → 設備</button>
+        </div>
+
+        <div id="panel-fac-room">
+          <div class="route-row">
+            <span class="route-label">出発</span>
+            <select class="building-select" id="fac-from-bldg"><option value="">全</option></select>
+            <div class="ac-wrap">
+              <input id="fac-from-input" placeholder="教室名" autocomplete="off">
+              <div class="suggestions" id="fac-from-sugg"></div>
+            </div>
+          </div>
+        </div>
+
+        <div id="panel-fac-gps" style="display:none">
+          <div class="gps-wrapper">
+            <div class="gps-row">
+              <span id="fac-gps-text">GPS未取得 — 右のボタンで現在地を取得</span>
+              <button class="btn-gps" onclick="captureFacGPS()">取得</button>
+            </div>
+            <div id="fac-accuracy-warn"></div>
+          </div>
+        </div>
+
+        <div class="route-row">
+          <span class="route-label">目的</span>
+          <select class="fac-select" id="fac-category" onchange="onFacCategoryChange()">
+            <option value="toilet">トイレ</option>
+            <option value="cafeteria">食堂</option>
+          </select>
+          <select class="fac-select" id="fac-toilet-type">
+            <option value="all">全て</option>
+            <option value="M">男子トイレ</option>
+            <option value="F">女子トイレ</option>
+            <option value="C">多目的トイレ</option>
+          </select>
+          <select class="fac-select" id="fac-cafeteria-name" style="display:none;">
+            <option value="all">全て</option>
+          </select>
+        </div>
+
+        <div class="bottom-row">
+          <label class="ev-label">
+            <input type="checkbox" id="fac-use-elevator" checked>
+            エレベーター使用
+          </label>
+          <button class="btn-primary" onclick="doFacSearch()">設備を探す</button>
+        </div>
+      </div><!-- /#cat-content-facility -->
+
+    </div>
+  </div><!-- /#search-content -->
+
+  <div id="ar-area">
+    <video id="ar-bg-video" autoplay playsinline muted></video>
+    <canvas id="ar-gl-canvas"></canvas>
+    <div id="ar-cache"></div>
+    <div id="ar-placeholder">
+      <div class="ph-text">AR CAMERA</div>
+      <div class="arrival-icon" style="display:none">&#9989;</div>
+      <div class="arrival-title" style="display:none">目的地周辺に到達しました！</div>
+      <div class="arrival-desc" style="display:none">案内はここで終了です。<br>ご利用いただきありがとうございました。</div>
+    </div>
+    <div id="ar-label">進行方向</div>
+    <img id="direction-arrow" src="" alt="方向矢印">
+    <div id="near-goal-badge">この通路沿いが目的地周辺です</div>
+    <div id="step-info">
+      <div id="step-label">ルートを検索してください</div>
+      <div id="step-count"></div>
+    </div>
+    <button class="nav-arrow" id="prev-btn" onclick="prevStep()" disabled>&#9664;</button>
+    <button class="nav-arrow" id="next-btn" onclick="nextStep()" disabled>&#9654;</button>
+    <button id="voice-toggle-btn" onclick="toggleVoiceGuide()" title="音声案内のON/OFF" aria-pressed="false">&#128264;</button>
+  </div><!-- /#ar-area -->
+
+  <div id="map-pane">
+    <div id="map"></div>
+    <div id="svg-area">
+      <div id="floor-badge"></div>
+      <div id="svg-container"></div>
+    </div>
+  </div><!-- /#map-pane -->
+
+</div><!-- /#shell -->
+
+<div id="completion-modal">
+  <div id="completion-box">
+    <div class="modal-icon">&#10004;</div>
+    <div class="modal-title">目的地に到着！</div>
+    <p class="modal-desc">案内はここで終了です。<br>ご利用いただきありがとうございました。</p>
+    <button class="modal-btn-continue" onclick="closeCompletionModal()">引き続きナビを使う</button>
+  </div>
+</div>
+
+<div id="loading"><div id="loading-box">検索中...</div></div>
+
+<script src="../navi/script/app.js"></script>
+<script src="../navi/script/ar.js"></script>
+<script src="../navi/script/maps-loader.js"></script>
+</body>
+</html>

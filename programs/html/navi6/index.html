@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>IKU NAVI | Glassmorphism</title>
+  <link rel="icon" href="../images/favicon.ico">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+  <script src="../navi/script/config.js"></script>
+  <style>
+    :root {
+      --glass-bg: rgba(255, 255, 255, 0.7);
+      --glass-border: rgba(255, 255, 255, 0.4);
+      --primary: #005bac;
+      --text-main: #333;
+      --text-sub: #666;
+      --radius-l: 24px;
+      --radius-m: 16px;
+      --radius-s: 8px;
+    }
+    * { box-sizing: border-box; font-family: 'Noto Sans JP', sans-serif; }
+    body { margin: 0; overflow: hidden; width: 100vw; height: 100vh; background: #e0e5ec; color: var(--text-main); }
+    
+    /* 背景レイヤー (地図 & AR) */
+    #background-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
+    #map-area { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+    #map { width: 100%; height: 100%; }
+    #svg-area { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #fff; display: none; }
+    #svg-container { width: 100%; height: 100%; }
+    
+    #ar-area { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
+    #ar-bg-video, #ar-gl-canvas, #ar-cache { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; }
+    
+    /* UIレイヤー */
+    #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; pointer-events: none; display: flex; flex-direction: column; justify-content: space-between; padding: 16px; }
+    
+    /* グラスコンポーネントのベース */
+    .glass-panel {
+      background: var(--glass-bg);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius-m);
+      box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+      pointer-events: auto;
+    }
+    
+    /* 検索パネル */
+    #search-panel-container { width: 100%; max-width: 400px; }
+    #search-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; }
+    .header-left { display: flex; align-items: center; gap: 12px; }
+    #home-link { text-decoration: none; font-weight: 700; color: var(--primary); font-size: 1.2rem; }
+    .category-tabs { display: flex; gap: 8px; background: rgba(0,0,0,0.05); padding: 4px; border-radius: var(--radius-s); }
+    .category-tabs button { border: none; background: transparent; padding: 6px 12px; border-radius: 4px; font-weight: 500; cursor: pointer; transition: 0.2s; }
+    .category-tabs button.active { background: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.1); color: var(--primary); }
+    
+    #search-toggle { background: transparent; border: none; font-size: 1.5rem; cursor: pointer; color: var(--primary); }
+    #search-chevron { transition: transform 0.3s; display: inline-block; }
+    #search-chevron.open { transform: rotate(180deg); }
+    
+    #search-content { display: none; padding: 16px; border-top: 1px solid var(--glass-border); }
+    #search-content.open { display: block; }
+    
+    .search-tabs { display: flex; margin-bottom: 16px; border-bottom: 2px solid rgba(0,0,0,0.1); }
+    .search-tabs button { flex: 1; border: none; background: none; padding: 8px; font-weight: bold; color: var(--text-sub); cursor: pointer; position: relative; }
+    .search-tabs button.active { color: var(--primary); }
+    .search-tabs button.active::after { content: ''; position: absolute; bottom: -2px; left: 0; width: 100%; height: 2px; background: var(--primary); }
+    
+    .input-group { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; background: #fff; border-radius: var(--radius-s); padding: 8px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.05); }
+    .input-group select, .input-group input { border: none; background: transparent; outline: none; flex: 1; font-size: 1rem; }
+    .ac-wrap { position: relative; flex: 2; }
+    .suggestions { position: absolute; top: 100%; left: 0; right: 0; background: #fff; border-radius: var(--radius-s); box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 20; max-height: 200px; overflow-y: auto; }
+    .item { padding: 12px; border-bottom: 1px solid #eee; cursor: pointer; }
+    
+    .search-btn { width: 100%; padding: 14px; background: var(--primary); color: #fff; border: none; border-radius: var(--radius-s); font-size: 1.1rem; font-weight: bold; cursor: pointer; margin-top: 12px; box-shadow: 0 4px 12px rgba(0,91,172,0.3); }
+    .gps-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; font-size: 0.9rem; }
+    
+    /* 案内UI (画面下部) */
+    #nav-controls { display: flex; flex-direction: column; gap: 12px; width: 100%; max-width: 400px; margin: 0 auto; }
+    
+    #ar-overlay-info { display: flex; justify-content: space-between; align-items: flex-end; }
+    #direction-arrow { width: 80px; height: 80px; filter: drop-shadow(0 4px 8px rgba(0,0,0,0.3)); pointer-events: auto; }
+    #ar-label { background: rgba(0,0,0,0.6); color: #fff; padding: 4px 8px; border-radius: 12px; font-size: 0.8rem; pointer-events: auto; }
+    
+    #step-card { padding: 16px; display: flex; align-items: center; justify-content: space-between; }
+    .step-text-wrap { flex: 1; }
+    #step-count { font-size: 0.8rem; color: var(--primary); font-weight: bold; margin-bottom: 4px; }
+    #step-label { font-size: 1.1rem; font-weight: bold; }
+    
+    .nav-buttons { display: flex; gap: 8px; }
+    .nav-arrow { width: 44px; height: 44px; border: none; border-radius: 50%; background: rgba(0,91,172,0.1); color: var(--primary); font-size: 1.2rem; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+    .nav-arrow:disabled { opacity: 0.3; }
+    
+    #voice-toggle-btn { position: absolute; right: 16px; top: 16px; width: 44px; height: 44px; border-radius: 50%; border: none; background: #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.1); cursor: pointer; font-size: 1.2rem; pointer-events: auto; z-index: 100;}
+    #voice-toggle-btn.active { background: var(--primary); color: #fff; }
+    
+    #floor-badge, #event-badge, #near-goal-badge { position: absolute; pointer-events: auto; background: var(--primary); color: #fff; padding: 6px 12px; border-radius: 16px; font-weight: bold; box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
+    #floor-badge { top: 80px; right: 16px; }
+    #event-badge { display: none; }
+    #near-goal-badge { top: -40px; left: 50%; transform: translateX(-50%); display: none; white-space: nowrap; }
+    
+    #ar-placeholder { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(0,0,0,0.4); color: #fff; pointer-events: none; z-index: 2; }
+    .ph-text { font-size: 1.5rem; font-weight: bold; letter-spacing: 2px; }
+    #ar-placeholder.arrival { background: rgba(0,91,172,0.8); }
+    .arrival-icon { font-size: 4rem; margin-bottom: 16px; }
+    .arrival-title { font-size: 2rem; font-weight: bold; margin-bottom: 8px; }
+    
+    /* モーダル & ローディング */
+    #completion-modal, #loading { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: none; align-items: center; justify-content: center; z-index: 1000; }
+    #completion-modal.show, #loading.show { display: flex; }
+    .modal-box { background: #fff; padding: 32px; border-radius: var(--radius-l); text-align: center; max-width: 320px; box-shadow: 0 16px 48px rgba(0,0,0,0.2); }
+    .modal-icon { font-size: 4rem; color: #4caf50; margin-bottom: 16px; }
+    .modal-btn-continue { margin-top: 24px; padding: 12px 24px; background: var(--primary); color: #fff; border: none; border-radius: var(--radius-s); font-weight: bold; width: 100%; cursor: pointer; }
+    
+    @media (min-width: 768px) {
+      #ui-layer { flex-direction: row; padding: 24px; }
+      #nav-controls { margin: 0; justify-content: flex-end; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 背景レイヤー -->
+  <div id="background-layer">
+    <div id="map-area">
+      <div id="map"></div>
+      <div id="svg-area">
+        <div id="svg-container"></div>
+      </div>
+    </div>
+    <div id="ar-area">
+      <video id="ar-bg-video" autoplay playsinline muted></video>
+      <canvas id="ar-gl-canvas"></canvas>
+      <div id="ar-cache"></div>
+      <div id="ar-placeholder">
+        <div class="ph-text">AR / CAMERA</div>
+        <div class="arrival-icon" style="display:none">📍</div>
+        <div class="arrival-title" style="display:none">到着しました</div>
+        <div class="arrival-desc" style="display:none">ナビゲーションを終了します。</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- UIレイヤー -->
+  <div id="ui-layer">
+    <div id="search-panel-container" class="glass-panel">
+      <div id="search-header">
+        <div class="header-left">
+          <a id="home-link" href="../index.html">IKU NAVI</a>
+          <div class="category-tabs">
+            <button class="active" id="cat-room" onclick="setCategory('room')">教室</button>
+            <button id="cat-facility" onclick="setCategory('facility')">設備</button>
+          </div>
+        </div>
+        <span id="event-badge">EVENT</span>
+        <button id="search-toggle" onclick="toggleSearchPanel()">
+          <span id="search-chevron" class="open">▼</span>
+        </button>
+      </div>
+
+      <div id="search-content" class="open">
+        <!-- 教室検索 -->
+        <div id="cat-content-room">
+          <div class="search-tabs">
+            <button class="active" id="tab-room" onclick="setMode('room')">教室から</button>
+            <button id="tab-gps" onclick="setMode('gps')">現在地から</button>
+          </div>
+
+          <div id="panel-room">
+            <div class="input-group">
+              <span style="font-size:0.8rem;color:#999;width:30px;">出発</span>
+              <select id="from-bldg"><option value="">全棟</option></select>
+              <div class="ac-wrap">
+                <input id="from-input" placeholder="例: 10101" autocomplete="off">
+                <div class="suggestions" id="from-sugg"></div>
+              </div>
+            </div>
+            <div style="text-align:center; margin:-8px 0; z-index:2; position:relative;">
+              <button onclick="swapFromTo()" style="background:#fff;border:1px solid #ddd;border-radius:50%;width:32px;height:32px;cursor:pointer;">⇅</button>
+            </div>
+            <div class="input-group">
+              <span style="font-size:0.8rem;color:#999;width:30px;">目的</span>
+              <select id="to-bldg"><option value="">全棟</option></select>
+              <div class="ac-wrap">
+                <input id="to-input" placeholder="例: 10301" autocomplete="off">
+                <div class="suggestions" id="to-sugg"></div>
+              </div>
+            </div>
+          </div>
+
+          <div id="panel-gps" style="display:none">
+            <div class="gps-row">
+              <span id="gps-text">GPS取得待機中...</span>
+              <button onclick="captureGPS()" style="padding:4px 12px;border:none;background:var(--primary);color:#fff;border-radius:4px;cursor:pointer;">更新</button>
+            </div>
+            <div id="accuracy-warn"></div>
+            <div class="input-group">
+              <span style="font-size:0.8rem;color:#999;width:30px;">目的</span>
+              <select id="gps-to-bldg"><option value="">全棟</option></select>
+              <div class="ac-wrap">
+                <input id="to-input-gps" placeholder="教室名" autocomplete="off">
+                <div class="suggestions" id="gps-to-sugg"></div>
+              </div>
+            </div>
+          </div>
+
+          <div style="margin-top:12px;">
+            <label style="font-size:0.9rem;display:flex;align-items:center;gap:8px;">
+              <input type="checkbox" id="use-elevator" checked> EVを優先する
+            </label>
+            <button class="search-btn" onclick="doSearch()">ルートを検索</button>
+          </div>
+        </div>
+
+        <!-- 設備検索 -->
+        <div id="cat-content-facility" style="display:none">
+          <div class="search-tabs">
+            <button class="active" id="fac-tab-room" onclick="setFacMode('room')">教室から</button>
+            <button id="fac-tab-gps" onclick="setFacMode('gps')">現在地から</button>
+          </div>
+
+          <div id="panel-fac-room">
+            <div class="input-group">
+              <span style="font-size:0.8rem;color:#999;width:30px;">出発</span>
+              <select id="fac-from-bldg"><option value="">全棟</option></select>
+              <div class="ac-wrap">
+                <input id="fac-from-input" placeholder="教室名" autocomplete="off">
+                <div class="suggestions" id="fac-from-sugg"></div>
+              </div>
+            </div>
+          </div>
+
+          <div id="panel-fac-gps" style="display:none">
+            <div class="gps-row">
+              <span id="fac-gps-text">GPS待機中...</span>
+              <button onclick="captureFacGPS()" style="padding:4px 12px;border:none;background:var(--primary);color:#fff;border-radius:4px;cursor:pointer;">更新</button>
+            </div>
+            <div id="fac-accuracy-warn"></div>
+          </div>
+
+          <div class="input-group" style="margin-top:16px;">
+            <span style="font-size:0.8rem;color:#999;width:30px;">探す</span>
+            <select id="fac-category" onchange="onFacCategoryChange()">
+              <option value="toilet">トイレ</option>
+              <option value="cafeteria">食堂</option>
+            </select>
+            <select id="fac-toilet-type">
+              <option value="all">全て</option>
+              <option value="M">男子</option>
+              <option value="F">女子</option>
+              <option value="C">多目的</option>
+            </select>
+            <select id="fac-cafeteria-name" style="display:none;">
+              <option value="all">全て</option>
+            </select>
+          </div>
+
+          <div style="margin-top:12px;">
+            <label style="font-size:0.9rem;display:flex;align-items:center;gap:8px;">
+              <input type="checkbox" id="fac-use-elevator" checked> EVを優先する
+            </label>
+            <button class="search-btn" onclick="doFacSearch()">設備を検索</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 音声・階層バッジ -->
+    <button id="voice-toggle-btn" onclick="toggleVoiceGuide()">🔊</button>
+    <div id="floor-badge"></div>
+
+    <!-- 案内UI群 -->
+    <div id="nav-controls">
+      <div id="ar-overlay-info">
+        <div style="position:relative;">
+          <div id="near-goal-badge">目的地周辺です</div>
+          <img id="direction-arrow" src="" alt="">
+        </div>
+        <div id="ar-label">進行方向</div>
+      </div>
+      
+      <div id="step-card" class="glass-panel">
+        <div class="step-text-wrap">
+          <div id="step-count">案内待機中</div>
+          <div id="step-label">ルートを検索してください</div>
+        </div>
+        <div class="nav-buttons">
+          <button class="nav-arrow" id="prev-btn" onclick="prevStep()" disabled>◀</button>
+          <button class="nav-arrow" id="next-btn" onclick="nextStep()" disabled>▶</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="completion-modal">
+    <div class="modal-box">
+      <div class="modal-icon">✓</div>
+      <h2 style="margin:0 0 8px 0;">目的地に到着</h2>
+      <p style="color:#666; font-size:0.9rem; margin:0;">案内を終了します。お疲れ様でした。</p>
+      <button class="modal-btn-continue" onclick="closeCompletionModal()">OK</button>
+    </div>
+  </div>
+
+  <div id="loading">
+    <div class="modal-box" style="padding:24px;">
+      <div style="font-weight:bold; color:var(--primary); font-size:1.2rem;">検索中...</div>
+    </div>
+  </div>
+
+  <script src="../navi/script/app.js"></script>
+  <script src="../navi/script/ar.js"></script>
+  <script src="../navi/script/maps-loader.js"></script>
+</body>
+</html>
