@@ -1015,7 +1015,7 @@ function nextStep() { if (currentStep < pathCoords.length - 2) goToStep(currentS
 // Web Speech API (SpeechSynthesis) をそのまま使う。バックエンドの変更は不要。
 // 読み上げ文は「グライスの協調の原理」の4公理に沿うよう、以下の方針で組み立てる：
 //   量:   そのステップで実際に必要な情報（曲がる方向・距離・エレベータ等の行き先階）だけを言う。
-//         距離が2m未満など無意味なほど短い直進は何も言わない（言っても情報にならない）。
+//         距離がANNOUNCE_DISTANCE_THRESHOLD_M未満など無意味なほど短い直進は何も言わない（言っても情報にならない）。
 //   質:   実際のデータ（計算済みの距離・曲がる方向・ノードのfloor）にない内容は言わない。
 //         教室名も、値がある場合のみ言う（無ければ言わない。それらしい名前を作らない）。
 //   関係: 今のステップの行動に関係ない情報は省く。入口（type 7・距離0）の連結エッジは無音。
@@ -1025,6 +1025,7 @@ function nextStep() { if (currentStep < pathCoords.length - 2) goToStep(currentS
 let voiceGuideEnabled = localStorage.getItem("navi_voice_guide") === "1";
 
 const VERTICAL_LABELS = { "2": "階段", "3": "エスカレーター", "4": "エレベーター", "5": "エスカレーター", "6": "エスカレーター" };
+const ANNOUNCE_DISTANCE_THRESHOLD_M = 10; // これ未満の直進距離は案内しない（曲がる場合は距離を省いて方向だけ言う）
 
 function updateVoiceToggleUI() {
   const btn = document.getElementById("voice-toggle-btn");
@@ -1087,9 +1088,9 @@ function buildStepAnnouncement(step) {
   const dist = Math.round(edge.length || 0);
   if (dir === "right" || dir === "left") {
     const dirText = dir === "right" ? "右に曲がって" : "左に曲がって";
-    return dist >= 2 ? `${dirText}${dist}メートル先です` : `${dirText}ください`;
+    return dist >= ANNOUNCE_DISTANCE_THRESHOLD_M ? `${dirText}${dist}メートル先です` : `${dirText}ください`;
   }
-  return dist >= 2 ? `まっすぐ${dist}メートル先です` : "";
+  return dist >= ANNOUNCE_DISTANCE_THRESHOLD_M ? `${dist}メートル直進です` : "";
 }
 
 // ================================================================
