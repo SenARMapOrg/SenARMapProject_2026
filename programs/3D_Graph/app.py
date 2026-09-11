@@ -411,6 +411,42 @@ def _first_display_label(building, raw_value):
     return _display_name(building, first)
 
 
+def _side_for_room(edge_like, room_name):
+    """
+    edge_like（"right"/"left"キーを持つdict、またはCSV行のように.get()できるもの）を見て、
+    room_nameがどちら側にあるかを "right"/"left" で返す。
+    right/leftは";"区切りで複数名を持ちうるため、個別の名前として厳密一致で照合する。
+    どちらにも無い・room_name未指定・edge_like無しの場合は ""（呼び出し側でフォールバック表示）。
+
+    注意: 必ず「実際に歩く向き」に補正済みのright/left（build_graphが逆方向エッジ用に
+    入れ替え済みのもの。例えば _path_result() が返す path_edges の各要素）を渡すこと。
+    edge.csvの生の行（from→to方向のright/leftのみを持つ）を渡すと、経路がCSVのfrom/toと
+    逆向きに通る場合に左右が逆の結果になる。
+    """
+    if edge_like is None or not room_name:
+        return ""
+    room_name = str(room_name).strip()
+    right_names = [n.strip() for n in str(edge_like.get("right", "")).split(";") if n.strip()]
+    left_names  = [n.strip() for n in str(edge_like.get("left",  "")).split(";") if n.strip()]
+    if room_name in right_names:
+        return "right"
+    if room_name in left_names:
+        return "left"
+    return ""
+
+
+def _dest_side(result, room_name):
+    """
+    _path_result() が返した result["path_edges"] の最終区間（実際に歩く向きに補正済み）を見て、
+    room_nameの左右を判定する。API各エンドポイントの dest_side はこれ経由で計算すること
+    （edge.csvの生の行を直接 _side_for_room に渡さない）。
+    """
+    edges = result.get("path_edges") or []
+    if not edges:
+        return ""
+    return _side_for_room(edges[-1], room_name)
+
+
 _cached_building_name_map = None   # building_name.csv: {building: display_name}
 
 
@@ -946,6 +982,7 @@ def api_navigate_to_room():
     result = _path_result(G, best_path, best_length)
     result["destination_room"] = room_name
     result["destination_edge"] = _edge_to_dict(best_dest_edge)
+    result["dest_side"] = _dest_side(result, room_name)
     if best_start_edge is not None:
         result["start_room"] = start_room
         result["start_edge"] = _edge_to_dict(best_start_edge)
@@ -1115,6 +1152,7 @@ def api_route():
         if to_room:
             result["to_room"] = to_room
         result["to_edge"]    = _edge_to_dict(best_dest_edge)
+        result["dest_side"]  = _dest_side(result, to_room)
     return jsonify(result)
 
 
@@ -1261,6 +1299,7 @@ def api_nearest_toilet():
     result["toilet_building"] = int(best_toilet_row["building"])
     result["toilet_floor"]    = int(best_toilet_row["floor"])
     result["toilet_edge"]     = _edge_to_dict(best_toilet_row)
+    result["dest_side"]       = _dest_side(result, found_key)
     if from_event:
         result["from_event"]  = from_event
     if best_start_row is not None:
@@ -1328,11 +1367,15 @@ def api_nearest_cafeteria():
     if best_path is None:
         return jsonify({"error": "食堂への経路が見つかりません"}), 404
 
+    caf_names_in_row = [n.strip() for n in str(best_caf_row["name"]).split(";")]
+    matched_caf = next((t for t in targets if t in caf_names_in_row), "")
+
     best_path, best_length = _extend_to_far_endpoint(G, best_path, best_length, best_caf_row)
     result = _path_result(G, best_path, best_length)
     result["cafeteria_building"] = int(best_caf_row["building"])
     result["cafeteria_floor"]    = int(best_caf_row["floor"])
     result["cafeteria_edge"]     = _edge_to_dict(best_caf_row)
+    result["dest_side"]          = _dest_side(result, matched_caf)
     if from_event:
         result["from_event"] = from_event
     if best_start_row is not None:

@@ -419,6 +419,14 @@ imgByStep[step].classList.add("active");
 
 `#ar-area` 上に `position: absolute` で重畳した `<img id="direction-arrow">` に `ARROW_URL[dir]` を設定。`dir` は `"left"` / `"right"` / `"straight"` の3種で、折れ角が `STRAIGHT_THRESHOLD_DEG`（±45°）以内なら直進とみなす。矢印画像はページ読み込み時に blob URL としてプリフェッチされる。
 
+#### 目的地バッジ（最終区間）
+
+最終区間（目的地エッジを歩く区間）は矢印だと「まだ先へ進む」と誤解されるため、矢印の代わりに `#near-goal-badge` を表示する（`updateDirectionArrow()`）。文言は `buildNearGoalText()` が決める:
+
+- APIレスポンスの `dest_side`（検索時に指定した目的地そのものの左右。`_dest_side()` が実際に歩く向きに補正済みの最終区間 `right`/`left` と厳密照合して判定。`app.py` 側の計算なのでnode/eventの目的地指定や複数の部屋が両側にまたがるエッジでは空文字）が `"right"`/`"left"` ならそのまま「右手に目的地です」/「左手に目的地です」を表示する
+- `dest_side` が無い場合のみ、最終区間の `right_display`/`left_display` を見て片方だけ設定されていればその側とみなす簡易フォールバックを使う
+- それでも判定できなければ従来通りの汎用文言「この通路沿いが目的地周辺です」を表示する
+
 ---
 
 ### 9.3 屋外 AR — Three.js + GPS + ジャイロ
