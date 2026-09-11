@@ -1,0 +1,1410 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>IKU NAVI — Campus Guide</title>
+  <link rel="icon" href="../images/favicon.ico">
+
+  <script src="../navi/script/config.js"></script>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    :root {
+      --background: #f7f8fa;
+      --panel: #ffffff;
+      --ink: #20262d;
+      --secondary: #6d7781;
+      --border: #e0e4e8;
+      --blue: #315bd8;
+      --blue-light: #edf1ff;
+      --green: #187b55;
+      --orange: #a96300;
+      --red: #bd3e48;
+    }
+
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      font-family:
+        -apple-system,
+        BlinkMacSystemFont,
+        "Noto Sans JP",
+        "Hiragino Kaku Gothic ProN",
+        "Yu Gothic",
+        sans-serif;
+      background: var(--background);
+      color: var(--ink);
+    }
+
+    button,
+    input,
+    select {
+      font: inherit;
+    }
+
+    button {
+      cursor: pointer;
+    }
+
+    /* =================================
+       Header
+    ================================= */
+
+    #sidebar {
+      position: relative;
+      z-index: 30;
+      background: var(--panel);
+    }
+
+    #app-header {
+      height: 54px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .hdr-title {
+      text-decoration: none;
+      color: var(--ink);
+      font-size: 18px;
+      font-weight: 850;
+    }
+
+    .hdr-title::before {
+      content: "●";
+      color: var(--blue);
+      margin-right: 7px;
+      font-size: 11px;
+      vertical-align: middle;
+    }
+
+    /* =================================
+       Search panel
+    ================================= */
+
+    #search-panel {
+      background: var(--panel);
+    }
+
+    #search-header {
+      min-height: 48px;
+      display: flex;
+      align-items: center;
+      padding: 0 12px;
+      gap: 7px;
+    }
+
+    #btn-home {
+      width: 36px;
+      height: 36px;
+      display: grid;
+      place-items: center;
+      border-radius: 9px;
+      background: #f0f2f5;
+      color: var(--ink);
+      text-decoration: none;
+      font-size: 18px;
+      flex: 0 0 auto;
+    }
+
+    .category-tabs {
+      display: flex;
+      gap: 2px;
+      flex: 1;
+    }
+
+    .category-tab {
+      border: 0;
+      background: transparent;
+      color: var(--secondary);
+      min-height: 38px;
+      padding: 0 11px;
+      font-size: 12px;
+      font-weight: 750;
+    }
+
+    .category-tab.active {
+      color: var(--blue);
+      border-bottom: 2px solid var(--blue);
+    }
+
+    #event-badge {
+      display: none;
+      padding: 4px 7px;
+      border-radius: 5px;
+      background: #fff2dc;
+      color: var(--orange);
+      font-size: 10px;
+      font-weight: 800;
+    }
+
+    #search-toggle {
+      width: 36px;
+      height: 36px;
+      border: 0;
+      background: transparent;
+      color: var(--secondary);
+    }
+
+    #search-chevron {
+      display: inline-block;
+      transition: transform .2s ease;
+    }
+
+    #search-chevron.open {
+      transform: rotate(180deg);
+    }
+
+    #search-content {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height .25s ease;
+    }
+
+    #search-content.open {
+      max-height: 800px;
+    }
+
+    .search-content-inner {
+      padding: 6px 14px 14px;
+    }
+
+    /* =================================
+       Search mode tabs
+    ================================= */
+
+    .search-tabs {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1px;
+      margin-bottom: 13px;
+      border: 1px solid var(--border);
+      border-radius: 9px;
+      overflow: hidden;
+      background: var(--border);
+    }
+
+    .search-tab {
+      min-height: 40px;
+      border: 0;
+      background: var(--panel);
+      color: var(--secondary);
+      font-size: 11px;
+      font-weight: 750;
+    }
+
+    .search-tab.active {
+      background: var(--blue-light);
+      color: var(--blue);
+    }
+
+    /* =================================
+       Route editor
+    ================================= */
+
+    .route-row {
+      position: relative;
+      display: grid;
+      grid-template-columns: 46px 76px minmax(0, 1fr);
+      align-items: center;
+      gap: 6px;
+      min-height: 53px;
+      margin-bottom: 7px;
+    }
+
+    .route-label {
+      font-size: 10px;
+      color: var(--secondary);
+      font-weight: 850;
+      text-align: center;
+    }
+
+    .building-select,
+    #fac-category,
+    #fac-toilet-type,
+    #fac-cafeteria-name {
+      height: 44px;
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0 7px;
+      background: #fafbfc;
+      color: var(--ink);
+      font-size: 11px;
+      outline: none;
+    }
+
+    input[id$="-input"] {
+      width: 100%;
+      height: 44px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0 12px;
+      background: #fafbfc;
+      color: var(--ink);
+      font-size: 13px;
+      outline: none;
+    }
+
+    input:focus,
+    select:focus {
+      background: #fff;
+      border-color: var(--blue);
+      box-shadow: 0 0 0 2px rgba(49,91,216,.10);
+    }
+
+    .ac-wrap {
+      position: relative;
+      min-width: 0;
+    }
+
+    .suggestions {
+      position: absolute;
+      z-index: 90;
+      top: calc(100% + 4px);
+      left: 0;
+      right: 0;
+      max-height: 180px;
+      overflow-y: auto;
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 9px;
+      box-shadow: 0 12px 35px rgba(30,40,50,.16);
+    }
+
+    .suggestions .item {
+      padding: 11px 12px;
+      border-bottom: 1px solid var(--border);
+      font-size: 12px;
+    }
+
+    .suggestions .item:last-child {
+      border-bottom: 0;
+    }
+
+    .btn-swap {
+      position: absolute;
+      z-index: 5;
+      right: 10px;
+      top: 48px;
+      width: 27px;
+      height: 27px;
+      border: 1px solid var(--border);
+      border-radius: 50%;
+      background: #fff;
+      color: var(--blue);
+      font-size: 14px;
+      box-shadow: 0 2px 7px rgba(20,30,40,.10);
+    }
+
+    #panel-room .route-row:first-child {
+      margin-bottom: 14px;
+    }
+
+    /* =================================
+       GPS
+    ================================= */
+
+    .gps-wrapper {
+      margin-bottom: 9px;
+    }
+
+    .gps-row {
+      display: flex;
+      align-items: stretch;
+      gap: 6px;
+    }
+
+    #gps-text,
+    #fac-gps-text {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      min-width: 0;
+      min-height: 44px;
+      padding: 8px 10px;
+      border-radius: 8px;
+      background: #f0f2f4;
+      color: var(--secondary);
+      font-size: 10px;
+      line-height: 1.4;
+    }
+
+    .btn-gps {
+      border: 0;
+      min-width: 64px;
+      border-radius: 8px;
+      background: var(--ink);
+      color: #fff;
+      font-size: 11px;
+      font-weight: 800;
+    }
+
+    #accuracy-warn,
+    #fac-accuracy-warn {
+      font-size: 10px;
+      margin-top: 4px;
+    }
+
+    #accuracy-warn.warn-low,
+    #fac-accuracy-warn.warn-low {
+      padding: 6px 9px;
+      background: #fff4df;
+      color: var(--orange);
+      border-radius: 6px;
+    }
+
+    #accuracy-warn.warn-high,
+    #fac-accuracy-warn.warn-high {
+      padding: 6px 9px;
+      background: #ffeded;
+      color: var(--red);
+      border-radius: 6px;
+    }
+
+    /* =================================
+       Bottom action
+    ================================= */
+
+    .bottom-row {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      margin-top: 10px;
+    }
+
+    .ev-label {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      color: var(--secondary);
+      font-size: 10px;
+      white-space: nowrap;
+    }
+
+    .ev-label input {
+      width: 17px;
+      height: 17px;
+      accent-color: var(--blue);
+    }
+
+    #btn-search,
+    #btn-fac-search {
+      flex: 1;
+      min-height: 46px;
+      border: 0;
+      border-radius: 8px;
+      background: var(--blue);
+      color: #fff;
+      font-size: 13px;
+      font-weight: 850;
+    }
+
+    #btn-search:active,
+    #btn-fac-search:active {
+      transform: translateY(1px);
+    }
+
+    /* =================================
+       Facility
+    ================================= */
+
+    #cat-content-facility .route-row {
+      grid-template-columns: 46px minmax(0, 1fr);
+    }
+
+    #cat-content-facility #panel-fac-room .route-row {
+      grid-template-columns: 46px 76px minmax(0, 1fr);
+    }
+
+    #cat-content-facility > .route-row {
+      grid-template-columns: 46px minmax(0, 1fr) minmax(0, 1fr);
+    }
+
+    /* =================================
+       AR
+    ================================= */
+
+    #ar-area {
+      position: relative;
+      width: 100%;
+      height: 48vh;
+      min-height: 280px;
+      overflow: hidden;
+      background: #252b31;
+    }
+
+    #ar-bg-video,
+    #ar-gl-canvas {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    #ar-bg-video {
+      z-index: 1;
+      background: #252b31;
+    }
+
+    #ar-gl-canvas {
+      z-index: 2;
+      pointer-events: none;
+    }
+
+    #ar-cache {
+      position: absolute;
+      inset: 0;
+      z-index: 3;
+      pointer-events: none;
+    }
+
+    .ar-cached-img {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      display: none;
+      object-fit: cover;
+    }
+
+    .ar-cached-img.active {
+      display: block;
+    }
+
+    #ar-placeholder {
+      position: absolute;
+      z-index: 4;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 25px;
+      text-align: center;
+      background: rgba(25,30,35,.68);
+      color: #fff;
+    }
+
+    #ar-placeholder.arrival {
+      background: rgba(24,123,85,.92);
+    }
+
+    .ph-text {
+      color: rgba(255,255,255,.68);
+      font-size: 11px;
+      letter-spacing: .12em;
+    }
+
+    .arrival-icon {
+      width: 60px;
+      height: 60px;
+      margin-bottom: 13px;
+      border-radius: 50%;
+      background: rgba(255,255,255,.16);
+      position: relative;
+    }
+
+    .arrival-icon::after {
+      content: "✓";
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      font-size: 32px;
+      font-weight: 850;
+    }
+
+    .arrival-title {
+      font-size: 20px;
+      font-weight: 850;
+    }
+
+    .arrival-desc {
+      margin-top: 8px;
+      font-size: 11px;
+      line-height: 1.7;
+      opacity: .9;
+    }
+
+    #ar-label {
+      position: absolute;
+      z-index: 8;
+      top: 12px;
+      left: 12px;
+      padding: 6px 9px;
+      border-radius: 6px;
+      background: rgba(20,25,30,.65);
+      color: #fff;
+      font-size: 10px;
+      backdrop-filter: blur(6px);
+    }
+
+    #direction-arrow {
+      position: absolute;
+      z-index: 8;
+      left: 50%;
+      top: 43%;
+      width: 76px;
+      height: 76px;
+      object-fit: contain;
+      transform: translate(-50%, -50%);
+      filter: drop-shadow(0 5px 10px rgba(0,0,0,.45));
+    }
+
+    #near-goal-badge {
+      position: absolute;
+      z-index: 9;
+      left: 50%;
+      top: 43%;
+      max-width: 86%;
+      transform: translate(-50%, -50%);
+      padding: 11px 16px;
+      border-radius: 9px;
+      background: rgba(255,255,255,.95);
+      color: var(--ink);
+      font-size: 13px;
+      font-weight: 850;
+      text-align: center;
+      box-shadow: 0 5px 18px rgba(0,0,0,.25);
+    }
+
+    /* Step information */
+
+    #step-info {
+      position: absolute;
+      z-index: 9;
+      left: 12px;
+      right: 12px;
+      bottom: 12px;
+      min-height: 65px;
+      padding: 11px 13px;
+      padding-right: 90px;
+      border-radius: 9px;
+      background: rgba(18,23,28,.88);
+      color: #fff;
+      backdrop-filter: blur(7px);
+    }
+
+    #step-label {
+      font-size: 13px;
+      line-height: 1.45;
+      font-weight: 800;
+    }
+
+    #step-count {
+      margin-top: 3px;
+      color: rgba(255,255,255,.58);
+      font-size: 9px;
+    }
+
+    .nav-arrow {
+      position: absolute;
+      z-index: 12;
+      bottom: 24px;
+      width: 35px;
+      height: 35px;
+      border: 0;
+      border-radius: 7px;
+      background: rgba(255,255,255,.94);
+      color: var(--ink);
+      font-size: 13px;
+    }
+
+    #prev-btn {
+      right: 57px;
+    }
+
+    #next-btn {
+      right: 17px;
+    }
+
+    .nav-arrow:disabled {
+      opacity: .3;
+    }
+
+    #voice-toggle-btn {
+      position: absolute;
+      z-index: 12;
+      right: 12px;
+      top: 12px;
+      width: 39px;
+      height: 39px;
+      border: 0;
+      border-radius: 8px;
+      background: rgba(20,25,30,.65);
+      color: #fff;
+      font-size: 17px;
+    }
+
+    #voice-toggle-btn.active {
+      background: var(--blue);
+    }
+
+    /* =================================
+       Map
+    ================================= */
+
+    #map-area {
+      position: relative;
+      width: 100%;
+      height: 44vh;
+      min-height: 220px;
+      background: #e9edf0;
+    }
+
+    #map,
+    #svg-area {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+    }
+
+    #map {
+      z-index: 1;
+    }
+
+    #svg-area {
+      z-index: 2;
+      display: none;
+      background: #f8f9fa;
+    }
+
+    #svg-container {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+    }
+
+    #svg-container svg {
+      width: 100%;
+      height: 100%;
+    }
+
+    #floor-badge {
+      position: absolute;
+      z-index: 7;
+      top: 10px;
+      left: 10px;
+      padding: 7px 10px;
+      border-radius: 6px;
+      background: rgba(255,255,255,.94);
+      color: var(--ink);
+      box-shadow: 0 2px 8px rgba(20,30,40,.10);
+      font-size: 11px;
+      font-weight: 850;
+    }
+
+    .dyn {
+      pointer-events: none;
+    }
+
+    .err-box {
+      position: absolute;
+      inset: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+    }
+
+    .err-title {
+      font-size: 15px;
+      font-weight: 850;
+    }
+
+    .err-desc,
+    .err-hint {
+      margin-top: 5px;
+      color: var(--secondary);
+      font-size: 11px;
+    }
+
+    /* =================================
+       Modal / loading
+    ================================= */
+
+    #completion-modal,
+    #loading {
+      position: fixed;
+      z-index: 200;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      background: rgba(20,25,30,.62);
+      backdrop-filter: blur(5px);
+    }
+
+    #completion-modal.show,
+    #loading.show {
+      display: flex;
+    }
+
+    #completion-box,
+    #loading-box {
+      width: min(92vw, 360px);
+      border-radius: 14px;
+      background: #fff;
+      padding: 26px;
+      text-align: center;
+      box-shadow: 0 18px 55px rgba(0,0,0,.25);
+    }
+
+    .modal-icon {
+      width: 54px;
+      height: 54px;
+      margin: 0 auto 13px;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      background: #e7f5ee;
+      color: var(--green);
+      font-size: 27px;
+      font-weight: 850;
+    }
+
+    .modal-title {
+      font-size: 19px;
+      font-weight: 850;
+    }
+
+    .modal-desc {
+      color: var(--secondary);
+      font-size: 11px;
+      line-height: 1.7;
+    }
+
+    .modal-btn-continue {
+      width: 100%;
+      min-height: 45px;
+      border: 0;
+      border-radius: 8px;
+      background: var(--blue);
+      color: #fff;
+      font-size: 12px;
+      font-weight: 850;
+    }
+
+    #loading-box {
+      width: auto;
+      min-width: 145px;
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    /* =================================
+       Desktop
+    ================================= */
+
+    @media (min-width: 768px) {
+
+      body {
+        display: grid;
+        grid-template-columns: 400px minmax(0,1fr);
+        height: 100vh;
+      }
+
+      #sidebar {
+        height: 100vh;
+        overflow-y: auto;
+        border-right: 1px solid var(--border);
+      }
+
+      #app-header {
+        height: 70px;
+        padding: 0 23px;
+      }
+
+      #search-content.open {
+        max-height: none;
+      }
+
+      .search-content-inner {
+        padding: 10px 20px 18px;
+      }
+
+      #ar-area {
+        height: 47vh;
+        min-height: 380px;
+      }
+
+      #map-area {
+        height: 53vh;
+      }
+
+      .hdr-title::after {
+        content: " / 専修大学 生田キャンパス";
+        display: block;
+        margin-left: 18px;
+        margin-top: 1px;
+        color: var(--secondary);
+        font-size: 10px;
+        font-weight: 500;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <div id="sidebar">
+
+    <div id="app-header">
+      <a href="../index.html"
+         class="hdr-title">
+        IKU NAVI
+      </a>
+    </div>
+
+
+    <div id="search-panel">
+
+      <div id="search-header">
+
+        <a id="btn-home"
+           href="../index.html"
+           aria-label="ホーム">
+          ⌂
+        </a>
+
+        <div class="category-tabs">
+
+          <button class="category-tab active"
+                  id="cat-room"
+                  onclick="setCategory('room')">
+            教室
+          </button>
+
+          <button class="category-tab"
+                  id="cat-facility"
+                  onclick="setCategory('facility')">
+            設備
+          </button>
+
+        </div>
+
+        <span id="event-badge">
+          イベント
+        </span>
+
+        <button id="search-toggle"
+                onclick="toggleSearchPanel()"
+                aria-label="検索パネル">
+          <span id="search-chevron"
+                class="open">
+            ▾
+          </span>
+        </button>
+
+      </div>
+
+
+      <div id="search-content"
+           class="open">
+
+        <div class="search-content-inner">
+
+          <!-- =========================
+               Room
+          ========================== -->
+
+          <div id="cat-content-room">
+
+            <div class="search-tabs">
+
+              <button class="search-tab active"
+                      id="tab-room"
+                      onclick="setMode('room')">
+                教室 → 教室
+              </button>
+
+              <button class="search-tab"
+                      id="tab-gps"
+                      onclick="setMode('gps')">
+                現在地 → 教室
+              </button>
+
+            </div>
+
+
+            <div id="panel-room">
+
+              <div class="route-row">
+
+                <span class="route-label">
+                  出発
+                </span>
+
+                <select class="building-select"
+                        id="from-bldg">
+                  <option value="">
+                    全
+                  </option>
+                </select>
+
+                <div class="ac-wrap">
+
+                  <input id="from-input"
+                         placeholder="教室名"
+                         autocomplete="off">
+
+                  <div class="suggestions"
+                       id="from-sugg">
+                  </div>
+
+                </div>
+
+              </div>
+
+
+              <button class="btn-swap"
+                      onclick="swapFromTo()"
+                      aria-label="出発と目的を交換">
+                ⇅
+              </button>
+
+
+              <div class="route-row">
+
+                <span class="route-label">
+                  目的
+                </span>
+
+                <select class="building-select"
+                        id="to-bldg">
+                  <option value="">
+                    全
+                  </option>
+                </select>
+
+                <div class="ac-wrap">
+
+                  <input id="to-input"
+                         placeholder="教室名"
+                         autocomplete="off">
+
+                  <div class="suggestions"
+                       id="to-sugg">
+                  </div>
+
+                </div>
+
+              </div>
+
+            </div>
+
+
+            <div id="panel-gps"
+                 style="display:none">
+
+              <div class="gps-wrapper">
+
+                <div class="gps-row">
+
+                  <span id="gps-text">
+                    GPS未取得 — 現在地を取得してください
+                  </span>
+
+                  <button class="btn-gps"
+                          onclick="captureGPS()">
+                    取得
+                  </button>
+
+                </div>
+
+                <div id="accuracy-warn"></div>
+
+              </div>
+
+
+              <div class="route-row">
+
+                <span class="route-label">
+                  目的
+                </span>
+
+                <select class="building-select"
+                        id="gps-to-bldg">
+                  <option value="">
+                    全
+                  </option>
+                </select>
+
+                <div class="ac-wrap">
+
+                  <input id="to-input-gps"
+                         placeholder="教室名"
+                         autocomplete="off">
+
+                  <div class="suggestions"
+                       id="gps-to-sugg">
+                  </div>
+
+                </div>
+
+              </div>
+
+            </div>
+
+
+            <div class="bottom-row">
+
+              <label class="ev-label">
+
+                <input type="checkbox"
+                       id="use-elevator"
+                       checked>
+
+                エレベーター使用
+
+              </label>
+
+              <button id="btn-search"
+                      onclick="doSearch()">
+                ルートを検索
+              </button>
+
+            </div>
+
+          </div>
+
+
+          <!-- =========================
+               Facility
+          ========================== -->
+
+          <div id="cat-content-facility"
+               style="display:none">
+
+            <div class="search-tabs">
+
+              <button class="search-tab active"
+                      id="fac-tab-room"
+                      onclick="setFacMode('room')">
+                教室 → 設備
+              </button>
+
+              <button class="search-tab"
+                      id="fac-tab-gps"
+                      onclick="setFacMode('gps')">
+                現在地 → 設備
+              </button>
+
+            </div>
+
+
+            <div id="panel-fac-room">
+
+              <div class="route-row">
+
+                <span class="route-label">
+                  出発
+                </span>
+
+                <select class="building-select"
+                        id="fac-from-bldg">
+                  <option value="">
+                    全
+                  </option>
+                </select>
+
+                <div class="ac-wrap">
+
+                  <input id="fac-from-input"
+                         placeholder="教室名"
+                         autocomplete="off">
+
+                  <div class="suggestions"
+                       id="fac-from-sugg">
+                  </div>
+
+                </div>
+
+              </div>
+
+            </div>
+
+
+            <div id="panel-fac-gps"
+                 style="display:none">
+
+              <div class="gps-wrapper">
+
+                <div class="gps-row">
+
+                  <span id="fac-gps-text">
+                    GPS未取得 — 現在地を取得してください
+                  </span>
+
+                  <button class="btn-gps"
+                          onclick="captureFacGPS()">
+                    取得
+                  </button>
+
+                </div>
+
+                <div id="fac-accuracy-warn"></div>
+
+              </div>
+
+            </div>
+
+
+            <div class="route-row">
+
+              <span class="route-label">
+                目的
+              </span>
+
+              <select id="fac-category"
+                      onchange="onFacCategoryChange()">
+
+                <option value="toilet">
+                  トイレ
+                </option>
+
+                <option value="cafeteria">
+                  食堂
+                </option>
+
+              </select>
+
+
+              <select id="fac-toilet-type">
+
+                <option value="all">
+                  全て
+                </option>
+
+                <option value="M">
+                  男子トイレ
+                </option>
+
+                <option value="F">
+                  女子トイレ
+                </option>
+
+                <option value="C">
+                  多目的トイレ
+                </option>
+
+              </select>
+
+
+              <select id="fac-cafeteria-name"
+                      style="display:none">
+
+                <option value="all">
+                  全て
+                </option>
+
+              </select>
+
+            </div>
+
+
+            <div class="bottom-row">
+
+              <label class="ev-label">
+
+                <input type="checkbox"
+                       id="fac-use-elevator"
+                       checked>
+
+                エレベーター使用
+
+              </label>
+
+              <button id="btn-fac-search"
+                      onclick="doFacSearch()">
+                設備を検索
+              </button>
+
+            </div>
+
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+
+
+    <!-- =========================
+         AR
+    ========================== -->
+
+    <div id="ar-area">
+
+      <video id="ar-bg-video"
+             autoplay
+             playsinline
+             muted>
+      </video>
+
+      <canvas id="ar-gl-canvas"></canvas>
+
+      <div id="ar-cache"></div>
+
+
+      <div id="ar-placeholder">
+
+        <div class="ph-text">
+          AR / CAMERA
+        </div>
+
+        <div class="arrival-icon"
+             style="display:none">
+        </div>
+
+        <div class="arrival-title"
+             style="display:none">
+          目的地周辺に到達しました！
+        </div>
+
+        <div class="arrival-desc"
+             style="display:none">
+          案内はここで終了です。<br>
+          ご利用ありがとうございました。
+        </div>
+
+      </div>
+
+
+      <div id="ar-label">
+        進行方向
+      </div>
+
+
+      <img id="direction-arrow"
+           src=""
+           alt="方向矢印">
+
+
+      <div id="near-goal-badge">
+        この通路沿いが目的地周辺です
+      </div>
+
+
+      <div id="step-info">
+
+        <div id="step-label">
+          ルートを検索してください
+        </div>
+
+        <div id="step-count"></div>
+
+      </div>
+
+
+      <button class="nav-arrow"
+              id="prev-btn"
+              onclick="prevStep()"
+              disabled>
+        ◀
+      </button>
+
+
+      <button class="nav-arrow"
+              id="next-btn"
+              onclick="nextStep()"
+              disabled>
+        ▶
+      </button>
+
+
+      <button id="voice-toggle-btn"
+              onclick="toggleVoiceGuide()"
+              aria-label="音声案内">
+        🔊
+      </button>
+
+    </div>
+
+  </div>
+
+
+  <!-- =========================
+       Map
+  ========================== -->
+
+  <div id="map-area">
+
+    <div id="map"></div>
+
+    <div id="svg-area">
+
+      <div id="floor-badge"></div>
+
+      <div id="svg-container"></div>
+
+    </div>
+
+  </div>
+
+
+  <!-- =========================
+       Completion
+  ========================== -->
+
+  <div id="completion-modal">
+
+    <div id="completion-box">
+
+      <div class="modal-icon">
+        ✓
+      </div>
+
+      <div class="modal-title">
+        目的地に到着！
+      </div>
+
+      <p class="modal-desc">
+        案内はここで終了です。<br>
+        ご利用いただきありがとうございました。
+      </p>
+
+      <button class="modal-btn-continue"
+              onclick="closeCompletionModal()">
+        引き続きナビを使う
+      </button>
+
+    </div>
+
+  </div>
+
+
+  <!-- =========================
+       Loading
+  ========================== -->
+
+  <div id="loading">
+    <div id="loading-box">
+      検索中...
+    </div>
+  </div>
+
+
+  <!-- Existing JS: DO NOT MODIFY -->
+  <script src="../navi/script/app.js"></script>
+  <script src="../navi/script/ar.js"></script>
+  <script src="../navi/script/maps-loader.js"></script>
+
+</body>
+</html>

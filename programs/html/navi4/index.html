@@ -1,0 +1,993 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="description" content="専修大学 生田キャンパスの教室検索ナビ。教室名を入力すると、階段・エレベータまで考慮した最短ルートをAR写真ガイドで案内します。">
+  <title>教室検索ナビ | IKU NAVI</title>
+  <link rel="icon" href="../images/favicon.ico">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&display=swap" rel="stylesheet">
+  <script src="../navi/script/config.js"></script>
+  <style>
+    /* ==================================================================
+       IKU NAVI — navi4 「航法計器盤 (cockpit instrument panel)」
+
+       方向性:
+       レトロなアナログ機の操縦席計器盤がひとつのモチーフ。ガンメタルの
+       パネル本体に、乳白色(クリーム)の計器フェイス（入力欄・数値窓）を
+       彫り込み、そこだけ琥珀色でバックライトする——という一貫した素材
+       関係だけで全体を組み立てる。「黒背景+ネオン」にも「暖色クリーム
+       背景+セリフ」にも寄せず、暗いパネル面積が大部分を占め、明るい
+       クリームは「操作・入力する面」だけに使う。数値（階数・ステップ数）
+       は等幅フォントで桁を揃え、計器の数字窓らしく見せる。ボールドを
+       使うのは主要操作ボタンと現在の状態表示のみ。
+       一番力を入れるのはAR/カメラ領域（風防＝ウインドスクリーン）。
+       四隅のリベット・進行方向の照準リング・行き先バッジのカット角
+       (面取り)を「計器盤の実在パーツ」として一貫させ、他のUIは
+       簡潔な彫り込み/浮き出しの罫線だけに抑える。
+    ================================================================== */
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      /* パネル本体（暖かみを抑えたガンメタル） */
+      --panel:        #23272A;
+      --panel-deep:   #15171A;
+      --panel-mid:    #1B1E21;
+      --bezel-hi:     #4B5054;
+      --bezel-lo:     #0D0E0F;
+      --hairline:     #383C3F;
+
+      /* 計器フェイス（クリーム＝入力・データ面にのみ使う） */
+      --dial:         #ECE6D6;
+      --dial-ink:     #221E17;
+      --dial-ink-soft:#655D48;
+      --dial-lo:      #D8D0BB;
+
+      /* バックライト（琥珀）— 主要アクション・選択状態・数値の光 */
+      --amber:        #EFA53D;
+      --amber-bright: #FFC876;
+      --amber-deep:   #8A5A16;
+      --amber-glow:   rgba(239,165,61,0.55);
+
+      /* 状態色 */
+      --ok:           #5FA37C;
+      --ok-deep:      #1C3626;
+      --caution:      #E2593F;
+      --caution-deep: #46201A;
+      --warn:         #D9A441;
+      --warn-deep:    #40300F;
+
+      --rivet:        #58595B;
+      --rivet-hi:     #8A8C8E;
+
+      --mono: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
+      --sans: 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', 'Yu Gothic', 'Meiryo', sans-serif;
+    }
+
+    /* イベントモード (?event=1): バックライトを琥珀→朱に切り替え（通常運航色と混同しないため） */
+    body.event-mode {
+      --amber:        #E2603A;
+      --amber-bright: #FF8A5C;
+      --amber-deep:   #7A2E12;
+      --amber-glow:   rgba(226,96,58,0.55);
+    }
+
+    html { height: 100%; overscroll-behavior: none; }
+    body {
+      height: 100%; overflow: hidden;
+      overscroll-behavior: none;
+      background: var(--panel-deep);
+      color: var(--dial);
+      font-family: var(--sans);
+      display: flex;
+      flex-direction: column;
+    }
+    button, a, select, input, label { touch-action: manipulation; }
+    button { font-family: inherit; }
+
+    /* ================================================================
+       Mobile layout
+    ================================================================ */
+    #sidebar { display: contents; }
+    #app-header { display: none; }
+
+    #search-panel {
+      order: 1;
+      background: var(--panel);
+      border-bottom: 2px solid var(--bezel-lo);
+      box-shadow: 0 1px 0 var(--bezel-hi) inset;
+      flex-shrink: 0;
+      z-index: 100;
+    }
+    #search-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 10px;
+    }
+    #btn-home {
+      flex-shrink: 0;
+      width: 30px; height: 30px;
+      border-radius: 3px;
+      background: var(--panel-mid);
+      box-shadow: 0 1px 0 var(--bezel-hi) inset, 0 -1px 0 var(--bezel-lo) inset, 0 1px 2px rgba(0,0,0,0.5);
+      display: flex; align-items: center; justify-content: center;
+      color: var(--amber); font-size: 15px; line-height: 1;
+      text-decoration: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+    #btn-home:active { box-shadow: 0 1px 0 var(--bezel-lo) inset, 0 1px 3px rgba(0,0,0,0.6) inset; }
+
+    #search-toggle {
+      flex-shrink: 0;
+      width: 30px; height: 30px;
+      border: none;
+      border-radius: 3px;
+      background: var(--panel-mid);
+      box-shadow: 0 1px 0 var(--bezel-hi) inset, 0 -1px 0 var(--bezel-lo) inset, 0 1px 2px rgba(0,0,0,0.5);
+      cursor: pointer; color: var(--dial); font-size: 12px;
+      -webkit-tap-highlight-color: transparent;
+    }
+    #search-chevron {
+      display: inline-block;
+      color: var(--amber);
+      transition: transform 0.3s ease;
+      line-height: 1;
+    }
+    #search-chevron.open { transform: rotate(180deg); }
+
+    #search-content {
+      display: grid;
+      grid-template-rows: 0fr;
+      transition: grid-template-rows 0.3s ease;
+    }
+    #search-content.open { grid-template-rows: 1fr; }
+    .search-content-inner { overflow: hidden; padding: 0 10px 10px; }
+
+    #map-area {
+      order: 2;
+      flex: 1;
+      position: relative;
+      overflow: hidden;
+      min-height: 0;
+      background: var(--panel-deep);
+    }
+    #ar-area {
+      order: 3;
+      flex: 1;
+      background: var(--panel-deep);
+      position: relative;
+      overflow: hidden;
+      min-height: 0;
+    }
+
+    /* ================================================================
+       Desktop layout (>= 768px)
+    ================================================================ */
+    @media (min-width: 768px) {
+      body { flex-direction: row; }
+
+      #sidebar {
+        display: flex;
+        flex-direction: column;
+        width: 350px;
+        flex-shrink: 0;
+        height: 100%;
+        background: var(--panel);
+        border-right: 2px solid var(--bezel-lo);
+        box-shadow: 1px 0 0 var(--bezel-hi) inset;
+      }
+
+      #app-header {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        height: 54px;
+        padding: 0 18px;
+        border-bottom: 1px solid var(--hairline);
+        flex-shrink: 0;
+        background: var(--panel-mid);
+      }
+      #app-header .hdr-title {
+        font-family: var(--mono);
+        font-size: 16px;
+        font-weight: 800;
+        letter-spacing: 0.06em;
+        color: var(--amber-bright);
+        text-shadow: 0 0 10px var(--amber-glow);
+        text-decoration: none;
+      }
+      #app-header .hdr-title:hover { color: var(--amber-bright); }
+      #app-header .hdr-sub {
+        font-size: 10.5px;
+        color: var(--dial-ink-soft);
+        letter-spacing: 0.02em;
+      }
+
+      #search-panel { order: 0; border-bottom: 1px solid var(--hairline); flex-shrink: 0; }
+      #search-header { padding: 14px 16px 8px; }
+      #search-toggle { display: none; }
+      #btn-home { display: none; }
+      #search-content { display: block; }
+      .search-content-inner { overflow: visible; padding: 0 16px 16px; }
+
+      #ar-area { order: 0; flex: 1; min-height: 0; }
+      #map-area { flex: 1; min-width: 0; }
+    }
+
+    /* ================================================================
+       Category / mode tabs — 2連ロッカースイッチ
+    ================================================================ */
+    .category-tabs, .search-tabs {
+      display: flex; gap: 3px; flex: 1;
+      background: var(--panel-deep);
+      border-radius: 4px;
+      padding: 3px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.5) inset;
+    }
+    .category-tab, .search-tab {
+      flex: 1; height: 32px;
+      border: none; border-radius: 3px;
+      background: transparent;
+      font-size: 12.5px; font-weight: 700;
+      color: var(--dial-ink-soft);
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s, box-shadow 0.15s;
+    }
+    .category-tab.active, .search-tab.active {
+      background: linear-gradient(180deg, var(--amber-deep), #6B4310);
+      color: var(--amber-bright);
+      box-shadow: 0 0 8px var(--amber-glow), 0 1px 0 rgba(255,255,255,0.08) inset;
+    }
+    .search-tabs { margin-bottom: 9px; }
+
+    #event-badge {
+      display: none;
+      align-items: center;
+      font-family: var(--mono);
+      font-size: 10.5px; font-weight: 700;
+      color: var(--panel-deep); background: var(--amber);
+      padding: 4px 8px; border-radius: 3px;
+      white-space: nowrap; flex-shrink: 0;
+      letter-spacing: 0.02em;
+    }
+
+    /* ================================================================
+       Route rows / dial-face inputs
+    ================================================================ */
+    .route-row { display: flex; align-items: center; gap: 6px; margin-bottom: 7px; }
+    .route-label {
+      font-size: 11px; font-weight: 700;
+      color: var(--dial-ink-soft);
+      width: 30px; flex-shrink: 0; text-align: center;
+      letter-spacing: 0.02em;
+    }
+
+    .building-select, .ac-wrap input,
+    #fac-toilet-type, #fac-cafeteria-name {
+      height: 38px;
+      border: none;
+      border-radius: 3px;
+      background: var(--dial);
+      color: var(--dial-ink);
+      box-shadow: 0 2px 0 var(--dial-lo), 0 1px 4px rgba(0,0,0,0.45) inset;
+      font-family: var(--sans);
+    }
+    .building-select {
+      padding: 0 20px 0 8px;
+      font-size: 12px; font-weight: 600;
+      width: 74px; flex-shrink: 0;
+      cursor: pointer;
+      appearance: none; -webkit-appearance: none;
+      background-image: linear-gradient(45deg, transparent 50%, var(--dial-ink) 50%),
+                         linear-gradient(135deg, var(--dial-ink) 50%, transparent 50%);
+      background-position: right 9px center, right 5px center;
+      background-size: 4px 4px, 4px 4px;
+      background-repeat: no-repeat;
+    }
+    .building-select:focus,
+    .ac-wrap input:focus { outline: 2px solid var(--amber); outline-offset: 1px; }
+
+    .ac-wrap { flex: 1; position: relative; }
+    .ac-wrap input {
+      width: 100%;
+      padding: 0 12px;
+      font-size: 15px;
+      outline: none;
+    }
+    .ac-wrap input::placeholder { color: var(--dial-ink-soft); }
+
+    .suggestions {
+      display: none;
+      position: absolute;
+      top: calc(100% + 4px);
+      left: 0; right: 0;
+      background: var(--dial);
+      border-radius: 3px;
+      max-height: 190px;
+      overflow-y: auto;
+      z-index: 200;
+      box-shadow: 0 8px 22px rgba(0,0,0,0.55), 0 2px 0 var(--dial-lo);
+    }
+    .suggestions .item {
+      padding: 10px 12px;
+      font-size: 14px;
+      color: var(--dial-ink);
+      cursor: pointer;
+      border-bottom: 1px solid var(--dial-lo);
+    }
+    .suggestions .item:last-child { border-bottom: none; }
+    .suggestions .item:active, .suggestions .item:hover {
+      background: var(--amber);
+      color: var(--panel-deep);
+    }
+
+    .btn-swap {
+      display: flex; align-items: center; justify-content: center;
+      width: 30px; height: 26px;
+      margin: 0 0 5px 34px;
+      background: var(--panel-mid);
+      border: none; border-radius: 3px;
+      box-shadow: 0 1px 0 var(--bezel-hi) inset, 0 -1px 0 var(--bezel-lo) inset, 0 1px 2px rgba(0,0,0,0.5);
+      font-size: 14px; line-height: 1; cursor: pointer; color: var(--amber);
+    }
+    .btn-swap:active { box-shadow: 0 1px 3px rgba(0,0,0,0.6) inset; }
+
+    .bottom-row { display: flex; align-items: center; gap: 12px; margin-top: 2px; }
+    .ev-label {
+      display: flex; align-items: center; gap: 7px;
+      font-size: 12.5px; color: var(--dial-ink-soft);
+      white-space: nowrap; cursor: pointer; flex-shrink: 0;
+    }
+    .ev-label input[type="checkbox"] {
+      appearance: none; -webkit-appearance: none;
+      width: 30px; height: 18px;
+      border-radius: 9px;
+      background: var(--panel-deep);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.6) inset;
+      position: relative;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+    .ev-label input[type="checkbox"]::after {
+      content: "";
+      position: absolute; top: 2px; left: 2px;
+      width: 14px; height: 14px; border-radius: 50%;
+      background: var(--dial-lo);
+      transition: left 0.15s, background 0.15s, box-shadow 0.15s;
+    }
+    .ev-label input[type="checkbox"]:checked {
+      background: var(--amber-deep);
+    }
+    .ev-label input[type="checkbox"]:checked::after {
+      left: 14px;
+      background: var(--amber-bright);
+      box-shadow: 0 0 6px var(--amber-glow);
+    }
+
+    #btn-search, #btn-fac-search {
+      flex: 1; height: 42px;
+      border: none;
+      border-radius: 4px;
+      background: linear-gradient(180deg, var(--amber-bright), var(--amber-deep));
+      color: var(--panel-deep);
+      font-size: 14.5px; font-weight: 800;
+      letter-spacing: 0.02em;
+      cursor: pointer;
+      box-shadow: 0 2px 0 #5C3A0C, 0 3px 8px rgba(0,0,0,0.4);
+      clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
+    }
+    #btn-search:active, #btn-fac-search:active {
+      box-shadow: 0 0 0 #5C3A0C, 0 1px 3px rgba(0,0,0,0.5) inset;
+      transform: translateY(2px);
+    }
+
+    /* ================================================================
+       GPS block
+    ================================================================ */
+    .gps-wrapper {
+      border-radius: 4px;
+      margin-bottom: 7px; overflow: hidden;
+      background: var(--panel-deep);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.5) inset;
+    }
+    .gps-row { display: flex; gap: 8px; align-items: center; padding: 9px 12px; }
+    .gps-row span { flex: 1; font-size: 12.5px; color: var(--dial-ink-soft); word-break: break-all; }
+    .btn-gps {
+      height: 30px; padding: 0 14px; border: none; border-radius: 3px;
+      background: var(--panel-mid); color: var(--amber);
+      box-shadow: 0 1px 0 var(--bezel-hi) inset, 0 1px 2px rgba(0,0,0,0.5);
+      font-size: 12.5px; font-family: var(--mono);
+      font-weight: 700; cursor: pointer; white-space: nowrap; flex-shrink: 0;
+      letter-spacing: 0.03em;
+    }
+    .btn-gps:active { box-shadow: 0 1px 3px rgba(0,0,0,0.6) inset; }
+
+    #accuracy-warn, #fac-accuracy-warn {
+      display: none;
+      padding: 7px 12px; font-size: 11.5px; line-height: 1.6;
+      font-family: var(--mono);
+    }
+    #accuracy-warn.warn-low, #fac-accuracy-warn.warn-low { background: var(--warn-deep); color: var(--warn); }
+    #accuracy-warn.warn-high, #fac-accuracy-warn.warn-high {
+      background: var(--caution-deep); color: #FF9A82;
+      animation: cautionPulse 1.4s ease-in-out infinite;
+    }
+    @keyframes cautionPulse {
+      0%, 100% { background: var(--caution-deep); }
+      50%      { background: #5C271D; }
+    }
+
+    /* facility category row selects reuse dial-face style */
+    #fac-toilet-type, #fac-cafeteria-name {
+      flex: 1; font-size: 13px; padding: 0 8px; cursor: pointer;
+      appearance: none; -webkit-appearance: none;
+      background-image: linear-gradient(45deg, transparent 50%, var(--dial-ink) 50%),
+                         linear-gradient(135deg, var(--dial-ink) 50%, transparent 50%);
+      background-position: right 12px center, right 8px center;
+      background-size: 4px 4px, 4px 4px;
+      background-repeat: no-repeat;
+    }
+
+    /* ================================================================
+       AR area — 「風防」計器盤ベゼル
+    ================================================================ */
+    #ar-area {
+      border-top: 2px solid var(--bezel-lo);
+      box-shadow: 0 1px 0 var(--bezel-hi) inset;
+    }
+    @media (min-width: 768px) { #ar-area { border-top: none; } }
+
+    .hud-frame { position: absolute; inset: 0; pointer-events: none; z-index: 6; }
+    .hud-frame::before {
+      content: "";
+      position: absolute; inset: 8px;
+      border: 1px solid rgba(239,165,61,0.28);
+      border-radius: 2px;
+    }
+    .hud-rivet {
+      position: absolute;
+      width: 6px; height: 6px; border-radius: 50%;
+      background: radial-gradient(circle at 35% 30%, var(--rivet-hi), var(--rivet) 60%, #222 100%);
+      box-shadow: 0 1px 1px rgba(0,0,0,0.6);
+    }
+    .hud-rivet.tl { top: 9px; left: 9px; }
+    .hud-rivet.tr { top: 9px; right: 9px; }
+    .hud-rivet.bl { bottom: 9px; left: 9px; }
+    .hud-rivet.br { bottom: 9px; right: 9px; }
+
+    .ar-cached-img { display: none; position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+    .ar-cached-img.active { display: block; }
+
+    #ar-placeholder {
+      width: 100%; height: 100%;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 10px;
+      color: var(--dial-ink-soft);
+      background:
+        radial-gradient(ellipse at 50% 40%, #2A2E31 0%, var(--panel-deep) 72%);
+    }
+    #ar-placeholder .ph-text {
+      font-family: var(--mono);
+      font-size: 11.5px;
+      letter-spacing: 0.18em;
+      color: rgba(236,230,214,0.4);
+    }
+    #ar-placeholder.arrival {
+      background: radial-gradient(ellipse at 50% 45%, #2C5240 0%, var(--ok-deep) 75%);
+      gap: 14px;
+    }
+    #ar-placeholder.arrival .arrival-icon {
+      width: 62px; height: 62px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      background: var(--panel-deep);
+      box-shadow: 0 0 0 3px var(--ok), 0 0 18px rgba(95,163,124,0.7);
+      color: var(--ok);
+      font-size: 28px;
+    }
+    #ar-placeholder.arrival .arrival-icon::before { content: "✓"; }
+    #ar-placeholder.arrival .arrival-title {
+      font-size: 17px; font-weight: 800; color: var(--dial);
+    }
+    #ar-placeholder.arrival .arrival-desc {
+      font-size: 13px; color: rgba(236,230,214,0.75); text-align: center; line-height: 1.65;
+    }
+
+    #ar-label {
+      display: none;
+      position: absolute; bottom: 12px; left: 12px;
+      font-family: var(--mono);
+      background: rgba(21,23,26,0.8);
+      border: 1px solid var(--hairline);
+      color: var(--amber);
+      font-size: 10.5px; font-weight: 700;
+      letter-spacing: 0.08em;
+      padding: 4px 10px; border-radius: 2px;
+      z-index: 20;
+      pointer-events: none;
+    }
+
+    /* 方位照準リング — direction-arrow の背後に置く装飾（航法計器のコンパス・ローズ） */
+    .hud-compass-ring {
+      display: none;
+      position: absolute;
+      left: 50%; top: 80%;
+      transform: translate(-50%, -50%);
+      width: clamp(170px, 58vmin, 260px);
+      aspect-ratio: 1;
+      border-radius: 50%;
+      border: 1px solid rgba(239,165,61,0.4);
+      background:
+        repeating-conic-gradient(rgba(239,165,61,0.5) 0deg 1.2deg, transparent 1.2deg 30deg);
+      -webkit-mask: radial-gradient(circle, transparent 62%, #000 63%, #000 100%);
+              mask: radial-gradient(circle, transparent 62%, #000 63%, #000 100%);
+      z-index: 8;
+      pointer-events: none;
+      opacity: 0.85;
+    }
+
+    #direction-arrow {
+      display: none;
+      position: absolute;
+      left: 50%; top: 80%;
+      transform: translate(-50%, -50%);
+      width: clamp(120px, 46vmin, 200px);
+      height: auto;
+      opacity: 0.94;
+      pointer-events: none;
+      z-index: 10;
+      filter: drop-shadow(0 0 10px rgba(239,165,61,0.55)) drop-shadow(0 3px 8px rgba(0,0,0,0.65));
+    }
+
+    /* 目的地バッジ — 面取り(カット角)のターゲットロック表示 */
+    #near-goal-badge {
+      display: none;
+      position: absolute;
+      left: 50%; top: 80%;
+      transform: translate(-50%, -50%);
+      background: rgba(28,54,38,0.92);
+      border: 1px solid var(--ok);
+      color: #DFF3E8;
+      font-size: 15px; font-weight: 700;
+      padding: 11px 24px; border-radius: 2px;
+      white-space: nowrap;
+      pointer-events: none;
+      z-index: 10;
+      box-shadow: 0 0 16px rgba(95,163,124,0.5), 0 3px 10px rgba(0,0,0,0.5);
+      clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
+    }
+
+    /* ステップ情報 — 数字窓（ジェットブレイン等幅） */
+    #step-info {
+      position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
+      max-width: calc(100% - 76px);
+      z-index: 20; text-align: center;
+      background: var(--panel-deep);
+      border: 1px solid var(--hairline);
+      color: var(--dial);
+      padding: 6px 16px; border-radius: 2px;
+      pointer-events: none;
+      box-shadow: 0 3px 10px rgba(0,0,0,0.5);
+    }
+    #step-label {
+      font-size: 12.5px; font-weight: 700;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      color: var(--dial);
+    }
+    #step-count {
+      font-family: var(--mono);
+      font-size: 12px; font-weight: 700;
+      color: var(--amber);
+      margin-top: 2px;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: 0.04em;
+    }
+
+    @media (min-width: 768px) {
+      #step-label { font-size: 13.5px; }
+    }
+
+    /* ステップ送り — ロータリーノブ */
+    .nav-arrow {
+      position: absolute; top: 50%; transform: translateY(-50%);
+      width: 46px; height: 46px; border-radius: 50%;
+      border: none;
+      background:
+        radial-gradient(circle at 34% 28%, #3C4145, var(--panel-mid) 55%, var(--panel-deep) 100%);
+      box-shadow:
+        0 0 0 3px var(--panel-deep),
+        0 0 0 4px var(--hairline),
+        0 3px 8px rgba(0,0,0,0.55);
+      font-size: 15px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      color: var(--amber); z-index: 20;
+      -webkit-tap-highlight-color: transparent;
+      transition: box-shadow 0.12s, transform 0.1s;
+    }
+    #prev-btn { left: 12px; }
+    #next-btn { right: 12px; }
+    .nav-arrow:not(:disabled):active { transform: translateY(-50%) scale(0.9); }
+    .nav-arrow:disabled { opacity: 0.3; cursor: not-allowed; color: var(--dial-ink-soft); }
+
+    /* 音声案内 — バックライト式トグルスイッチ */
+    #voice-toggle-btn {
+      position: absolute; bottom: 12px; right: 12px;
+      width: 40px; height: 40px; border-radius: 4px;
+      border: 1px solid var(--hairline);
+      background: var(--panel-mid);
+      font-size: 16px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      color: var(--dial-ink-soft); z-index: 20;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.5);
+      -webkit-tap-highlight-color: transparent;
+      transition: background 0.15s, color 0.15s, box-shadow 0.15s;
+    }
+    #voice-toggle-btn.active {
+      background: linear-gradient(180deg, var(--amber-bright), var(--amber-deep));
+      color: var(--panel-deep);
+      box-shadow: 0 0 14px var(--amber-glow), 0 2px 6px rgba(0,0,0,0.5);
+      border-color: var(--amber-deep);
+    }
+
+    /* ================================================================
+       Map / SVG
+    ================================================================ */
+    #map { width: 100%; height: 100%; background: var(--panel-deep); }
+
+    #svg-area {
+      display: none; width: 100%; height: 100%;
+      position: absolute; inset: 0; background: var(--panel-deep); overflow: hidden;
+    }
+    #svg-container {
+      width: 100%; height: 100%;
+      touch-action: none;
+      user-select: none;
+      cursor: grab;
+    }
+    #svg-container:active { cursor: grabbing; }
+    #svg-container svg { width: 100%; height: 100%; overflow: visible; }
+
+    .err-box {
+      width: 100%; height: 100%; min-height: 180px;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 10px; padding: 24px; text-align: center;
+      color: var(--dial-ink-soft);
+    }
+    .err-box .err-title { font-size: 15px; font-weight: 700; color: var(--dial); }
+    .err-box .err-desc  { font-size: 13px; line-height: 1.7; }
+    .err-box .err-hint  {
+      font-size: 12px; color: var(--dial-ink-soft);
+      background: var(--panel-mid); border: 1px solid var(--hairline);
+      padding: 8px 16px; border-radius: 3px; margin-top: 4px;
+    }
+
+    /* 高度計ふうの階数窓 */
+    #floor-badge {
+      position: absolute; top: 10px; left: 10px; z-index: 10;
+      background: var(--panel-deep);
+      border: 1px solid var(--hairline);
+      border-radius: 2px; padding: 7px 14px;
+      font-family: var(--mono);
+      font-size: 13px; font-weight: 700; color: var(--amber);
+      font-variant-numeric: tabular-nums;
+      letter-spacing: 0.03em;
+      box-shadow: 0 3px 10px rgba(0,0,0,0.5), 0 0 8px rgba(239,165,61,0.25) inset;
+    }
+
+    /* ================================================================
+       Completion modal
+    ================================================================ */
+    #completion-modal {
+      display: none;
+      position: fixed; inset: 0; z-index: 600;
+      align-items: center; justify-content: center;
+      padding: 20px;
+      background: rgba(10,11,12,0.72);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+    }
+    #completion-modal.show { display: flex; }
+
+    #completion-box {
+      background: var(--panel);
+      border: 1px solid var(--hairline);
+      border-radius: 4px;
+      padding: 38px 32px 28px;
+      max-width: 360px;
+      width: 100%;
+      box-shadow: 0 24px 70px rgba(0,0,0,0.6);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      text-align: center;
+      clip-path: polygon(14px 0, 100% 0, 100% calc(100% - 14px), calc(100% - 14px) 100%, 0 100%, 0 14px);
+      animation: modalSlideUp 0.28s cubic-bezier(0.22,1,0.36,1) both;
+    }
+    .modal-icon {
+      width: 60px; height: 60px;
+      border-radius: 50%;
+      background: var(--panel-deep);
+      box-shadow: 0 0 0 3px var(--ok), 0 0 20px rgba(95,163,124,0.6);
+      color: var(--ok);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 26px;
+      margin-bottom: 6px;
+    }
+    .modal-title { font-size: 19px; font-weight: 800; color: var(--dial); margin-bottom: 2px; }
+    .modal-desc  { font-size: 13.5px; color: var(--dial-ink-soft); line-height: 1.65; margin-bottom: 10px; }
+    .modal-btn-continue {
+      width: 100%; height: 44px;
+      border: 1px solid var(--hairline); border-radius: 3px;
+      background: var(--panel-mid); color: var(--dial);
+      font-size: 14px; font-weight: 700;
+      cursor: pointer; margin-top: 4px;
+    }
+    .modal-btn-continue:active { box-shadow: 0 1px 4px rgba(0,0,0,0.5) inset; }
+
+    @keyframes modalSlideUp {
+      from { opacity: 0; transform: translateY(22px) scale(0.97); }
+      to   { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    /* ================================================================
+       Loading overlay — レーダー掃引
+    ================================================================ */
+    #loading {
+      display: none; position: fixed; inset: 0; z-index: 500;
+      background: rgba(10,11,12,0.68);
+      align-items: center; justify-content: center;
+    }
+    #loading.show { display: flex; }
+    #loading-box {
+      position: relative;
+      background: var(--panel); border: 1px solid var(--hairline);
+      border-radius: 4px; padding: 26px 40px;
+      font-family: var(--mono);
+      font-size: 14px; font-weight: 700; color: var(--amber);
+      letter-spacing: 0.04em;
+      box-shadow: 0 16px 44px rgba(0,0,0,0.55);
+      overflow: hidden;
+    }
+    #loading-box::before {
+      content: "";
+      position: absolute; inset: 0;
+      background: conic-gradient(from 0deg, transparent 0deg, var(--amber-glow) 18deg, transparent 40deg);
+      animation: radarSweep 1.3s linear infinite;
+      opacity: 0.6;
+    }
+
+    @keyframes radarSweep { to { transform: rotate(360deg); } }
+
+    @media (prefers-reduced-motion: reduce) {
+      #search-chevron, #search-content, .modal-btn-continue,
+      #accuracy-warn.warn-high, #fac-accuracy-warn.warn-high,
+      #loading-box::before { animation: none !important; transition: none !important; }
+    }
+
+    /* ================================================================
+       AR Outdoor Elements
+    ================================================================ */
+    #ar-bg-video {
+      display: none;
+      position: absolute; inset: 0;
+      width: 100%; height: 100%;
+      object-fit: cover; z-index: 1;
+    }
+    #ar-gl-canvas {
+      display: none;
+      position: absolute; inset: 0;
+      width: 100%; height: 100%;
+      z-index: 2; pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+
+<div id="sidebar">
+
+  <div id="app-header">
+    <a href="../index.html" class="hdr-title">IKU NAVI</a>
+    <span class="hdr-sub">生田キャンパス航法計器盤</span>
+  </div>
+
+  <!-- Search Panel -->
+  <div id="search-panel">
+    <div id="search-header">
+      <a id="btn-home" href="../index.html" aria-label="トップページに戻る">⌂</a>
+      <div class="category-tabs">
+        <button class="category-tab active" id="cat-room"     onclick="setCategory('room')">教室</button>
+        <button class="category-tab"        id="cat-facility" onclick="setCategory('facility')">設備検索</button>
+      </div>
+      <span id="event-badge">イベント</span>
+      <button id="search-toggle" onclick="toggleSearchPanel()" aria-label="検索パネルを開閉">
+        <span id="search-chevron" class="open">▾</span>
+      </button>
+    </div>
+
+    <div id="search-content" class="open">
+      <div class="search-content-inner">
+
+        <!-- 教室カテゴリ -->
+        <div id="cat-content-room">
+          <div class="search-tabs">
+            <button class="search-tab active" id="tab-room" onclick="setMode('room')">教室 → 教室</button>
+            <button class="search-tab"        id="tab-gps"  onclick="setMode('gps')">現在地(屋外) → 教室</button>
+          </div>
+
+          <div id="panel-room">
+            <div class="route-row">
+              <span class="route-label">出発</span>
+              <select class="building-select" id="from-bldg">
+                <option value="">全</option>
+              </select>
+              <div class="ac-wrap">
+                <input id="from-input" placeholder="教室名" autocomplete="off">
+                <div class="suggestions" id="from-sugg"></div>
+              </div>
+            </div>
+            <button class="btn-swap" onclick="swapFromTo()" title="出発地と目的地を入れ替え">⇅</button>
+            <div class="route-row">
+              <span class="route-label">目的</span>
+              <select class="building-select" id="to-bldg">
+                <option value="">全</option>
+              </select>
+              <div class="ac-wrap">
+                <input id="to-input" placeholder="教室名" autocomplete="off">
+                <div class="suggestions" id="to-sugg"></div>
+              </div>
+            </div>
+          </div>
+
+          <div id="panel-gps" style="display:none">
+            <div class="gps-wrapper">
+              <div class="gps-row">
+                <span id="gps-text">GPS未取得 — 右のボタンで現在地を取得</span>
+                <button class="btn-gps" onclick="captureGPS()">取得</button>
+              </div>
+              <div id="accuracy-warn"></div>
+            </div>
+            <div class="route-row">
+              <span class="route-label">目的</span>
+              <select class="building-select" id="gps-to-bldg">
+                <option value="">全</option>
+              </select>
+              <div class="ac-wrap">
+                <input id="to-input-gps" placeholder="教室名" autocomplete="off">
+                <div class="suggestions" id="gps-to-sugg"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="bottom-row">
+            <label class="ev-label">
+              <input type="checkbox" id="use-elevator" checked>
+              エレベーター使用
+            </label>
+            <button id="btn-search" onclick="doSearch()">ルート検索</button>
+          </div>
+        </div><!-- /#cat-content-room -->
+
+        <!-- 設備検索カテゴリ -->
+        <div id="cat-content-facility" style="display:none">
+
+          <div class="search-tabs">
+            <button class="search-tab active" id="fac-tab-room" onclick="setFacMode('room')">教室 → 設備</button>
+            <button class="search-tab"        id="fac-tab-gps"  onclick="setFacMode('gps')">現在地(屋外) → 設備</button>
+          </div>
+
+          <div id="panel-fac-room">
+            <div class="route-row">
+              <span class="route-label">出発</span>
+              <select class="building-select" id="fac-from-bldg"><option value="">全</option></select>
+              <div class="ac-wrap">
+                <input id="fac-from-input" placeholder="教室名" autocomplete="off">
+                <div class="suggestions" id="fac-from-sugg"></div>
+              </div>
+            </div>
+          </div>
+
+          <div id="panel-fac-gps" style="display:none">
+            <div class="gps-wrapper">
+              <div class="gps-row">
+                <span id="fac-gps-text">GPS未取得 — 右のボタンで現在地を取得</span>
+                <button class="btn-gps" onclick="captureFacGPS()">取得</button>
+              </div>
+              <div id="fac-accuracy-warn"></div>
+            </div>
+          </div>
+
+          <div class="route-row">
+            <span class="route-label">目的</span>
+            <select class="building-select" id="fac-category" onchange="onFacCategoryChange()">
+              <option value="toilet">トイレ</option>
+              <option value="cafeteria">食堂</option>
+            </select>
+            <select id="fac-toilet-type">
+              <option value="all">全て</option>
+              <option value="M">男子トイレ</option>
+              <option value="F">女子トイレ</option>
+              <option value="C">多目的トイレ</option>
+            </select>
+            <select id="fac-cafeteria-name" style="display:none;">
+              <option value="all">全て</option>
+            </select>
+          </div>
+
+          <div class="bottom-row">
+            <label class="ev-label">
+              <input type="checkbox" id="fac-use-elevator" checked>エレベーター使用
+            </label>
+            <button id="btn-fac-search" onclick="doFacSearch()">設備検索</button>
+          </div>
+        </div><!-- /#cat-content-facility -->
+
+      </div>
+    </div>
+  </div>
+
+  <!-- AR / Camera Area（風防） -->
+  <div id="ar-area">
+    <video id="ar-bg-video" autoplay playsinline muted></video>
+    <canvas id="ar-gl-canvas"></canvas>
+    <div id="ar-cache"></div>
+    <div id="ar-placeholder">
+      <div class="ph-text">AR CAMERA STANDBY</div>
+      <div class="arrival-icon" style="display:none"></div>
+      <div class="arrival-title" style="display:none">目的地周辺に到達しました！</div>
+      <div class="arrival-desc" style="display:none">案内はここで終了です。<br>ご利用いただきありがとうございました。</div>
+    </div>
+    <div id="ar-label">進行方向</div>
+    <div class="hud-compass-ring" aria-hidden="true"></div>
+    <img id="direction-arrow" src="" alt="方向矢印">
+    <div id="near-goal-badge">この通路沿いが目的地周辺です</div>
+
+    <div id="step-info">
+      <div id="step-label">ルートを検索してください</div>
+      <div id="step-count"></div>
+    </div>
+    <button class="nav-arrow" id="prev-btn" onclick="prevStep()" disabled>&#9664;</button>
+    <button class="nav-arrow" id="next-btn" onclick="nextStep()" disabled>&#9654;</button>
+    <button id="voice-toggle-btn" onclick="toggleVoiceGuide()" title="音声案内のON/OFF" aria-pressed="false">&#128264;</button>
+
+    <div class="hud-frame" aria-hidden="true">
+      <span class="hud-rivet tl"></span>
+      <span class="hud-rivet tr"></span>
+      <span class="hud-rivet bl"></span>
+      <span class="hud-rivet br"></span>
+    </div>
+  </div>
+
+</div><!-- /#sidebar -->
+
+<!-- Map / SVG -->
+<div id="map-area">
+  <div id="map"></div>
+  <div id="svg-area">
+    <div id="floor-badge"></div>
+    <div id="svg-container"></div>
+  </div>
+</div>
+
+<!-- Completion modal -->
+<div id="completion-modal">
+  <div id="completion-box">
+    <div class="modal-icon">✓</div>
+    <div class="modal-title">目的地に到着！</div>
+    <p class="modal-desc">案内はここで終了です。<br>ご利用いただきありがとうございました。</p>
+    <button class="modal-btn-continue" onclick="closeCompletionModal()">引き続きナビを使う</button>
+  </div>
+</div>
+
+<div id="loading"><div id="loading-box">検索中...</div></div>
+
+<script src="../navi/script/app.js"></script>
+<script src="../navi/script/ar.js"></script>
+<script src="../navi/script/maps-loader.js"></script>
+</body>
+</html>
