@@ -333,7 +333,9 @@ def build_graph(nodes_df, edges_df, use_elevator=True):
         else:
             G.add_edge(u, v, **edge_attrs)
             if edge_type not in _DIRECTED_EDGE_TYPES:
-                G.add_edge(v, u, **edge_attrs)
+                # 逆方向(v→u)は進行方向が反転するため、right/leftも入れ替えて渡す
+                reversed_attrs = dict(edge_attrs, right=edge_attrs["left"], left=edge_attrs["right"])
+                G.add_edge(v, u, **reversed_attrs)
     return G
 
 
