@@ -1053,6 +1053,20 @@ function speak(text) {
 }
 
 /**
+ * edge.right / edge.left（進行方向に対して右手・左手にある教室名、";"区切り）から
+ * 「右手に101教室、左手に102教室があります」のような一言を組み立てる。
+ * どちらも無ければ空文字（呼び出し側は従来通りの案内文にフォールバックする）。
+ */
+function buildSidePhrase(edge) {
+  const r = (edge.right || "").split(";")[0].trim();
+  const l = (edge.left  || "").split(";")[0].trim();
+  if (r && l) return `右手に${r}、左手に${l}があります`;
+  if (r) return `右手に${r}があります`;
+  if (l) return `左手に${l}があります`;
+  return "";
+}
+
+/**
  * pathCoords[step] → pathCoords[step+1] の区間（pathEdges[step]）についての案内文を組み立てる。
  * 階段/エレベータ/エスカレータは複数の区間にまたがることがあるため、同種の区間が連続する
  * 最初のステップでのみ「○階まで」を案内し、続きのステップでは何も言わない。
@@ -1086,11 +1100,18 @@ function buildStepAnnouncement(step) {
 
   const dir  = calcTurnDirection(step);
   const dist = Math.round(edge.length || 0);
+  const side = buildSidePhrase(edge); // right/leftが無ければ""（従来の運用のまま）
+
   if (dir === "right" || dir === "left") {
     const dirText = dir === "right" ? "右に曲がって" : "左に曲がって";
-    return dist >= ANNOUNCE_DISTANCE_THRESHOLD_M ? `${dirText}${dist}メートル先です` : `${dirText}ください`;
+    const base = dist >= ANNOUNCE_DISTANCE_THRESHOLD_M ? `${dirText}${dist}メートル先です` : `${dirText}ください`;
+    return side ? `${base}。${side}` : base;
   }
-  return dist >= ANNOUNCE_DISTANCE_THRESHOLD_M ? `${dist}メートル直進です` : "";
+  if (dist >= ANNOUNCE_DISTANCE_THRESHOLD_M) {
+    return side ? `${dist}メートル直進です。${side}` : `${dist}メートル直進です`;
+  }
+  // 距離が短い直進は従来省略していたが、右左に目印があるなら短くてもそれだけ案内する
+  return side;
 }
 
 // ================================================================
