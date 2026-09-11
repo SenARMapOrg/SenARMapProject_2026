@@ -43,6 +43,7 @@ let roomsByBuilding = {};   // {"10": ["101A", ...], ...}
 let buildingNames = {};     // {10: "10号館", ...} data/building_name.csv 由来（未登録は "{id}号館"）
 
 let pathCoords  = [];
+let pathEdges   = [];  // path_coords[i]→[i+1] に対応する区間情報（type/length/name）。音声案内に使う
 let currentStep = 0;
 
 let outdoorPolylines = [];
@@ -439,7 +440,7 @@ async function fetchRouteAndNavigate(url) {
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
     if (data.error) { alert("エラー: " + data.error); return; }
-    await initRoute(data.path_coords);
+    await initRoute(data.path_coords, data.path_edges);
   } catch {
     document.getElementById("step-label").textContent = "サーバーに接続できません";
     document.getElementById("step-count").textContent = "app.py が起動しているか確認してください";
@@ -891,8 +892,9 @@ async function prefetchSvgs(coords) {
 // ================================================================
 // Route init
 // ================================================================
-async function initRoute(coords) {
+async function initRoute(coords, edges) {
   pathCoords  = coords;
+  pathEdges   = edges || [];
   currentStep = 0;
   svgBuilding = null;
   svgFloor    = null;
@@ -905,7 +907,7 @@ async function initRoute(coords) {
   prefetchRouteImages(coords);               // 写真: 並行ダウンロード開始（fire-and-forget）
   await prefetchSvgs(coords);               // SVG:  全フロア一括取得を待機してからナビ開始
   collapseSearchPanel();  // ルート確定後にパネルを収納
-  goToStep(0);
+  goToStep(0, { announce: true });
 }
 
 function clearMapOverlays() {
@@ -962,11 +964,14 @@ function updateOutdoorPolylines(step) {
 // ================================================================
 // Step navigation
 // ================================================================
-async function goToStep(step) {
+// announce: trueの時だけ音声案内を読み上げる。前進(nextStep/ルート開始直後)のときのみ
+// trueにする。戻る操作では「右に曲がってください」等が実際の進行方向と逆で誤りになるため読み上げない。
+async function goToStep(step, { announce = false } = {}) {
   currentStep = step;
   const node  = pathCoords[step];
   updateNavBar(node, step, pathCoords.length);
   updateRouteImage(step);
+  if (announce) speak(buildStepAnnouncement(step));
   if (!node) return;
 
   // 現在以降にARを使う屋外区間が残っていなければカメラ・GPSを解放する
@@ -1002,7 +1007,90 @@ async function goToStep(step) {
 // 最終ノード（画像のない到着ステップ）へは進まない。
 // 目的地エッジを歩く「この辺です」区間（length-2）がナビの最終ステップ。
 function prevStep() { if (currentStep > 0) goToStep(currentStep - 1); }
-function nextStep() { if (currentStep < pathCoords.length - 2) goToStep(currentStep + 1); }
+function nextStep() { if (currentStep < pathCoords.length - 2) goToStep(currentStep + 1, { announce: true }); }
+
+// ================================================================
+// 音声案内
+//
+// Web Speech API (SpeechSynthesis) をそのまま使う。バックエンドの変更は不要。
+// 読み上げ文は「グライスの協調の原理」の4公理に沿うよう、以下の方針で組み立てる：
+//   量:   そのステップで実際に必要な情報（曲がる方向・距離・エレベータ等の行き先階）だけを言う。
+//         距離が2m未満など無意味なほど短い直進は何も言わない（言っても情報にならない）。
+//   質:   実際のデータ（計算済みの距離・曲がる方向・ノードのfloor）にない内容は言わない。
+//         教室名も、値がある場合のみ言う（無ければ言わない。それらしい名前を作らない）。
+//   関係: 今のステップの行動に関係ない情報は省く。入口（type 7・距離0）の連結エッジは無音。
+//         エレベータ/階段/エスカレータが複数の区間に分かれていても、同じ移動の途中は繰り返さない。
+//   様態: 曖昧さを避け（「右」「左」を明言）、簡潔で、毎回同じ語順（方向→距離）で話す。
+// ================================================================
+let voiceGuideEnabled = localStorage.getItem("navi_voice_guide") === "1";
+
+const VERTICAL_LABELS = { "2": "階段", "3": "エスカレーター", "4": "エレベーター", "5": "エスカレーター", "6": "エスカレーター" };
+
+function updateVoiceToggleUI() {
+  const btn = document.getElementById("voice-toggle-btn");
+  if (!btn) return;
+  btn.textContent = voiceGuideEnabled ? "\u{1F50A}" : "\u{1F507}"; // 🔊 / 🔇
+  btn.classList.toggle("active", voiceGuideEnabled);
+  btn.setAttribute("aria-pressed", String(voiceGuideEnabled));
+}
+updateVoiceToggleUI();
+
+function toggleVoiceGuide() {
+  voiceGuideEnabled = !voiceGuideEnabled;
+  localStorage.setItem("navi_voice_guide", voiceGuideEnabled ? "1" : "0");
+  updateVoiceToggleUI();
+  if (!voiceGuideEnabled && "speechSynthesis" in window) window.speechSynthesis.cancel();
+}
+
+function speak(text) {
+  if (!voiceGuideEnabled || !text) return;
+  if (!("speechSynthesis" in window)) return;
+  window.speechSynthesis.cancel(); // 前の発話が残っていたら打ち切ってから話す（読み上げの重複防止）
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = "ja-JP";
+  window.speechSynthesis.speak(u);
+}
+
+/**
+ * pathCoords[step] → pathCoords[step+1] の区間（pathEdges[step]）についての案内文を組み立てる。
+ * 階段/エレベータ/エスカレータは複数の区間にまたがることがあるため、同種の区間が連続する
+ * 最初のステップでのみ「○階まで」を案内し、続きのステップでは何も言わない。
+ */
+function buildStepAnnouncement(step) {
+  const edge = pathEdges[step];
+  if (!edge) return "";
+  const type = String(edge.type ?? "1");
+  if (type === "7") return ""; // 屋内外の連結エッジ（距離0）は案内する内容が無い
+
+  if (VERTICAL_LABELS[type]) {
+    const prevType = step > 0 ? String(pathEdges[step - 1]?.type ?? "") : null;
+    if (prevType === type) return ""; // 同じ階段/EV/ESCの続き番目のステップ：繰り返さない
+
+    let end = step;
+    while (end + 1 < pathEdges.length && String(pathEdges[end + 1]?.type ?? "") === type) end += 1;
+    const fromFloor = pathCoords[step]?.floor;
+    const toFloor   = pathCoords[end + 1]?.floor;
+    const label = VERTICAL_LABELS[type];
+    if (fromFloor == null || toFloor == null || fromFloor === toFloor) return `${label}で移動します`;
+    return toFloor > fromFloor
+      ? `${label}で${toFloor}階まで上がってください`
+      : `${label}で${toFloor}階まで下りてください`;
+  }
+
+  // 最終区間（目的地エッジ上を歩く「この辺です」区間）
+  if (step === pathCoords.length - 2) {
+    const name = (edge.name || "").split(";")[0].trim();
+    return name ? `まもなく到着します。${name}の付近です` : "まもなく目的地に到着します";
+  }
+
+  const dir  = calcTurnDirection(step);
+  const dist = Math.round(edge.length || 0);
+  if (dir === "right" || dir === "left") {
+    const dirText = dir === "right" ? "右に曲がって" : "左に曲がって";
+    return dist >= 2 ? `${dirText}${dist}メートル先です` : `${dirText}ください`;
+  }
+  return dist >= 2 ? `まっすぐ${dist}メートル先です` : "";
+}
 
 // ================================================================
 // AR ハードウェア解放判定
@@ -1023,6 +1111,7 @@ function releaseArIfUnneeded(step) {
 // ================================================================
 function showCompletionModal() {
   document.getElementById("completion-modal").classList.add("show");
+  speak("到着しました");
 }
 function closeCompletionModal() {
   document.getElementById("completion-modal").classList.remove("show");
