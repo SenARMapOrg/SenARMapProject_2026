@@ -749,6 +749,7 @@ def _path_result(G, path, length):
             "from": u, "to": v,
             "name":   edata.get("name", ""),
             "length": edata.get("length", 0),
+            "type":   edata.get("edge_type", "1"),
             "x0": n0["x"], "y0": n0["y"], "z0": n0["z"],
             "x1": n1["x"], "y1": n1["y"], "z1": n1["z"],
         })
