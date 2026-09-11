@@ -136,16 +136,17 @@ PC では `#sidebar` が通常の `display: flex` に切り替わる。
 
 ### 音声案内
 
-`programs/html/navi/script/app.js` に実装。バックエンドの変更なしに Web Speech API（`SpeechSynthesisUtterance`）をそのまま利用する。
+`programs/html/navi/script/app.js` に実装。読み上げ自体は Web Speech API（`SpeechSynthesisUtterance`）をそのまま利用する。
 
 - ON/OFF は AR 画面右下のボタン（`toggleVoiceGuide()`）で切り替え、`localStorage`（キー `navi_voice_guide`）に保存される。次回起動時も設定を維持する。
-- 読み上げ文は `buildStepAnnouncement(step)` が `path_edges[step]`（区間の `type`・`length`・`name`・`right`/`left`）と `calcTurnDirection(step)` の右左折判定から組み立てる。
+- 読み上げ文は `buildStepAnnouncement(step)` が `path_edges[step]`（区間の `type`・`length`・`name_display`・`right_display`/`left_display`）と `calcTurnDirection(step)` の右左折判定から組み立てる。
 - 文面は「グライスの協調の原理」の4公理（量・質・関係・様態）に沿うよう設計されており、以下は読み上げを省略する:
   - 距離が `ANNOUNCE_DISTANCE_THRESHOLD_M`（10m）未満の直進（曲がる場合は方向だけ案内し、距離は省く）
   - `type 7`（屋内外の連結エッジ、距離0）
   - 階段・エレベーター・エスカレーター（`type 2/3/4/5/6`）が複数区間に連続する場合の2区間目以降（最初の区間でのみ「○階まで上がって/下りてください」を案内）
 - 直進は「まっすぐ」を言わず「〇〇メートル直進です」の形で読み上げる。
-- `edge.right`/`edge.left`（`edge.csv` の任意列、;区切りの先頭要素を使用）が設定されている区間では、`buildSidePhrase()` が「右手に101教室、左手に102教室があります」のような一言を距離・右左折案内に続けて読み上げる。どちらも未設定（現状ほとんどの建物）の場合は空文字を返し、この一言を追加しない従来通りの文面になる。距離が `ANNOUNCE_DISTANCE_THRESHOLD_M` 未満で通常は省略される短い直進区間でも、`right`/`left` が設定されていればその一言だけは読み上げる。
+- `edge.right_display`/`edge.left_display`（`edge.csv` の任意列 `right`/`left` の先頭要素を、サーバー側 `_first_display_label()` が `name.csv`・トイレ種別に応じて読み上げ向けの表示名に変換したもの）が設定されている区間では、`buildSidePhrase()` が「右手に101教室、左手に102教室があります」のような一言を距離・右左折案内に続けて読み上げる。トイレの内部コード（`M_Toilet`等）はそのまま読まず「男子トイレ」のように変換される。どちらも未設定（現状は10号館以外のほとんどの建物）の場合は空文字を返し、この一言を追加しない従来通りの文面になる。距離が `ANNOUNCE_DISTANCE_THRESHOLD_M` 未満で通常は省略される短い直進区間でも、`right`/`left` が設定されていればその一言だけは読み上げる。
+- 最終区間（目的地付近）の「〇〇の付近です」も同様に `edge.name_display` を使うため、目的地がトイレでも「M_Toiletの付近です」のような読み上げにはならない。
 
 ### カスタムオートコンプリート
 
@@ -357,8 +358,9 @@ candidates = [
 | フィールド | 説明 |
 |-----------|------|
 | `from, to` | 区間の両端ノード ID |
-| `name` | 区間に面する教室名（`;` 区切り） |
-| `right, left` | 進行方向右側・左側の教室名（`edge.csv` の `right`/`left` 列。無ければ空文字） |
+| `name` | 区間に面する教室名（`;` 区切り、生のroom code） |
+| `right, left` | 進行方向右側・左側の教室名（`edge.csv` の `right`/`left` 列、生のroom code。無ければ空文字） |
+| `name_display, right_display, left_display` | 上記3つの先頭要素を読み上げ・表示用に変換した表示名（`_first_display_label()`。`name.csv` による解決＋トイレ種別コードの日本語化）。音声案内はこちらを使う |
 | `length` | 実距離（メートル） |
 | `type` | 区間種別（エッジ種別の値と同じ。通路・階段・エレベーター等の区別に使う） |
 | `x0, y0, z0` / `x1, y1, z1` | 区間両端の座標 |
