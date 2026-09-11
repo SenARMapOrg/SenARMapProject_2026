@@ -24,9 +24,17 @@
     #visual-area { flex: 1; position: relative; background: #ddd; z-index: 1; }
     
     #map-area, #ar-area { position: absolute; inset: 0; }
-    #map, #svg-container, #ar-bg-video, #ar-gl-canvas, #ar-cache { width: 100%; height: 100%; object-fit: cover; }
+    /* #ar-areaは#map-areaと同じ場所に重なるレイヤーなので、不透明な背景を敷いて
+       地図を隠す(無いと屋内ナビ中に地図が透けて見えてしまう) */
+    #ar-area { background: #1d1d1f; }
+    #map, #svg-container { width: 100%; height: 100%; object-fit: cover; }
+    #ar-bg-video, #ar-gl-canvas { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+    #ar-cache { position: absolute; inset: 0; width: 100%; height: 100%; }
+    /* app.jsが#ar-cache内に動的に追加する経路写真。指定が無いと原寸のまま表示され崩れる */
+    .ar-cached-img { display: none; position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+    .ar-cached-img.active { display: block; }
     #svg-area { position: absolute; inset: 0; background: #fff; display: none; }
-    
+
     #ar-placeholder { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(0,0,0,0.5); color: #fff; }
     .ph-text { font-size: 1.2rem; font-weight: 500; opacity: 0.8; }
     #ar-placeholder.arrival { background: var(--brand); }
@@ -66,6 +74,9 @@
     
     #search-content { padding: 0 24px 24px; display: none; }
     #search-content.open { display: block; }
+    /* app.js の toggleSearchPanel() が開閉のたびに style.overflow を書き換えるため、
+       候補リスト(.suggestions)がはみ出して見える必要のあるこの要素では常にvisibleを強制する */
+    .search-content-inner { overflow: visible !important; }
     
     .cat-selector { display: flex; background: var(--bg-color); border-radius: 12px; pdding: 4px; margin-bottom: 20px; }
     .cat-selector button { flex: 1; padding: 10px; border: none; background: transparent; font-weight: 700; color: var(--text-muted); border-radius: 10px; cursor: pointer; }
@@ -158,6 +169,7 @@
       </button>
       
       <div id="search-content" class="open">
+       <div class="search-content-inner">
         <div class="cat-selector">
           <button class="active" id="cat-room" onclick="setCategory('room')">教室を探す</button>
           <button id="cat-facility" onclick="setCategory('facility')">設備を探す</button>
@@ -279,7 +291,7 @@
             <button class="btn-primary" onclick="doFacSearch()">設備を検索する</button>
           </div>
         </div>
-        
+       </div>
       </div>
     </div>
   </div>

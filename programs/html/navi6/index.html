@@ -28,9 +28,15 @@
     #svg-area { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #fff; display: none; }
     #svg-container { width: 100%; height: 100%; }
     
-    #ar-area { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
-    #ar-bg-video, #ar-gl-canvas, #ar-cache { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; }
-    
+    /* #map-areaと同じ位置に重なるレイヤーなので、不透明な背景を敷いて地図を隠す
+       (無いと屋内ナビ中に地図が透けて見えてしまう) */
+    #ar-area { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; background: #1a1d24; }
+    #ar-bg-video, #ar-gl-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; }
+    #ar-cache { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+    /* app.jsが#ar-cache内に動的に追加する経路写真。指定が無いと原寸のまま表示され崩れる */
+    .ar-cached-img { display: none; position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+    .ar-cached-img.active { display: block; }
+
     /* UIレイヤー */
     #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; pointer-events: none; display: flex; flex-direction: column; justify-content: space-between; padding: 16px; }
     
@@ -60,6 +66,9 @@
     
     #search-content { display: none; padding: 16px; border-top: 1px solid var(--glass-border); }
     #search-content.open { display: block; }
+    /* app.js の toggleSearchPanel() が開閉のたびに style.overflow を書き換えるため、
+       候補リスト(.suggestions)がはみ出して見える必要のあるこの要素では常にvisibleを強制する */
+    .search-content-inner { overflow: visible !important; }
     
     .search-tabs { display: flex; margin-bottom: 16px; border-bottom: 2px solid rgba(0,0,0,0.1); }
     .search-tabs button { flex: 1; border: none; background: none; padding: 8px; font-weight: bold; color: var(--text-sub); cursor: pointer; position: relative; }
@@ -159,6 +168,7 @@
       </div>
 
       <div id="search-content" class="open">
+       <div class="search-content-inner">
         <!-- 教室検索 -->
         <div id="cat-content-room">
           <div class="search-tabs">
@@ -262,6 +272,7 @@
             <button class="search-btn" onclick="doFacSearch()">設備を検索</button>
           </div>
         </div>
+       </div>
       </div>
     </div>
 
