@@ -1053,13 +1053,16 @@ function speak(text) {
 }
 
 /**
- * edge.right / edge.left（進行方向に対して右手・左手にある教室名、";"区切り）から
+ * edge.right_display / edge.left_display（進行方向に対して右手・左手にある教室の読み上げ用表示名。
+ * サーバー側で name.csv・トイレ種別に応じて解決済み、生のroom codeではない）から
  * 「右手に101教室、左手に102教室があります」のような一言を組み立てる。
  * どちらも無ければ空文字（呼び出し側は従来通りの案内文にフォールバックする）。
  */
 function buildSidePhrase(edge) {
-  const r = (edge.right || "").split(";")[0].trim();
-  const l = (edge.left  || "").split(";")[0].trim();
+  // *_display はサーバー側でname.csv・トイレ表記に解決済みの表示名（"M_Toilet"ではなく"男子トイレ"等）。
+  // 未提供の古いレスポンス形式向けに、生のright/leftの先頭要素へフォールバックする。
+  const r = edge.right_display || (edge.right || "").split(";")[0].trim();
+  const l = edge.left_display  || (edge.left  || "").split(";")[0].trim();
   if (r && l) return `右手に${r}、左手に${l}があります`;
   if (r) return `右手に${r}があります`;
   if (l) return `左手に${l}があります`;
@@ -1094,7 +1097,7 @@ function buildStepAnnouncement(step) {
 
   // 最終区間（目的地エッジ上を歩く「この辺です」区間）
   if (step === pathCoords.length - 2) {
-    const name = (edge.name || "").split(";")[0].trim();
+    const name = edge.name_display || (edge.name || "").split(";")[0].trim();
     return name ? `まもなく到着します。${name}の付近です` : "まもなく目的地に到着します";
   }
 
