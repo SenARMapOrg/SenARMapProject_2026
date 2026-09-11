@@ -44,6 +44,7 @@ let buildingNames = {};     // {10: "10号館", ...} data/building_name.csv 由�
 
 let pathCoords  = [];
 let pathEdges   = [];  // path_coords[i]→[i+1] に対応する区間情報（type/length/name）。音声案内に使う
+let destSide    = "";  // APIが指定した目的地そのものの左右("right"/"left"/"")。dest_side未対応のレスポンスでは""
 let currentStep = 0;
 
 let outdoorPolylines = [];
@@ -440,7 +441,7 @@ async function fetchRouteAndNavigate(url) {
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
     if (data.error) { alert("エラー: " + data.error); return; }
-    await initRoute(data.path_coords, data.path_edges);
+    await initRoute(data.path_coords, data.path_edges, data.dest_side);
   } catch {
     document.getElementById("step-label").textContent = "サーバーに接続できません";
     document.getElementById("step-count").textContent = "app.py が起動しているか確認してください";
@@ -895,9 +896,10 @@ async function prefetchSvgs(coords) {
 // ================================================================
 // Route init
 // ================================================================
-async function initRoute(coords, edges) {
+async function initRoute(coords, edges, side = "") {
   pathCoords  = coords;
   pathEdges   = edges || [];
+  destSide    = side || "";
   currentStep = 0;
   svgBuilding = null;
   svgFloor    = null;
@@ -1073,14 +1075,18 @@ function buildSidePhrase(edge) {
 }
 
 /**
- * 目的地エッジ（最終区間）の right_display/left_display から、目的地バッジの文言を決める。
- * 片方だけに教室（トイレ等含む）が設定されていればその側を目的地とみなして
- * 「右手に目的地です」/「左手に目的地です」を返す。両方に設定がある（このエッジに複数の
- * 部屋が面していてどちらが目的地か特定できない）場合や、どちらも未設定の場合は
- * 従来通りの汎用文言にフォールバックする。
+ * 目的地バッジの文言を決める。
+ * まずAPIが返す destSide（サーバー側で、検索時に指定した実際の目的地名を最終区間の
+ * right/left列と厳密照合して判定済み）を見る。"right"/"left" ならそのまま採用する。
+ * destSideが無い（"" ＝ ノード指定・イベント指定など目的教室名が無い、または
+ * このエッジのright/leftどちらにも一致しなかった）場合のみ、最終区間のright_display/
+ * left_displayを見て「片方だけ設定されていればその側とみなす」簡易フォールバックを使う
+ * （このエッジに複数の部屋が面していてどちらが目的地か特定できない場合は汎用文言のまま）。
  */
 function buildNearGoalText(edge) {
   const FALLBACK = "この通路沿いが目的地周辺です";
+  if (destSide === "right") return "右手に目的地です";
+  if (destSide === "left")  return "左手に目的地です";
   if (!edge) return FALLBACK;
   const r = edge.right_display || (edge.right || "").split(";")[0].trim();
   const l = edge.left_display  || (edge.left  || "").split(";")[0].trim();
