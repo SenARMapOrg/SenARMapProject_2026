@@ -1,4 +1,7 @@
-# 中間データ(再開用キャッシュ)。最終成果物の output/courses.json だけをコミットする。
+# 中間データ(再開用キャッシュ)。最終成果物の output/courses.json (年度別サブディレクトリ含む)
+# だけをコミットする。
 output/courses_raw.jsonl
 output/.checkpoint.json
+output/*/courses_raw.jsonl
+output/*/.checkpoint.json
 __pycache__/
