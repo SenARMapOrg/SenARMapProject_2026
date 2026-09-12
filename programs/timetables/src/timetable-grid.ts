@@ -58,10 +58,10 @@ export function getNowInfo(date: Date = new Date()): NowInfo {
   return { todayIndex, currentPeriod, nextPeriod };
 }
 
-/** 大学の一般的な年間スケジュール(4〜9月=前期, 10〜3月=後期)から今の学期を推測する。あくまで初期選択のヒント */
+/** 大学の一般的な年間スケジュール(4〜8月=前期, 9〜3月=後期)から今の学期を推測する。あくまで初期選択のヒント */
 export function guessCurrentTerm(date: Date = new Date()): Term {
   const month = date.getMonth() + 1;
-  return month >= 4 && month <= 9 ? "spring" : "fall";
+  return month >= 4 && month <= 8 ? "spring" : "fall";
 }
 
 export type SlotMap = Map<string, { course_name: string; location: string }>;
