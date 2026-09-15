@@ -51,6 +51,7 @@ function floorColor(f) {
   buildLegend();
   updateStats();
   buildFloorFilter();
+  applyBuildingFromQueryParam();
   renderMap();
   initNodePicker();
   initMapResize();
@@ -430,6 +431,30 @@ function showResult(el, type, html) {
 // ============================================================
 //  Filter
 // ============================================================
+/**
+ * URLの ?building=1 のようなクエリパラメータを見て、初回描画前に「建物で絞り込み」を
+ * 適用する（例: /3d/?building=1 で1号館だけを表示した状態で開ける）。
+ * 「建物で絞り込み」セレクトに該当する<option>が無い(存在しない建物IDなど)場合は無視する。
+ * renderMap()自体はこの関数では呼ばない（boot側で1回だけ呼ぶ想定。初回描画前に
+ * filterBuildingをセットしておけば、その1回の描画で最初からその建物にズームされた
+ * 状態になる。renderMapは uirevision:"keep" でカメラ位置を保持する作りなので、
+ * 2回描画してしまうと2回目でせっかくの初期ズームが打ち消される）。
+ */
+function applyBuildingFromQueryParam() {
+  const params = new URLSearchParams(window.location.search);
+  const raw = params.get("building");
+  if (raw === null) return;
+  const building = parseInt(raw, 10);
+  if (!Number.isInteger(building)) return;
+
+  const sel = document.getElementById("filter-building");
+  const hasOption = [...sel.options].some((o) => parseInt(o.value, 10) === building);
+  if (!hasOption) return;
+
+  sel.value = String(building);
+  filterBuilding = building;
+}
+
 function applyFilter() {
   filterBuilding = parseInt(document.getElementById("filter-building").value);
   filterFloor    = parseInt(document.getElementById("filter-floor").value);
