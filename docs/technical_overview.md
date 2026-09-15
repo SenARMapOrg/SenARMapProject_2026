@@ -421,10 +421,12 @@ imgByStep[step].classList.add("active");
 
 #### 目的地バッジ（最終区間）
 
-最終区間（目的地エッジを歩く区間）は矢印だと「まだ先へ進む」と誤解されるため、矢印の代わりに `#near-goal-badge` を表示する（`updateDirectionArrow()`）。文言は `buildNearGoalText()` が決める:
+最終区間（目的地エッジを歩く区間）は矢印だと「まだ先へ進む」と誤解されるため、矢印の代わりに `#near-goal-badge` を表示する（`updateDirectionArrow()`）。同じ文言を音声案内の到着アナウンス（`buildStepAnnouncement()` の最終区間分岐）にも使う。文言は `buildNearGoalText()` が決める:
 
-- APIレスポンスの `dest_side`（検索時に指定した目的地そのものの左右。`_dest_side()` が実際に歩く向きに補正済みの最終区間 `right`/`left` と厳密照合して判定。`app.py` 側の計算なのでnode/eventの目的地指定や複数の部屋が両側にまたがるエッジでは空文字）が `"right"`/`"left"` ならそのまま「右手に目的地です」/「左手に目的地です」を表示する
-- `dest_side` が無い場合のみ、最終区間の `right_display`/`left_display` を見て片方だけ設定されていればその側とみなす簡易フォールバックを使う
+- APIレスポンスの `dest_side`/`dest_position`/`dest_count`/`dest_display`/`dest_nearest_display`（検索時に指定した目的地そのものの位置情報。`_dest_info()`/`_apply_dest_info()` が実際に歩く向きに補正済みの最終区間 `right`/`left` と厳密照合して判定。`right`/`left` は手前から奥への物理的な並び順を持つ列なので、その並びの中の順位がそのまま「手前から数えてN番目」になる。`app.py` 側の計算なのでnode/eventの目的地指定や複数の部屋が両側にまたがるエッジでは空文字/`null`）が取れていれば、以下を組み立てる:
+  - その側に他の教室が無い（`dest_count<=1`）か、目的地が一番手前（`dest_position===1`）の場合: 「`<dest_display>`は`<右手/左手>`です」
+  - それ以外（他に手前の教室がある）場合: 「`<dest_display>`は`<右手/左手>`、`<dest_nearest_display>`から数えて`<dest_position>`番目です」
+- `dest_side` が無い場合のみ、最終区間の `right_display`/`left_display` を見て片方だけ設定されていればその側とみなす簡易フォールバック（「右手に目的地です」等）を使う
 - それでも判定できなければ従来通りの汎用文言「この通路沿いが目的地周辺です」を表示する
 
 ---

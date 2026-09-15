@@ -40,6 +40,7 @@ export interface TimetableEntryRow {
   period: number;
   course_name: string;
   location: string | null;
+  instructor: string | null; // 「科目名から追加」でシラバスから追加した場合のみ入る。手入力ではNULL
   created_at: string;
   updated_at: string;
 }

@@ -45,6 +45,10 @@ let buildingNames = {};     // {10: "10号館", ...} data/building_name.csv 由�
 let pathCoords  = [];
 let pathEdges   = [];  // path_coords[i]→[i+1] に対応する区間情報（type/length/name）。音声案内に使う
 let destSide    = "";  // APIが指定した目的地そのものの左右("right"/"left"/"")。dest_side未対応のレスポンスでは""
+let destPosition = null;        // その側の教室のうち、手前から数えて何番目か(1始まり)
+let destCount     = null;       // その側にある教室の総数
+let destDisplay   = "";         // 目的地そのものの表示名
+let destNearestDisplay = "";    // 一番手前(先頭)の教室の表示名
 let currentStep = 0;
 
 let outdoorPolylines = [];
@@ -441,7 +445,10 @@ async function fetchRouteAndNavigate(url) {
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
     if (data.error) { alert("エラー: " + data.error); return; }
-    await initRoute(data.path_coords, data.path_edges, data.dest_side);
+    await initRoute(data.path_coords, data.path_edges, {
+      side: data.dest_side, position: data.dest_position, count: data.dest_count,
+      display: data.dest_display, nearestDisplay: data.dest_nearest_display,
+    });
   } catch {
     document.getElementById("step-label").textContent = "サーバーに接続できません";
     document.getElementById("step-count").textContent = "app.py が起動しているか確認してください";
@@ -896,10 +903,14 @@ async function prefetchSvgs(coords) {
 // ================================================================
 // Route init
 // ================================================================
-async function initRoute(coords, edges, side = "") {
+async function initRoute(coords, edges, destInfo = {}) {
   pathCoords  = coords;
   pathEdges   = edges || [];
-  destSide    = side || "";
+  destSide          = destInfo.side || "";
+  destPosition       = destInfo.position ?? null;
+  destCount          = destInfo.count ?? null;
+  destDisplay        = destInfo.display || "";
+  destNearestDisplay = destInfo.nearestDisplay || "";
   currentStep = 0;
   svgBuilding = null;
   svgFloor    = null;
@@ -1075,9 +1086,15 @@ function buildSidePhrase(edge) {
 }
 
 /**
- * 目的地バッジの文言を決める。
+ * 目的地バッジ・到着時の音声案内で共通して使う文言を決める。
  * まずAPIが返す destSide（サーバー側で、検索時に指定した実際の目的地名を最終区間の
- * right/left列と厳密照合して判定済み）を見る。"right"/"left" ならそのまま採用する。
+ * right/left列と厳密照合して判定済み）を見る。"right"/"left" が取れていれば、
+ * destDisplay（目的地自体の表示名）・destPosition/destCount（right/leftは手前から奥への
+ * 物理的な並び順を持つ列なので、そのままそこでの目的地の順位が「手前から数えてN番目」になる）・
+ * destNearestDisplay（一番手前の教室の表示名）を使って具体的な文を組み立てる。
+ * ただし、目的地がその側で一番手前（＝destPosition===1）の場合や、その側に他に教室が無い
+ * （destCount<=1）場合は「〜から数えて1番目です」という自明な言い回しを避け、単に
+ * 「<目的地>は右手です」のように言う。
  * destSideが無い（"" ＝ ノード指定・イベント指定など目的教室名が無い、または
  * このエッジのright/leftどちらにも一致しなかった）場合のみ、最終区間のright_display/
  * left_displayを見て「片方だけ設定されていればその側とみなす」簡易フォールバックを使う
@@ -1085,8 +1102,14 @@ function buildSidePhrase(edge) {
  */
 function buildNearGoalText(edge) {
   const FALLBACK = "この通路沿いが目的地周辺です";
-  if (destSide === "right") return "右手に目的地です";
-  if (destSide === "left")  return "左手に目的地です";
+  if (destSide === "right" || destSide === "left") {
+    const sideText = destSide === "right" ? "右手" : "左手";
+    const name = destDisplay || "目的地";
+    if (destCount > 1 && destPosition > 1) {
+      return `${name}は${sideText}、${destNearestDisplay}から数えて${destPosition}番目です`;
+    }
+    return `${name}は${sideText}です`;
+  }
   if (!edge) return FALLBACK;
   const r = edge.right_display || (edge.right || "").split(";")[0].trim();
   const l = edge.left_display  || (edge.left  || "").split(";")[0].trim();
@@ -1123,6 +1146,11 @@ function buildStepAnnouncement(step) {
 
   // 最終区間（目的地エッジ上を歩く「この辺です」区間）
   if (step === pathCoords.length - 2) {
+    // dest_sideが判定できている場合は「<目的地>は右手、<手前>から数えてN番目です」を読み上げる。
+    // 判定できない場合は従来通り「<name>の付近です」にフォールバックする。
+    if (destSide === "right" || destSide === "left") {
+      return `まもなく到着します。${buildNearGoalText(edge)}`;
+    }
     const name = edge.name_display || (edge.name || "").split(";")[0].trim();
     return name ? `まもなく到着します。${name}の付近です` : "まもなく目的地に到着します";
   }

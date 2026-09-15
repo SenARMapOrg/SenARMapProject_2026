@@ -67,24 +67,35 @@ export async function updateAutoFillLocation(db: D1Database, userId: number, ena
 }
 
 /**
- * 同じ学期・曜日・時限・科目名の授業について、自分以外の学生が登録した教室のうち
+ * 同じ学期・曜日・時限・科目名・担当教員の授業について、自分以外の学生が登録した教室のうち
  * もっとも多く使われているものを返す（「科目名から追加」の自動入力候補に使う）。
  * 個人を特定できる情報は返さず、教室名そのものだけを返す。
+ *
+ * instructorも一致条件に含める: 同じ科目名でも担当教員が違えば別クラス(別教室であることが多い)
+ * なので、instructorで絞らないと別クラスの教室が混ざって提案されてしまう
+ * （"IS ?" を使うのはSQLiteの"="はNULL同士を一致とみなさないため。instructorがNULL同士
+ * 　＝どちらもシラバスに紐づかない手入力同士、の場合だけ一致させたい）。
  */
 export async function findCommonLocationForCourse(
   db: D1Database,
-  params: { term: Term; dayOfWeek: number; period: number; courseName: string; excludeUserId: number },
+  params: {
+    term: Term; dayOfWeek: number; period: number; courseName: string; instructor: string | null;
+    excludeUserId: number;
+  },
 ): Promise<string | null> {
   const row = await db
     .prepare(
       `SELECT location FROM timetable_entries
-       WHERE term = ? AND day_of_week = ? AND period = ? AND course_name = ?
+       WHERE term = ? AND day_of_week = ? AND period = ? AND course_name = ? AND instructor IS ?
          AND user_id != ? AND location IS NOT NULL AND location != ''
        GROUP BY location
        ORDER BY COUNT(*) DESC, MAX(updated_at) DESC
        LIMIT 1`,
     )
-    .bind(params.term, params.dayOfWeek, params.period, params.courseName, params.excludeUserId)
+    .bind(
+      params.term, params.dayOfWeek, params.period, params.courseName, params.instructor,
+      params.excludeUserId,
+    )
     .first<{ location: string }>();
   return row?.location ?? null;
 }
@@ -128,6 +139,7 @@ export interface TimetableEntryInput {
   period: number;
   course_name: string;
   location: string | null;
+  instructor: string | null;
 }
 
 /**
@@ -142,10 +154,10 @@ export async function replaceTimetable(
     ...entries.map((e) =>
       db
         .prepare(
-          `INSERT INTO timetable_entries (user_id, term, day_of_week, period, course_name, location)
-           VALUES (?, ?, ?, ?, ?, ?)`,
+          `INSERT INTO timetable_entries (user_id, term, day_of_week, period, course_name, location, instructor)
+           VALUES (?, ?, ?, ?, ?, ?, ?)`,
         )
-        .bind(userId, term, e.day_of_week, e.period, e.course_name, e.location),
+        .bind(userId, term, e.day_of_week, e.period, e.course_name, e.location, e.instructor),
     ),
   ];
   await db.batch(stmts);

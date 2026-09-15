@@ -520,7 +520,12 @@
       color: #fff;
       font-size: 16px; font-weight: 700;
       padding: 10px 22px; border-radius: 4px;
-      white-space: nowrap;
+      /* 「<教室>は右手、<手前>から数えてN番目です」等で文言が長くなることがあるため、
+         横一行固定(nowrap)ではなくAR領域内で折り返す */
+      white-space: normal;
+      max-width: calc(100% - 32px);
+      text-align: center;
+      line-height: 1.4;
       pointer-events: none;
       z-index: 10;
       box-shadow: 0 3px 10px rgba(0,0,0,0.45);

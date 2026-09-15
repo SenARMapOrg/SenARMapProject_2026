@@ -12,7 +12,10 @@ export interface SlotFormHandle {
 
 export function buildSlotForm(
   getCurrentTerm: () => Term,
-  addSlot: (term: Term, day: number, period: number, courseName: string, location: string | null) => boolean,
+  addSlot: (
+    term: Term, day: number, period: number, courseName: string, location: string | null,
+    instructor: string | null,
+  ) => boolean,
   removeSlot: (term: Term, day: number, period: number) => boolean,
 ): SlotFormHandle {
   const root = document.createElement("div");
@@ -63,6 +66,7 @@ export function buildSlotForm(
     const term = getCurrentTerm();
     const added = addSlot(
       term, Number(daySelect.value), Number(periodSelect.value), courseName, locationInput.value.trim() || null,
+      null,
     );
     if (added) {
       messageEl.textContent = `${TERM_LABELS[term]}の${DAY_LABELS[Number(daySelect.value)]}曜${periodSelect.value}限に追加しました`;
