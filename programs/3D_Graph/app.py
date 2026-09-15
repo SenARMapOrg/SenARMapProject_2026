@@ -435,16 +435,52 @@ def _side_for_room(edge_like, room_name):
     return ""
 
 
-def _dest_side(result, room_name):
+def _dest_info(result, room_name):
     """
     _path_result() が返した result["path_edges"] の最終区間（実際に歩く向きに補正済み）を見て、
-    room_nameの左右を判定する。API各エンドポイントの dest_side はこれ経由で計算すること
-    （edge.csvの生の行を直接 _side_for_room に渡さない）。
+    room_nameの左右・手前から数えた順番を判定する。API各エンドポイントの dest_side 等は
+    これ経由で計算すること（edge.csvの生の行を直接 _side_for_room に渡さない）。
+
+    right/leftは";"区切りで手前から奥への物理的な並び順を持つ列（edge.csvの想定通り）なので、
+    その並び順の中でroom_nameが何番目かがそのまま「手前から数えてN番目」になる。
+
+    戻り値:
+      side: "right"/"left"/""（どちらにも一致しなければ""）
+      position: 1始まりの順位（一致しなければNone）
+      count: その側にある教室の総数（一致しなければNone）
+      nearest_display: 一番手前（先頭）の教室の表示名（一致しなければNone）
+      dest_display: room_name自体の表示名（一致しなければNone）
     """
+    empty = {"side": "", "position": None, "count": None, "nearest_display": None, "dest_display": None}
     edges = result.get("path_edges") or []
-    if not edges:
-        return ""
-    return _side_for_room(edges[-1], room_name)
+    if not edges or not room_name:
+        return empty
+    last = edges[-1]
+    room_name = str(room_name).strip()
+    coords = result.get("path_coords") or []
+    building = coords[-1].get("building") if coords else None
+
+    for side in ("right", "left"):
+        names = [n.strip() for n in str(last.get(side, "")).split(";") if n.strip()]
+        if room_name in names:
+            return {
+                "side": side,
+                "position": names.index(room_name) + 1,
+                "count": len(names),
+                "nearest_display": _first_display_label(building, names[0]),
+                "dest_display": _first_display_label(building, room_name),
+            }
+    return empty
+
+
+def _apply_dest_info(result, room_name):
+    """_dest_info()の結果をresultのdest_*フィールドとして書き込む共通処理"""
+    info = _dest_info(result, room_name)
+    result["dest_side"] = info["side"]
+    result["dest_position"] = info["position"]
+    result["dest_count"] = info["count"]
+    result["dest_nearest_display"] = info["nearest_display"]
+    result["dest_display"] = info["dest_display"]
 
 
 _cached_building_name_map = None   # building_name.csv: {building: display_name}
@@ -982,7 +1018,7 @@ def api_navigate_to_room():
     result = _path_result(G, best_path, best_length)
     result["destination_room"] = room_name
     result["destination_edge"] = _edge_to_dict(best_dest_edge)
-    result["dest_side"] = _dest_side(result, room_name)
+    _apply_dest_info(result, room_name)
     if best_start_edge is not None:
         result["start_room"] = start_room
         result["start_edge"] = _edge_to_dict(best_start_edge)
@@ -1152,7 +1188,7 @@ def api_route():
         if to_room:
             result["to_room"] = to_room
         result["to_edge"]    = _edge_to_dict(best_dest_edge)
-        result["dest_side"]  = _dest_side(result, to_room)
+        _apply_dest_info(result, to_room)
     return jsonify(result)
 
 
@@ -1299,7 +1335,7 @@ def api_nearest_toilet():
     result["toilet_building"] = int(best_toilet_row["building"])
     result["toilet_floor"]    = int(best_toilet_row["floor"])
     result["toilet_edge"]     = _edge_to_dict(best_toilet_row)
-    result["dest_side"]       = _dest_side(result, found_key)
+    _apply_dest_info(result, found_key)
     if from_event:
         result["from_event"]  = from_event
     if best_start_row is not None:
@@ -1375,7 +1411,7 @@ def api_nearest_cafeteria():
     result["cafeteria_building"] = int(best_caf_row["building"])
     result["cafeteria_floor"]    = int(best_caf_row["floor"])
     result["cafeteria_edge"]     = _edge_to_dict(best_caf_row)
-    result["dest_side"]          = _dest_side(result, matched_caf)
+    _apply_dest_info(result, matched_caf)
     if from_event:
         result["from_event"] = from_event
     if best_start_row is not None:

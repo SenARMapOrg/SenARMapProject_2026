@@ -6,7 +6,7 @@
 // 「科目名から追加」は学期をまたいで全件を検索対象にし、選んだ科目自身の学期に挿入するため、
 // 表示中の学期と挿入先の学期が食い違うことがある。片方だけ持つ設計だとここでバグる）。
 
-import { api, ApiError, type Me, type Term } from "./api";
+import { api, ApiError, type Term } from "./api";
 import {
   buildSlotMap, DAY_LABELS, entryKey, getNowInfo, guessCurrentTerm, PERIOD_TIMES, renderInteractiveGrid,
   renderReadonlyGrid, slotMapToEntries, TERM_LABELS, type SlotMap,
@@ -19,7 +19,7 @@ import { buildSlotForm } from "./timetable-slot-form";
 const NAVI_BASE_URL = "https://iku-navi.net/navi/";
 const NAV_REFRESH_INTERVAL_MS = 30_000;
 
-export async function renderTimetableTab(content: HTMLElement, me: Me): Promise<void> {
+export async function renderTimetableTab(content: HTMLElement): Promise<void> {
   content.replaceChildren();
   let currentTerm: Term = guessCurrentTerm();
   let selectedSlot: { day: number; period: number } | null = null;
@@ -247,6 +247,7 @@ export async function renderTimetableTab(content: HTMLElement, me: Me): Promise<
    */
   function addSlot(
     term: Term, day: number, period: number, courseName: string, location: string | null,
+    instructor: string | null = null,
   ): boolean {
     const key = entryKey(day, period);
     const slots = slotsByTerm[term];
@@ -257,7 +258,7 @@ export async function renderTimetableTab(content: HTMLElement, me: Me): Promise<
       );
       if (!ok) return false;
     }
-    slots.set(key, { course_name: courseName, location: location ?? "" });
+    slots.set(key, { course_name: courseName, location: location ?? "", instructor });
     if (term === currentTerm) {
       refreshViewGrid();
       refreshEditGrid();
@@ -297,7 +298,7 @@ export async function renderTimetableTab(content: HTMLElement, me: Me): Promise<
   editSection.appendChild(regTabs);
 
   const slotForm = buildSlotForm(() => currentTerm, addSlot, removeSlot);
-  const nameForm = buildNameForm(addSlot, () => me.auto_fill_location);
+  const nameForm = buildNameForm(addSlot);
   nameForm.root.hidden = true;
   editSection.append(slotForm.root, nameForm.root);
 

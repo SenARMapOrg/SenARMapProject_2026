@@ -64,7 +64,7 @@ export function guessCurrentTerm(date: Date = new Date()): Term {
   return month >= 4 && month <= 8 ? "spring" : "fall";
 }
 
-export type SlotMap = Map<string, { course_name: string; location: string }>;
+export type SlotMap = Map<string, { course_name: string; location: string; instructor: string | null }>;
 
 export function entryKey(day: number, period: number): string {
   return `${day}-${period}`;
@@ -80,7 +80,9 @@ export function entriesToMap(entries: TimetableEntry[]): Map<string, TimetableEn
 export function buildSlotMap(entries: TimetableEntry[]): SlotMap {
   const map: SlotMap = new Map();
   for (const e of entries) {
-    map.set(entryKey(e.day_of_week, e.period), { course_name: e.course_name, location: e.location ?? "" });
+    map.set(entryKey(e.day_of_week, e.period), {
+      course_name: e.course_name, location: e.location ?? "", instructor: e.instructor ?? null,
+    });
   }
   return map;
 }
@@ -94,6 +96,7 @@ export function slotMapToEntries(courses: SlotMap): TimetableEntry[] {
       period: Number(periodStr),
       course_name: value.course_name,
       location: value.location || null,
+      instructor: value.instructor,
     });
   }
   return entries;
