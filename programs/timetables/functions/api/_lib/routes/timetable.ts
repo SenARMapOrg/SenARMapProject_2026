@@ -69,8 +69,9 @@ timetableRoutes.put("/", requireAuth(), async (c) => {
   return c.json({ entries: await listTimetable(c.env.DB, user.id, term) });
 });
 
-// 「科目名から追加」の自動入力候補。同じ学期・曜日・時限・科目名で、自分以外の学生が
+// 「科目名から追加」の自動入力候補。同じ学期・曜日・時限・科目名・担当教員で、自分以外の学生が
 // 登録している教室のうち最も多いものを返す（個人を特定できる情報は返さない）。
+// instructor は任意（手入力科目など担当教員が無い場合は省略してよい＝NULL扱いで照合する）。
 timetableRoutes.get("/location-suggestion", requireAuth(), async (c) => {
   const term = resolveTerm(c);
   if (!term) return c.json({ error: "term は spring か fall を指定してください" }, 400);
@@ -78,6 +79,8 @@ timetableRoutes.get("/location-suggestion", requireAuth(), async (c) => {
   const day = Number(c.req.query("day_of_week"));
   const period = Number(c.req.query("period"));
   const courseName = (c.req.query("course_name") ?? "").trim();
+  const instructorRaw = c.req.query("instructor");
+  const instructor = instructorRaw && instructorRaw.trim() ? instructorRaw.trim() : null;
 
   if (!Number.isInteger(day) || day < 0 || day > MAX_DAY_OF_WEEK) {
     return c.json({ error: `day_of_week は 0〜${MAX_DAY_OF_WEEK} の整数で指定してください` }, 400);
@@ -91,7 +94,7 @@ timetableRoutes.get("/location-suggestion", requireAuth(), async (c) => {
 
   const user = c.get("user");
   const location = await findCommonLocationForCourse(c.env.DB, {
-    term, dayOfWeek: day, period, courseName, excludeUserId: user.id,
+    term, dayOfWeek: day, period, courseName, instructor, excludeUserId: user.id,
   });
   return c.json({ location });
 });

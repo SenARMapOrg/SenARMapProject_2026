@@ -10,6 +10,7 @@ export const MAX_DAY_OF_WEEK = 5; // 0=月 ... 5=土
 export const MAX_PERIOD = 7; // 1〜7限
 export const MAX_COURSE_NAME_LEN = 100;
 export const MAX_LOCATION_LEN = 100;
+export const MAX_INSTRUCTOR_LEN = 100;
 export const MAX_NICKNAME_LEN = 30;
 export const MAX_TIMETABLE_ENTRIES = (MAX_DAY_OF_WEEK + 1) * MAX_PERIOD; // 全コマ数の上限（重複防止用の上限チェックに使う）
 
@@ -45,6 +46,7 @@ export interface RawTimetableEntry {
   period?: unknown;
   course_name?: unknown;
   location?: unknown;
+  instructor?: unknown;
 }
 
 export interface ValidatedTimetableEntry {
@@ -52,6 +54,7 @@ export interface ValidatedTimetableEntry {
   period: number;
   course_name: string;
   location: string | null;
+  instructor: string | null;
 }
 
 /** 1件分の時間割入力を検証する。問題なければ正規化済みの値、なければエラーメッセージを返す */
@@ -82,6 +85,14 @@ export function validateTimetableEntry(
     return { ok: false, error: `location は${MAX_LOCATION_LEN}文字以内で指定してください` };
   }
 
+  const instructor = raw.instructor;
+  if (instructor !== undefined && instructor !== null && typeof instructor !== "string") {
+    return { ok: false, error: "instructor は文字列で指定してください" };
+  }
+  if (typeof instructor === "string" && instructor.length > MAX_INSTRUCTOR_LEN) {
+    return { ok: false, error: `instructor は${MAX_INSTRUCTOR_LEN}文字以内で指定してください` };
+  }
+
   return {
     ok: true,
     value: {
@@ -89,6 +100,7 @@ export function validateTimetableEntry(
       period,
       course_name: courseName.trim(),
       location: typeof location === "string" && location.trim() ? location.trim() : null,
+      instructor: typeof instructor === "string" && instructor.trim() ? instructor.trim() : null,
     },
   };
 }
