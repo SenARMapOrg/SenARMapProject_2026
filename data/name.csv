@@ -33,6 +33,7 @@ building,name,display_name
 10,105X,ゼミ105X
 10,Sky_Terrace,スカイテラス
 10,SUBWAY,サブウェイ
+10,Lab_Rep,研究室受付
 1,Lab1,ラボ1
 1,Lab2,ラボ2
 1,Lab3,ラボ3
@@ -70,3 +71,4 @@ building,name,display_name
 7,77,ゼミ77
 7,78,ゼミ78
 7,79,ゼミ79
+0,VIEW,レストランVIEW
