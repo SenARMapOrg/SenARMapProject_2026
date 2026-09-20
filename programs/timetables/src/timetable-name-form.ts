@@ -162,7 +162,25 @@ export function buildNameForm(
 
   function offeringKey(o: CourseOffering): string {
     const slot = o.slots[0];
-    return [representativeTerm(o.term), slot.day_of_week, slot.period, o.course_name, o.instructor ?? ""].join(" ");
+    return [representativeTerm(o.term), slot.day_of_week, slot.period, o.course_name, o.instructor ?? ""].join(" ");
+  }
+
+  /**
+   * シラバス上は前期・後期が別々の行（＝通年とはラベルされていない）でも、同じ科目名・担当教員が
+   * 同じ曜日・時限でもう一方の学期にも見つかる場合、それを返す。
+   * 本当は同じ授業が前期・後期通して行われているだけ（シラバスの都合で行が分かれているだけ）の
+   * ケースが実際にあるため、追加後に「もう一方の学期にも追加しますか？」と一括登録をワンクリックで
+   * 提案するためだけに使う参考情報。自動で両学期に登録すると、無関係な2科目を誤って両学期に登録して
+   * しまう不具合が過去にあったため、判断は必ずユーザーのクリックを介す。
+   */
+  function findSiblingTermOffering(o: CourseOffering): CourseOffering | undefined {
+    if (o.term === "both") return undefined;
+    const otherTerm: Term = o.term === "spring" ? "fall" : "spring";
+    const slot = o.slots[0];
+    return offerings.find((c) => (
+      c.term === otherTerm && c.course_name === o.course_name && c.instructor === o.instructor
+      && c.slots[0].day_of_week === slot.day_of_week && c.slots[0].period === slot.period
+    ));
   }
 
   /** 教室入力欄に候補を下書きする。ユーザーが既に何か入力していたら上書きしない */
@@ -223,26 +241,65 @@ export function buildNameForm(
       const locationInput = li.querySelector<HTMLInputElement>(".offering-location-input")!;
       void fillLocationSuggestion(o, locationInput);
 
+      const siblingRow = document.createElement("div");
+      siblingRow.className = "offering-sibling-row";
+      siblingRow.hidden = true;
+      li.appendChild(siblingRow);
+
+      function addOffering(target: CourseOffering, location: string | null): number {
+        const targetTerms: Term[] = target.term === "both" ? ["spring", "fall"] : [target.term];
+        let addedCount = 0;
+        for (const term of targetTerms) {
+          for (const s of target.slots) {
+            if (addSlot(term, s.day_of_week, s.period, target.course_name, location, target.instructor)) addedCount += 1;
+          }
+        }
+        return addedCount;
+      }
+
+      /** 追加成功後、もう一方の学期にも同じ枠の科目があれば「そちらにも追加しますか？」を出す */
+      function showSiblingSuggestionIfAny(location: string | null): void {
+        const sibling = findSiblingTermOffering(o);
+        if (!sibling) return;
+        const siblingTermLabel = OFFERING_TERM_LABELS[sibling.term];
+        siblingRow.replaceChildren();
+        const text = document.createElement("span");
+        text.textContent = `同じ枠に${siblingTermLabel}にも「${sibling.course_name}」があります。`;
+        const addSiblingBtn = document.createElement("button");
+        addSiblingBtn.type = "button";
+        addSiblingBtn.className = "btn btn-ghost btn-sm";
+        addSiblingBtn.textContent = `${siblingTermLabel}にも追加する`;
+        addSiblingBtn.addEventListener("click", () => {
+          addSiblingBtn.disabled = true;
+          const addedCount = addOffering(sibling, location);
+          if (addedCount > 0) {
+            siblingRow.hidden = true;
+            messageEl.textContent = `「${sibling.course_name}」を${siblingTermLabel}にも追加しました`;
+            messageEl.className = "message message-ok reg-message";
+            messageEl.hidden = false;
+          } else {
+            addSiblingBtn.disabled = false;
+          }
+        });
+        siblingRow.append(text, addSiblingBtn);
+        siblingRow.hidden = false;
+      }
+
       const addBtn = document.createElement("button");
       addBtn.className = "btn btn-primary btn-sm";
       addBtn.textContent = "追加";
       addBtn.addEventListener("click", () => {
         addBtn.disabled = true;
         try {
-          const targetTerms: Term[] = o.term === "both" ? ["spring", "fall"] : [o.term];
           const location = locationInput.value.trim() || null;
-          let addedCount = 0;
-          for (const term of targetTerms) {
-            for (const s of o.slots) {
-              if (addSlot(term, s.day_of_week, s.period, o.course_name, location, o.instructor)) addedCount += 1;
-            }
-          }
+          const addedCount = addOffering(o, location);
           const termLabel = OFFERING_TERM_LABELS[o.term];
           messageEl.textContent = addedCount > 0
             ? `「${o.course_name}」を${termLabel}に追加しました（${slotsLabel}）${location ? ` 教室: ${location}` : ""}`
             : "追加しませんでした";
           messageEl.className = `message ${addedCount > 0 ? "message-ok" : "message-error"} reg-message`;
           messageEl.hidden = false;
+          if (addedCount > 0) showSiblingSuggestionIfAny(location);
         } finally {
           addBtn.disabled = false;
         }

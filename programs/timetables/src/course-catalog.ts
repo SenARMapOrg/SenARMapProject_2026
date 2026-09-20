@@ -11,18 +11,21 @@ import type { Term } from "./api";
 export const AVAILABLE_COURSE_YEARS = [2026, 2025, 2024, 2023, 2022, 2021, 2020];
 export const DEFAULT_COURSE_YEAR = AVAILABLE_COURSE_YEARS[0];
 
+/** "both" = 通年科目（前期・後期の両方に同じ曜日・時限で開講）。scrape.py の parse_rows() が
+ * 1行（同じ科目名・担当教員の<tr>）の中で前期・後期の両方を確認できた場合にだけ付ける値で、
+ * たまたま曜日・時限が一致する別々の科目まで通年扱いにしてしまわないよう、判定はスクレイパー側
+ * （行単位）で完結させている。詳しくは programs/syllabus_courses/scrape.py のdocstring参照。 */
+export type OfferingTerm = Term | "both";
+
 export interface CourseCatalogEntry {
   course_name: string;
   day_of_week: number;
   period: number;
-  term: Term;
+  term: OfferingTerm;
   room: string | null;
   instructor: string | null;
   departments: { faculty: string; department: string }[];
 }
-
-/** "both" = 通年科目（前期・後期の両方に同じ曜日・時限で開講。scrape.py側で2行に展開されているものをここで統合する） */
-export type OfferingTerm = Term | "both";
 
 /** 1つの「開講」= 同じ科目名・担当教員・学期・曜日・時限の科目1コマ分 */
 export interface CourseOffering {
@@ -101,7 +104,12 @@ function makeKey(parts: (string | number)[]): string {
  *
  * 学期でフィルタしない＝前期・後期どちらの科目も常に全件対象にする
  * （前期タブを見ながら後期の予定も組みたい、という使い方に対応するため）。
- * 前期・後期の両方に全く同じ曜日・時限で存在する科目は「通年(both)」として1件にまとめる。
+ *
+ * 通年科目(term="both")かどうかはここでは判定しない。前期・後期どちらも同じ曜日・時限に
+ * 存在するというだけで通年とみなすと、たまたま同じ曜日・時限に前期だけ／後期だけで別々に
+ * 開講されている無関係の2科目まで誤って1つの通年科目に統合してしまう（実際に発生していた不具合）。
+ * "both" はシラバスの同じ1行（同じ科目名・担当教員の開講）の中で前期・後期の両方が確認できた
+ * 場合にだけ scrape.py 側で付けており、ここではその判定をそのまま信頼するだけでよい。
  */
 export function groupOfferings(catalog: CourseCatalogEntry[]): CourseOffering[] {
   const map = new Map<string, CourseOffering>();
@@ -119,39 +127,7 @@ export function groupOfferings(catalog: CourseCatalogEntry[]): CourseOffering[] 
       map.set(key, offering);
     }
   }
-
-  const offerings = [...map.values()];
-  const bySpringKey = new Map<string, CourseOffering>();
-  for (const o of offerings) {
-    if (o.term === "spring") {
-      const slot = o.slots[0];
-      bySpringKey.set(makeKey([o.course_name, o.instructor ?? "", slot.day_of_week, slot.period]), o);
-    }
-  }
-
-  const merged: CourseOffering[] = [];
-  const consumedSpring = new Set<CourseOffering>();
-  for (const o of offerings) {
-    if (o.term !== "fall") continue;
-    const slot = o.slots[0];
-    const spring = bySpringKey.get(makeKey([o.course_name, o.instructor ?? "", slot.day_of_week, slot.period]));
-    if (spring) {
-      merged.push({ ...o, term: "both" });
-      consumedSpring.add(spring);
-    }
-  }
-  const consumedFallKeys = new Set(
-    merged.map((o) => makeKey([o.course_name, o.instructor ?? "", o.slots[0].day_of_week, o.slots[0].period])),
-  );
-  for (const o of offerings) {
-    if (consumedSpring.has(o)) continue;
-    if (o.term === "fall") {
-      const slot = o.slots[0];
-      if (consumedFallKeys.has(makeKey([o.course_name, o.instructor ?? "", slot.day_of_week, slot.period]))) continue;
-    }
-    merged.push(o);
-  }
-  return merged;
+  return [...map.values()];
 }
 
 export function searchOfferings(
