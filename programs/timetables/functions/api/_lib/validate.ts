@@ -1,4 +1,4 @@
-import type { Term } from "./types";
+import type { Term, Visibility } from "./types";
 
 export const TERMS: readonly Term[] = ["spring", "fall"]; // spring=前期 fall=後期
 
@@ -6,13 +6,27 @@ export function isValidTerm(value: unknown): value is Term {
   return typeof value === "string" && (TERMS as readonly string[]).includes(value);
 }
 
+export const VISIBILITIES: readonly Visibility[] = ["private", "friends", "link", "public"];
+
+export function isValidVisibility(value: unknown): value is Visibility {
+  return typeof value === "string" && (VISIBILITIES as readonly string[]).includes(value);
+}
+
 export const MAX_DAY_OF_WEEK = 5; // 0=月 ... 5=土
 export const MAX_PERIOD = 7; // 1〜7限
+export const MIN_GRADE = 1;
+export const MAX_GRADE = 8; // 留年・大学院等も見込んで少し余裕を持たせる
 export const MAX_COURSE_NAME_LEN = 100;
 export const MAX_LOCATION_LEN = 100;
 export const MAX_INSTRUCTOR_LEN = 100;
 export const MAX_NICKNAME_LEN = 30;
+export const MAX_FACULTY_LEN = 50;
+export const MAX_DEPARTMENT_LEN = 50;
 export const MAX_TIMETABLE_ENTRIES = (MAX_DAY_OF_WEEK + 1) * MAX_PERIOD; // 全コマ数の上限（重複防止用の上限チェックに使う）
+
+export function isValidGrade(value: unknown): value is number {
+  return typeof value === "number" && Number.isInteger(value) && value >= MIN_GRADE && value <= MAX_GRADE;
+}
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -39,6 +53,29 @@ export function validateNickname(raw: unknown): { ok: true; value: string | null
     return { ok: false, error: `nickname は${MAX_NICKNAME_LEN}文字以内で指定してください` };
   }
   return { ok: true, value: trimmed };
+}
+
+/** 学部・学科入力を検証・正規化する。空文字/空白のみは「未設定」扱いでnullにする */
+function validateFreeText(
+  raw: unknown, fieldName: string, maxLen: number,
+): { ok: true; value: string | null } | { ok: false; error: string } {
+  if (raw !== null && typeof raw !== "string") {
+    return { ok: false, error: `${fieldName} は文字列かnullで指定してください` };
+  }
+  const trimmed = typeof raw === "string" ? raw.trim() : "";
+  if (trimmed.length === 0) return { ok: true, value: null };
+  if (trimmed.length > maxLen) {
+    return { ok: false, error: `${fieldName} は${maxLen}文字以内で指定してください` };
+  }
+  return { ok: true, value: trimmed };
+}
+
+export function validateFaculty(raw: unknown) {
+  return validateFreeText(raw, "faculty", MAX_FACULTY_LEN);
+}
+
+export function validateDepartment(raw: unknown) {
+  return validateFreeText(raw, "department", MAX_DEPARTMENT_LEN);
 }
 
 export interface RawTimetableEntry {

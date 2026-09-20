@@ -1,5 +1,5 @@
 import type {
-  FriendRequestRow, SessionRow, Term, TimetableEntryRow, UserRow,
+  FriendRequestRow, SessionRow, SnapshotSettingsRow, Term, TimetableEntryRow, UserRow, Visibility,
 } from "./types";
 
 const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30日
@@ -67,6 +67,43 @@ export async function updateAutoFillLocation(db: D1Database, userId: number, ena
 }
 
 /**
+ * プロフィール(学部・学科・現在の学年)を部分更新する。渡されたキーだけを更新する。
+ * faculty/department は "みんなの時間割を探す" の絞り込みに、current_grade はナビ機能
+ * （今日・次の授業表示）がどの学年のスナップショットを見るかに使う。
+ */
+export async function updateProfile(
+  db: D1Database, userId: number,
+  patch: { faculty?: string | null; department?: string | null; currentGrade?: number },
+): Promise<UserRow> {
+  const sets: string[] = [];
+  const values: unknown[] = [];
+  if (Object.prototype.hasOwnProperty.call(patch, "faculty")) {
+    sets.push("faculty = ?");
+    values.push(patch.faculty ?? null);
+  }
+  if (Object.prototype.hasOwnProperty.call(patch, "department")) {
+    sets.push("department = ?");
+    values.push(patch.department ?? null);
+  }
+  if (patch.currentGrade !== undefined) {
+    sets.push("current_grade = ?");
+    values.push(patch.currentGrade);
+  }
+  if (sets.length === 0) {
+    const existing = await findUserById(db, userId);
+    if (!existing) throw new Error("ユーザーが見つかりません");
+    return existing;
+  }
+  sets.push("updated_at = datetime('now')");
+  const result = await db
+    .prepare(`UPDATE users SET ${sets.join(", ")} WHERE id = ? RETURNING *`)
+    .bind(...values, userId)
+    .first<UserRow>();
+  if (!result) throw new Error("プロフィールの更新に失敗しました");
+  return result;
+}
+
+/**
  * 同じ学期・曜日・時限・科目名・担当教員の授業について、自分以外の学生が登録した教室のうち
  * もっとも多く使われているものを返す（「科目名から追加」の自動入力候補に使う）。
  * 個人を特定できる情報は返さず、教室名そのものだけを返す。
@@ -126,10 +163,14 @@ export async function deleteSession(db: D1Database, sessionId: string): Promise<
   await db.prepare("DELETE FROM sessions WHERE id = ?").bind(sessionId).run();
 }
 
-export async function listTimetable(db: D1Database, userId: number, term: Term): Promise<TimetableEntryRow[]> {
+export async function listTimetable(
+  db: D1Database, userId: number, grade: number, term: Term,
+): Promise<TimetableEntryRow[]> {
   const { results } = await db
-    .prepare("SELECT * FROM timetable_entries WHERE user_id = ? AND term = ? ORDER BY day_of_week, period")
-    .bind(userId, term)
+    .prepare(
+      "SELECT * FROM timetable_entries WHERE user_id = ? AND grade = ? AND term = ? ORDER BY day_of_week, period",
+    )
+    .bind(userId, grade, term)
     .all<TimetableEntryRow>();
   return results;
 }
@@ -143,24 +184,154 @@ export interface TimetableEntryInput {
 }
 
 /**
- * ユーザーの指定学期(term)の時間割を丸ごと入れ替える（部分編集ではなく全件置き換え。
- * フロントは常にその学期の全件を送る）。他学期の行には触れない。
+ * ユーザーの指定学年・学期(grade, term)の時間割を丸ごと入れ替える（部分編集ではなく全件置き換え。
+ * フロントは常にそのスナップショットの全件を送る）。他の学年・学期の行には触れない。
  */
 export async function replaceTimetable(
-  db: D1Database, userId: number, term: Term, entries: TimetableEntryInput[],
+  db: D1Database, userId: number, grade: number, term: Term, entries: TimetableEntryInput[],
 ): Promise<void> {
   const stmts = [
-    db.prepare("DELETE FROM timetable_entries WHERE user_id = ? AND term = ?").bind(userId, term),
+    db.prepare("DELETE FROM timetable_entries WHERE user_id = ? AND grade = ? AND term = ?")
+      .bind(userId, grade, term),
     ...entries.map((e) =>
       db
         .prepare(
-          `INSERT INTO timetable_entries (user_id, term, day_of_week, period, course_name, location, instructor)
-           VALUES (?, ?, ?, ?, ?, ?, ?)`,
+          `INSERT INTO timetable_entries
+             (user_id, grade, term, day_of_week, period, course_name, location, instructor)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
         )
-        .bind(userId, term, e.day_of_week, e.period, e.course_name, e.location, e.instructor),
+        .bind(userId, grade, term, e.day_of_week, e.period, e.course_name, e.location, e.instructor),
     ),
   ];
   await db.batch(stmts);
+}
+
+/**
+ * ユーザーが時間割を持っている(grade, term)の組を一覧する（entriesが1件でもあれば対象。
+ * 空のまま公開範囲だけ設定したスナップショットは対象外＝実質「時間割が存在する学年」の一覧になる）。
+ * 「学年タブ」に何を並べるかに使う。
+ */
+export async function listMyGrades(
+  db: D1Database, userId: number,
+): Promise<{ grade: number; term: Term }[]> {
+  const { results } = await db
+    .prepare(
+      `SELECT DISTINCT grade, term FROM timetable_entries WHERE user_id = ?
+       ORDER BY grade, term`,
+    )
+    .bind(userId)
+    .all<{ grade: number; term: Term }>();
+  return results;
+}
+
+/** スナップショット(grade, term)の公開範囲設定を取得する。行が無ければ既定(friends)を返す */
+export async function getSnapshotSettings(
+  db: D1Database, userId: number, grade: number, term: Term,
+): Promise<SnapshotSettingsRow> {
+  const row = await db
+    .prepare("SELECT * FROM timetable_snapshot_settings WHERE user_id = ? AND grade = ? AND term = ?")
+    .bind(userId, grade, term)
+    .first<SnapshotSettingsRow>();
+  if (row) return row;
+  return { user_id: userId, grade, term, visibility: "friends", share_token: null, updated_at: "" };
+}
+
+/**
+ * 公開範囲を変更する。visibilityが'link'/'public'になった時だけ共有トークンを発行し
+ * （既にあれば使い回す）、'private'/'friends'に戻したらトークンを破棄する
+ * （トークンの存在＝共有リンクが有効、という不変条件をここで維持する）。
+ */
+export async function upsertSnapshotSettings(
+  db: D1Database, userId: number, grade: number, term: Term, visibility: Visibility,
+): Promise<SnapshotSettingsRow> {
+  const existing = await db
+    .prepare("SELECT * FROM timetable_snapshot_settings WHERE user_id = ? AND grade = ? AND term = ?")
+    .bind(userId, grade, term)
+    .first<SnapshotSettingsRow>();
+
+  const needsToken = visibility === "link" || visibility === "public";
+  const shareToken = needsToken ? (existing?.share_token ?? randomToken(16)) : null;
+
+  const result = await db
+    .prepare(
+      `INSERT INTO timetable_snapshot_settings (user_id, grade, term, visibility, share_token, updated_at)
+       VALUES (?, ?, ?, ?, ?, datetime('now'))
+       ON CONFLICT (user_id, grade, term)
+       DO UPDATE SET visibility = excluded.visibility, share_token = excluded.share_token,
+                      updated_at = excluded.updated_at
+       RETURNING *`,
+    )
+    .bind(userId, grade, term, visibility, shareToken)
+    .first<SnapshotSettingsRow>();
+  if (!result) throw new Error("公開範囲の更新に失敗しました");
+  return result;
+}
+
+/** 共有トークンからスナップショットの所有者情報を引く（linkモードの専用ルート用） */
+export async function findSnapshotByToken(
+  db: D1Database, token: string,
+): Promise<(SnapshotSettingsRow & { display_name: string }) | null> {
+  const row = await db
+    .prepare(
+      `SELECT s.*, COALESCE(u.nickname, u.display_name) AS display_name
+       FROM timetable_snapshot_settings s JOIN users u ON u.id = s.user_id
+       WHERE s.share_token = ?`,
+    )
+    .bind(token)
+    .first<SnapshotSettingsRow & { display_name: string }>();
+  return row ?? null;
+}
+
+/**
+ * viewerがownerの(grade, term)スナップショットを閲覧できるかどうかを判定する。
+ * 'link'は専用ルート(findSnapshotByToken)でのみ許可するため、ここでは常にfalse扱いにする
+ * （このチェックは「友達一覧」「みんなの時間割」経由のuserId指定ビューからのみ呼ぶ想定）。
+ */
+export async function canViewSnapshot(
+  db: D1Database, viewerId: number, ownerId: number, grade: number, term: Term,
+): Promise<boolean> {
+  if (viewerId === ownerId) return true;
+  const settings = await getSnapshotSettings(db, ownerId, grade, term);
+  if (settings.visibility === "public") return true;
+  if (settings.visibility === "friends") return areFriends(db, viewerId, ownerId);
+  return false; // private・link
+}
+
+/**
+ * 「みんなの時間割を探す」用の一覧。公開(public)設定のスナップショットだけを対象に、
+ * 学年・学期・学部・学科（すべて任意）で絞り込む。時間割が1件も無い（entries 0件）
+ * スナップショットは除外する（探しても中身が無いため）。
+ */
+export async function listPublicSnapshots(
+  db: D1Database,
+  filters: { grade?: number; term?: Term; faculty?: string; department?: string; excludeUserId: number },
+): Promise<{ user_id: number; display_name: string; grade: number; term: Term; faculty: string | null; department: string | null }[]> {
+  const conditions: string[] = ["s.visibility = 'public'", "u.id != ?"];
+  const values: unknown[] = [filters.excludeUserId];
+  if (filters.grade !== undefined) { conditions.push("s.grade = ?"); values.push(filters.grade); }
+  if (filters.term !== undefined) { conditions.push("s.term = ?"); values.push(filters.term); }
+  if (filters.faculty) { conditions.push("u.faculty = ?"); values.push(filters.faculty); }
+  if (filters.department) { conditions.push("u.department = ?"); values.push(filters.department); }
+
+  const { results } = await db
+    .prepare(
+      `SELECT u.id AS user_id, COALESCE(u.nickname, u.display_name) AS display_name,
+              s.grade, s.term, u.faculty, u.department
+       FROM timetable_snapshot_settings s
+       JOIN users u ON u.id = s.user_id
+       WHERE ${conditions.join(" AND ")}
+         AND EXISTS (
+           SELECT 1 FROM timetable_entries e
+           WHERE e.user_id = s.user_id AND e.grade = s.grade AND e.term = s.term
+         )
+       ORDER BY s.grade, s.term, display_name`,
+    )
+    .bind(...values)
+    .all<{
+      user_id: number; display_name: string; grade: number; term: Term;
+      faculty: string | null; department: string | null;
+    }>();
+  return results;
 }
 
 /** 2人のユーザーが承諾済みの友達関係にあるかどうか */
@@ -299,6 +470,7 @@ export async function deleteUserCascade(db: D1Database, userId: number): Promise
   await db.batch([
     db.prepare("DELETE FROM sessions WHERE user_id = ?").bind(userId),
     db.prepare("DELETE FROM timetable_entries WHERE user_id = ?").bind(userId),
+    db.prepare("DELETE FROM timetable_snapshot_settings WHERE user_id = ?").bind(userId),
     db.prepare("DELETE FROM friend_requests WHERE from_user_id = ? OR to_user_id = ?").bind(userId, userId),
     db.prepare("DELETE FROM users WHERE id = ?").bind(userId),
   ]);
