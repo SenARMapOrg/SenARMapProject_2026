@@ -1,11 +1,11 @@
 import { Hono } from "hono";
 
 import {
-  deleteUserCascade, updateAutoFillLocation, updateNickname,
+  deleteUserCascade, updateAutoFillLocation, updateNickname, updateProfile,
 } from "../db";
 import { clearSessionCookie, requireAuth } from "../session";
 import type { AppEnv, UserRow } from "../types";
-import { validateNickname } from "../validate";
+import { isValidGrade, validateDepartment, validateFaculty, validateNickname } from "../validate";
 
 export const meRoutes = new Hono<AppEnv>();
 
@@ -16,6 +16,9 @@ function serializeUser(user: UserRow) {
     display_name: user.display_name,
     nickname: user.nickname,
     auto_fill_location: Boolean(user.auto_fill_location),
+    current_grade: user.current_grade,
+    faculty: user.faculty,
+    department: user.department,
   };
 }
 
@@ -35,7 +38,10 @@ meRoutes.patch("/", requireAuth(), async (c) => {
   } catch {
     return c.json({ error: "リクエストボディが不正なJSONです" }, 400);
   }
-  const raw = body as { nickname?: unknown; auto_fill_location?: unknown } | null;
+  const raw = body as {
+    nickname?: unknown; auto_fill_location?: unknown;
+    faculty?: unknown; department?: unknown; current_grade?: unknown;
+  } | null;
   if (!raw || typeof raw !== "object") {
     return c.json({ error: "リクエストボディが不正です" }, 400);
   }
@@ -55,6 +61,27 @@ meRoutes.patch("/", requireAuth(), async (c) => {
       return c.json({ error: "auto_fill_location はtrue/falseで指定してください" }, 400);
     }
     current = await updateAutoFillLocation(c.env.DB, user.id, raw.auto_fill_location);
+  }
+
+  const profilePatch: { faculty?: string | null; department?: string | null; currentGrade?: number } = {};
+  if (Object.prototype.hasOwnProperty.call(raw, "faculty")) {
+    const result = validateFaculty(raw.faculty ?? null);
+    if (!result.ok) return c.json({ error: result.error }, 400);
+    profilePatch.faculty = result.value;
+  }
+  if (Object.prototype.hasOwnProperty.call(raw, "department")) {
+    const result = validateDepartment(raw.department ?? null);
+    if (!result.ok) return c.json({ error: result.error }, 400);
+    profilePatch.department = result.value;
+  }
+  if (Object.prototype.hasOwnProperty.call(raw, "current_grade")) {
+    if (!isValidGrade(raw.current_grade)) {
+      return c.json({ error: "current_grade を正しく指定してください" }, 400);
+    }
+    profilePatch.currentGrade = raw.current_grade;
+  }
+  if (Object.keys(profilePatch).length > 0) {
+    current = await updateProfile(c.env.DB, user.id, profilePatch);
   }
 
   return c.json(serializeUser(current));

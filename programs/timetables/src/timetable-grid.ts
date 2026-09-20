@@ -4,6 +4,11 @@ export const DAY_LABELS = ["月", "火", "水", "木", "金", "土"];
 export const PERIOD_COUNT = 7;
 export const TERM_LABELS: Record<Term, string> = { spring: "前期", fall: "後期" };
 
+/** 学年の表示ラベル（例: 1 -> "1年次"） */
+export function gradeLabel(grade: number): string {
+  return `${grade}年次`;
+}
+
 /** 土曜日の曜日インデックス（DAY_LABELS の並びに対応）。土曜は5限までしかない */
 export const SATURDAY_DAY_INDEX = 5;
 export const SATURDAY_MAX_PERIOD = 4;
