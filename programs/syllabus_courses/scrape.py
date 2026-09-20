@@ -41,11 +41,20 @@ programs/timetables/ （時間割共有アプリ）向けに、科目名オー�
 |---|---|---|
 | 前期           | 1        | spring |
 | 後期           | 2        | fall   |
-| 通年           | 3        | spring と fall の両方（同じ曜日・時限で2行出力） |
+| 通年           | 3        | both   |
 
 一覧の各科目の「開講期間・曜日・時限」列はこの kkikancd とは別に、科目ごとに前期/後期/通年の
 文字列がそのまま書かれている（例: "前期　火曜日　1時限"）ので、実際にはこちらの文字列から
 判定している（kkikancd はあくまで検索フィルタ用）。
+
+**重要**: term="both" は「同じ<tr>（同じ科目名・担当教員の1行）の中で、同じ曜日・時限に前期と
+後期の両方が書かれている場合」にのみ付ける。これは通年科目が1行の中で「通年」と書かれている場合
+と、前期・後期が別々の行として同じ行内に並記されている場合の両方をカバーする。一方、**別々の<tr>
+（別の科目）が、たまたま同じ曜日・時限に前期だけ／後期だけで開講されているケースは "both" にしない**
+（例: 同じ担当教員が同じ科目名で前期・後期にそれぞれ独立した科目を開講しているだけのケース）。
+以前はこの区別をせず、科目名・担当教員・曜日・時限が完全一致する前期の行と後期の行があれば
+無条件で通年とみなしていたため、無関係な2科目を誤って統合し、時間割に追加すると両方の学期に
+入ってしまう不具合があった（2026-09 修正）。
 
 「定時外」「集中」など曜日・時限が固定されない科目（オンデマンド科目・集中講義など）は
 day_of_week / period を持たないため **スキップし、stderr にログ出力する**（--verbose で件数集計も表示）。
@@ -240,8 +249,12 @@ def parse_rows(html: str, skip_reasons: SkipReason) -> list[dict]:
         # 稀に複数担当教員が<br>区切りで入っている場合があるため、読める形に連結しておく
         instructor = instructor_cell.get_text(separator=" / ", strip=True) or None
 
-        schedule_text = schedule_cell.get_text(separator="\n", strip=True)
-        for line in schedule_text.split("\n"):
+        # まずこの行(=1つの<tr>=1つの開講)が持つ曜日・時限を全部集める。
+        # 「同じ曜日・時限に前期と後期の両方がある」＝この行自身が通年科目である、という
+        # 判定をこの行の中だけで完結させる（他の行の前期/後期とたまたま曜日・時限が一致しても
+        # 混同しないようにするため。詳しくは regroup_terms.py のモジュールdocstring参照）。
+        slots: list[tuple[str, int, int]] = []  # (term_label, day_index, period)
+        for line in schedule_cell.get_text(separator="\n", strip=True).split("\n"):
             line = line.strip()
             if not line:
                 continue
@@ -268,17 +281,25 @@ def parse_rows(html: str, skip_reasons: SkipReason) -> list[dict]:
                 skip_reasons.add(f"未対応の時限: {period}時限（8限以降など）")
                 continue
 
-            for term_value in TERM_LABEL_TO_VALUES[term_label]:
-                out.append(
-                    {
-                        "course_name": course_name,
-                        "day_of_week": day_index,
-                        "period": period,
-                        "term": term_value,
-                        "room": None,
-                        "instructor": instructor,
-                    }
-                )
+            slots.append((term_label, day_index, period))
+
+        # (曜日, 時限) ごとに、この行の中で前期・後期どちらが出現したかを集計する
+        slot_terms: dict[tuple[int, int], set[str]] = {}
+        for term_label, day_index, period in slots:
+            slot_terms.setdefault((day_index, period), set()).update(TERM_LABEL_TO_VALUES[term_label])
+
+        for (day_index, period), term_values in slot_terms.items():
+            term_value = "both" if term_values == {"spring", "fall"} else next(iter(term_values))
+            out.append(
+                {
+                    "course_name": course_name,
+                    "day_of_week": day_index,
+                    "period": period,
+                    "term": term_value,
+                    "room": None,
+                    "instructor": instructor,
+                }
+            )
     return out
 
 
