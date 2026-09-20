@@ -1,5 +1,5 @@
 import { api, ApiError, type Friend, type FriendRequest, type Term } from "./api";
-import { guessCurrentTerm, renderReadonlyGrid, TERM_LABELS } from "./timetable-grid";
+import { gradeLabel, guessCurrentTerm, renderReadonlyGrid, TERM_LABELS } from "./timetable-grid";
 
 export async function renderFriendsPanel(container: HTMLElement): Promise<void> {
   container.replaceChildren();
@@ -184,6 +184,22 @@ async function showFriendTimetable(friend: Friend, viewerSection: HTMLElement): 
   h.textContent = `${friend.display_name} さんの時間割`;
   viewerSection.appendChild(h);
 
+  let currentGrade = 1;
+
+  const gradeSelect = document.createElement("select");
+  gradeSelect.className = "grade-select";
+  for (let g = 1; g <= 8; g += 1) {
+    const opt = document.createElement("option");
+    opt.value = String(g);
+    opt.textContent = gradeLabel(g);
+    gradeSelect.appendChild(opt);
+  }
+  gradeSelect.addEventListener("change", () => {
+    currentGrade = Number(gradeSelect.value);
+    void loadTerm(currentTerm());
+  });
+  viewerSection.appendChild(gradeSelect);
+
   const termTabs = document.createElement("div");
   termTabs.className = "term-tabs";
   const grid = document.createElement("div");
@@ -201,11 +217,15 @@ async function showFriendTimetable(friend: Friend, viewerSection: HTMLElement): 
     return btn;
   });
 
+  function currentTerm(): Term {
+    return (termButtons.find((b) => b.classList.contains("active"))?.dataset.term as Term) ?? guessCurrentTerm();
+  }
+
   async function loadTerm(term: Term): Promise<void> {
     termButtons.forEach((btn) => btn.classList.toggle("active", btn.dataset.term === term));
     errorEl.hidden = true;
     try {
-      const { entries } = await api.getFriendTimetable(friend.id, term);
+      const { entries } = await api.viewUserTimetable(friend.id, currentGrade, term);
       renderReadonlyGrid(grid, entries);
     } catch (err) {
       errorEl.textContent = err instanceof ApiError ? err.message : "時間割を取得できませんでした";

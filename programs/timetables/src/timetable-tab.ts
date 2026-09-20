@@ -2,14 +2,21 @@
 // 誤操作で追加・削除されないようにする。編集画面へは「科目を追加・削除する」ボタンを押して
 // 明示的に切り替える。
 //
-// 前期・後期のデータは常に両方メモリに保持する（表示は選択中の学期だけだが、
-// 「科目名から追加」は学期をまたいで全件を検索対象にし、選んだ科目自身の学期に挿入するため、
-// 表示中の学期と挿入先の学期が食い違うことがある。片方だけ持つ設計だとここでバグる）。
+// 学年（メイン軸）+学期（サブ軸）で複数のスナップショットを持てる。表示・編集は
+// 常に「今選んでいる学年+学期」に対して行われる。データはメモリ上に学年×学期ごとに
+// 個別キャッシュし（`${grade}-${term}` キー）、切り替えるたびにサーバーへ取りに行くのではなく
+// 一度取得したものは使い回す（保存時は最新のレスポンスで上書きする）。
+//
+// ナビ機能（今日・次の授業表示）は「今表示中の学年」ではなく常に `me.current_grade`
+// （プロフィール設定で選んだ「今の学年」）を見る。過去の学年を見ながら今日の予定を確認したい
+// 場合があるため、表示中の学年とは独立にしている。
 
-import { api, ApiError, type Term } from "./api";
 import {
-  buildSlotMap, DAY_LABELS, entryKey, getNowInfo, guessCurrentTerm, PERIOD_TIMES, renderInteractiveGrid,
-  renderReadonlyGrid, slotMapToEntries, TERM_LABELS, type SlotMap,
+  api, ApiError, type Me, type Term, type Visibility, VISIBILITY_LABELS,
+} from "./api";
+import {
+  buildSlotMap, DAY_LABELS, entryKey, getNowInfo, gradeLabel, guessCurrentTerm, PERIOD_TIMES,
+  renderInteractiveGrid, renderReadonlyGrid, slotMapToEntries, TERM_LABELS, type SlotMap,
 } from "./timetable-grid";
 import { buildNameForm } from "./timetable-name-form";
 import { buildSlotForm } from "./timetable-slot-form";
@@ -19,16 +26,28 @@ import { buildSlotForm } from "./timetable-slot-form";
 const NAVI_BASE_URL = "https://iku-navi.net/navi/";
 const NAV_REFRESH_INTERVAL_MS = 30_000;
 
-export async function renderTimetableTab(content: HTMLElement): Promise<void> {
+function snapshotKey(grade: number, term: Term): string {
+  return `${grade}-${term}`;
+}
+
+export async function renderTimetableTab(content: HTMLElement, me: Me): Promise<void> {
   content.replaceChildren();
+
+  let currentGrade: number = me.current_grade;
   let currentTerm: Term = guessCurrentTerm();
   let selectedSlot: { day: number; period: number } | null = null;
-  const slotsByTerm: Record<Term, SlotMap> = { spring: new Map(), fall: new Map() };
+  const slotsByKey: Record<string, SlotMap> = {};
+  // 学年タブに表示する学年一覧。listMyGrades()の結果 + me.current_grade + 手動で追加した学年を保持する
+  const knownGrades = new Set<number>([me.current_grade]);
 
   // ---------------------------------------------------------------- 表示画面（デフォルト）
   const displaySection = document.createElement("section");
   displaySection.className = "panel";
   displaySection.innerHTML = "<h2>自分の時間割</h2>";
+
+  const gradeTabs = document.createElement("div");
+  gradeTabs.className = "grade-tabs";
+  displaySection.appendChild(gradeTabs);
 
   const termTabs = document.createElement("div");
   termTabs.className = "term-tabs";
@@ -41,6 +60,10 @@ export async function renderTimetableTab(content: HTMLElement): Promise<void> {
     return btn;
   });
   displaySection.appendChild(termTabs);
+
+  const visibilityPanel = document.createElement("div");
+  visibilityPanel.className = "visibility-panel";
+  displaySection.appendChild(visibilityPanel);
 
   const viewGrid = document.createElement("div");
   displaySection.appendChild(viewGrid);
@@ -78,10 +101,9 @@ export async function renderTimetableTab(content: HTMLElement): Promise<void> {
   editHeaderRow.append(backToViewBtn, saveBtn, saveMessageEl);
   editSection.appendChild(editHeaderRow);
 
-  const editTermHint = document.createElement("p");
-  editTermHint.className = "hint";
-  editTermHint.textContent = "ここで選んだ学期に追加・削除されます:";
-  editSection.appendChild(editTermHint);
+  const editGradeTermHint = document.createElement("p");
+  editGradeTermHint.className = "hint edit-grade-term-hint";
+  editSection.appendChild(editGradeTermHint);
 
   const editTermTabs = document.createElement("div");
   editTermTabs.className = "term-tabs";
@@ -108,6 +130,7 @@ export async function renderTimetableTab(content: HTMLElement): Promise<void> {
   function enterEditMode(): void {
     editSection.hidden = false;
     displaySection.hidden = true;
+    editGradeTermHint.textContent = `${gradeLabel(currentGrade)}に追加・削除されます:`;
     refreshEditGrid();
   }
   function exitEditMode(): void {
@@ -117,20 +140,57 @@ export async function renderTimetableTab(content: HTMLElement): Promise<void> {
   editToggleBtn.addEventListener("click", enterEditMode);
   backToViewBtn.addEventListener("click", exitEditMode);
 
+  function currentSlots(): SlotMap {
+    return slotsByKey[snapshotKey(currentGrade, currentTerm)] ?? new Map();
+  }
+
   function refreshViewGrid(): void {
-    renderReadonlyGrid(viewGrid, slotMapToEntries(slotsByTerm[currentTerm]));
+    renderReadonlyGrid(viewGrid, slotMapToEntries(currentSlots()));
   }
 
   function refreshEditGrid(): void {
-    renderInteractiveGrid(editGrid, slotMapToEntries(slotsByTerm[currentTerm]), selectedSlot, onGridCellClick);
+    renderInteractiveGrid(editGrid, slotMapToEntries(currentSlots()), selectedSlot, onGridCellClick);
+  }
+
+  function refreshGradeTabs(): void {
+    gradeTabs.replaceChildren();
+    const grades = [...knownGrades].sort((a, b) => a - b);
+    for (const grade of grades) {
+      const btn = document.createElement("button");
+      btn.className = "term-tab";
+      btn.classList.toggle("active", grade === currentGrade);
+      btn.textContent = gradeLabel(grade);
+      btn.addEventListener("click", () => void showGrade(grade));
+      gradeTabs.appendChild(btn);
+    }
+    const addBtn = document.createElement("button");
+    addBtn.type = "button";
+    addBtn.className = "btn-link grade-add-btn";
+    addBtn.textContent = "+ 学年を追加";
+    addBtn.addEventListener("click", () => void addGrade());
+    gradeTabs.appendChild(addBtn);
+  }
+
+  async function addGrade(): Promise<void> {
+    const raw = prompt("追加する学年を入力してください（例: 1〜8の整数）");
+    if (raw === null) return;
+    const grade = Number(raw.trim());
+    if (!Number.isInteger(grade) || grade < 1 || grade > 8) {
+      alert("学年は1〜8の整数で入力してください。");
+      return;
+    }
+    knownGrades.add(grade);
+    refreshGradeTabs();
+    await showGrade(grade);
   }
 
   /**
-   * 「今の教室→次の教室」ナビボタン。表示中の学期タブとは無関係に、実際の「今」の学期
-   * (guessCurrentTerm)のデータを見る。次の時限に教室が登録されていない場合はナビを開けない
-   * （行き先が無いと案内できないため）。今の時限に教室が無い場合は「空」のまま出発地なしで開く。
+   * 「今の教室→次の教室」ナビボタン。表示中の学年・学期タブとは無関係に、実際の「今」の
+   * 学年+学期（me.current_grade + guessCurrentTerm()）のデータを見る。
+   * 次の時限に教室が登録されていない場合はナビを開けない（行き先が無いと案内できないため）。
+   * 今の時限に教室が無い場合は「空」のまま出発地なしで開く。
    */
-  function refreshNavPanel(): void {
+  async function refreshNavPanel(): Promise<void> {
     navPanel.replaceChildren();
     const now = getNowInfo();
 
@@ -142,7 +202,9 @@ export async function renderTimetableTab(content: HTMLElement): Promise<void> {
       return;
     }
 
-    const todaySlots = slotsByTerm[guessCurrentTerm()];
+    const liveTerm = guessCurrentTerm();
+    await ensureSnapshotLoaded(me.current_grade, liveTerm);
+    const todaySlots = slotsByKey[snapshotKey(me.current_grade, liveTerm)] ?? new Map();
     const currentEntry = now.currentPeriod !== null
       ? todaySlots.get(entryKey(now.todayIndex, now.currentPeriod)) ?? null : null;
     const nextEntry = now.nextPeriod !== null
@@ -182,54 +244,129 @@ export async function renderTimetableTab(content: HTMLElement): Promise<void> {
 
   function onGridCellClick(day: number, period: number): void {
     selectedSlot = { day, period };
-    const existing = slotsByTerm[currentTerm].get(entryKey(day, period)) ?? null;
+    const existing = currentSlots().get(entryKey(day, period)) ?? null;
     slotForm.selectSlot(day, period, existing);
     nameForm.setSlotFilter(existing ? null : { day, period });
     refreshEditGrid();
   }
 
-  function showTerm(term: Term): void {
+  async function refreshVisibilityPanel(): Promise<void> {
+    visibilityPanel.replaceChildren();
+    let settings;
+    try {
+      settings = await api.getSnapshotSettings(currentGrade, currentTerm);
+    } catch {
+      return; // 表示できなくても致命的ではないので静かに諦める
+    }
+
+    const label = document.createElement("label");
+    label.className = "visibility-label";
+    label.textContent = "公開範囲";
+    const select = document.createElement("select");
+    select.className = "visibility-select";
+    (Object.keys(VISIBILITY_LABELS) as Visibility[]).forEach((v) => {
+      const opt = document.createElement("option");
+      opt.value = v;
+      opt.textContent = VISIBILITY_LABELS[v];
+      if (v === settings!.visibility) opt.selected = true;
+      select.appendChild(opt);
+    });
+    label.appendChild(select);
+    visibilityPanel.appendChild(label);
+
+    const shareRow = document.createElement("div");
+    shareRow.className = "share-row";
+    visibilityPanel.appendChild(shareRow);
+
+    function renderShareRow(shareUrl: string | null): void {
+      shareRow.replaceChildren();
+      if (!shareUrl) return;
+      const copyBtn = document.createElement("button");
+      copyBtn.type = "button";
+      copyBtn.className = "btn btn-ghost btn-sm";
+      copyBtn.textContent = "共有リンクをコピー";
+      copyBtn.addEventListener("click", () => {
+        navigator.clipboard.writeText(shareUrl).then(() => {
+          copyBtn.textContent = "コピーしました";
+          setTimeout(() => { copyBtn.textContent = "共有リンクをコピー"; }, 2000);
+        }).catch(() => {
+          prompt("コピーできませんでした。手動でコピーしてください:", shareUrl);
+        });
+      });
+      shareRow.appendChild(copyBtn);
+    }
+    renderShareRow(settings.share_url);
+
+    select.addEventListener("change", () => {
+      void (async () => {
+        select.disabled = true;
+        try {
+          const updated = await api.updateSnapshotSettings(currentGrade, currentTerm, select.value as Visibility);
+          renderShareRow(updated.share_url);
+        } catch (err) {
+          alert(err instanceof ApiError ? err.message : "公開範囲の更新に失敗しました");
+          select.value = settings!.visibility;
+        } finally {
+          select.disabled = false;
+        }
+      })();
+    });
+  }
+
+  async function ensureSnapshotLoaded(grade: number, term: Term): Promise<void> {
+    const key = snapshotKey(grade, term);
+    if (slotsByKey[key]) return;
+    const res = await api.getTimetable(grade, term);
+    slotsByKey[key] = buildSlotMap(res.entries);
+  }
+
+  async function showTerm(term: Term): Promise<void> {
     currentTerm = term;
     termButtons.forEach((btn) => btn.classList.toggle("active", btn.dataset.term === term));
     editTermButtons.forEach((btn) => btn.classList.toggle("active", btn.dataset.term === term));
     selectedSlot = null;
     nameForm.setSlotFilter(null);
+    await ensureSnapshotLoaded(currentGrade, term);
     refreshViewGrid();
     refreshEditGrid();
-    refreshNavPanel();
+    void refreshVisibilityPanel();
+    void refreshNavPanel();
+    if (!editSection.hidden) editGradeTermHint.textContent = `${gradeLabel(currentGrade)}に追加・削除されます:`;
+  }
+
+  async function showGrade(grade: number): Promise<void> {
+    currentGrade = grade;
+    refreshGradeTabs();
+    await Promise.all([
+      ensureSnapshotLoaded(grade, "spring"),
+      ensureSnapshotLoaded(grade, "fall"),
+    ]);
+    await showTerm(currentTerm);
   }
 
   termButtons.forEach((btn) => {
-    btn.addEventListener("click", () => showTerm(btn.dataset.term as Term));
+    btn.addEventListener("click", () => void showTerm(btn.dataset.term as Term));
   });
   editTermButtons.forEach((btn) => {
-    btn.addEventListener("click", () => showTerm(btn.dataset.term as Term));
+    btn.addEventListener("click", () => void showTerm(btn.dataset.term as Term));
   });
-
-  async function loadAllTerms(): Promise<void> {
-    const [springRes, fallRes] = await Promise.all([
-      api.getTimetable("spring"),
-      api.getTimetable("fall"),
-    ]);
-    slotsByTerm.spring = buildSlotMap(springRes.entries);
-    slotsByTerm.fall = buildSlotMap(fallRes.entries);
-    showTerm(currentTerm);
-  }
 
   saveBtn.addEventListener("click", async () => {
     saveBtn.disabled = true;
     saveMessageEl.hidden = true;
     try {
       const [springRes, fallRes] = await Promise.all([
-        api.putTimetable("spring", slotMapToEntries(slotsByTerm.spring)),
-        api.putTimetable("fall", slotMapToEntries(slotsByTerm.fall)),
+        api.putTimetable(currentGrade, "spring", slotMapToEntries(slotsByKey[snapshotKey(currentGrade, "spring")] ?? new Map())),
+        api.putTimetable(currentGrade, "fall", slotMapToEntries(slotsByKey[snapshotKey(currentGrade, "fall")] ?? new Map())),
       ]);
-      slotsByTerm.spring = buildSlotMap(springRes.entries);
-      slotsByTerm.fall = buildSlotMap(fallRes.entries);
+      slotsByKey[snapshotKey(currentGrade, "spring")] = buildSlotMap(springRes.entries);
+      slotsByKey[snapshotKey(currentGrade, "fall")] = buildSlotMap(fallRes.entries);
+      knownGrades.add(currentGrade);
+      refreshGradeTabs();
       refreshViewGrid();
       refreshEditGrid();
-      refreshNavPanel();
-      saveMessageEl.textContent = "前期・後期どちらも保存しました";
+      void refreshNavPanel();
+      saveMessageEl.textContent = `${gradeLabel(currentGrade)}の前期・後期どちらも保存しました`;
       saveMessageEl.className = "message message-ok";
     } catch (err) {
       saveMessageEl.textContent = err instanceof ApiError ? err.message : "保存に失敗しました";
@@ -242,19 +379,21 @@ export async function renderTimetableTab(content: HTMLElement): Promise<void> {
 
   /**
    * 1コマ追加する。term を明示的に指定するため、表示中の学期と異なる学期にも追加できる
-   * （「科目名から追加」で前期タブを見ながら後期の科目を選んだ場合など）。
-   * 既に別の科目が入っている場合は確認する。表示欄は「今表示している学期」の分だけ更新する。
+   * （「科目名から追加」で前期タブを見ながら後期の科目を選んだ場合など）。学年は常に
+   * 「今編集中の学年」(currentGrade)に追加される。既に別の科目が入っている場合は確認する。
    */
   function addSlot(
     term: Term, day: number, period: number, courseName: string, location: string | null,
     instructor: string | null = null,
   ): boolean {
     const key = entryKey(day, period);
-    const slots = slotsByTerm[term];
+    const snapKey = snapshotKey(currentGrade, term);
+    const slots = slotsByKey[snapKey] ?? new Map();
+    slotsByKey[snapKey] = slots;
     const existing = slots.get(key);
     if (existing && existing.course_name !== courseName) {
       const ok = confirm(
-        `${TERM_LABELS[term]}の${DAY_LABELS[day]}曜${period}限には既に「${existing.course_name}」が入っています。上書きしますか？`,
+        `${gradeLabel(currentGrade)}${TERM_LABELS[term]}の${DAY_LABELS[day]}曜${period}限には既に「${existing.course_name}」が入っています。上書きしますか？`,
       );
       if (!ok) return false;
     }
@@ -263,21 +402,21 @@ export async function renderTimetableTab(content: HTMLElement): Promise<void> {
       refreshViewGrid();
       refreshEditGrid();
     }
-    refreshNavPanel();
+    void refreshNavPanel();
     return true;
   }
 
   /** 1コマ削除する。何も入っていなければ何もしない */
   function removeSlot(term: Term, day: number, period: number): boolean {
     const key = entryKey(day, period);
-    const slots = slotsByTerm[term];
-    if (!slots.has(key)) return false;
+    const slots = slotsByKey[snapshotKey(currentGrade, term)];
+    if (!slots?.has(key)) return false;
     slots.delete(key);
     if (term === currentTerm) {
       refreshViewGrid();
       refreshEditGrid();
     }
-    refreshNavPanel();
+    void refreshNavPanel();
     return true;
   }
 
@@ -325,8 +464,10 @@ export async function renderTimetableTab(content: HTMLElement): Promise<void> {
     }
     refreshViewGrid();
     refreshEditGrid();
-    refreshNavPanel();
+    void refreshNavPanel();
   }, NAV_REFRESH_INTERVAL_MS);
 
-  await loadAllTerms();
+  const { grades } = await api.listMyGrades();
+  for (const g of grades) knownGrades.add(g.grade);
+  await showGrade(currentGrade);
 }

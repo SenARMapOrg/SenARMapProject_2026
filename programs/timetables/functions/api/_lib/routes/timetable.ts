@@ -2,28 +2,42 @@ import type { Context } from "hono";
 import { Hono } from "hono";
 
 import {
-  areFriends, findCommonLocationForCourse, findUserById, listTimetable, replaceTimetable,
+  canViewSnapshot, findCommonLocationForCourse, findSnapshotByToken, findUserById,
+  getSnapshotSettings, listMyGrades, listPublicSnapshots, listTimetable, replaceTimetable,
+  upsertSnapshotSettings,
 } from "../db";
 import { requireAuth } from "../session";
-import type { AppEnv, Term } from "../types";
+import type { AppEnv, Term, Visibility } from "../types";
 import {
-  isValidTerm, MAX_COURSE_NAME_LEN, MAX_DAY_OF_WEEK, MAX_PERIOD, MAX_TIMETABLE_ENTRIES,
-  validateTimetableEntry, type RawTimetableEntry,
+  isValidGrade, isValidTerm, isValidVisibility, MAX_COURSE_NAME_LEN, MAX_DAY_OF_WEEK, MAX_PERIOD,
+  MAX_TIMETABLE_ENTRIES, validateTimetableEntry, type RawTimetableEntry,
 } from "../validate";
 
 export const timetableRoutes = new Hono<AppEnv>();
 
-/** ?term=spring|fall を取り出して検証する。共通化してGET/PUT/friend閲覧で同じ挙動にする */
+/** ?term=spring|fall を取り出して検証する。共通化してGET/PUT/閲覧系で同じ挙動にする */
 function resolveTerm(c: Context): Term | null {
   const term = c.req.query("term");
   return isValidTerm(term) ? term : null;
 }
 
+/** ?grade=1〜MAX_GRADE を取り出して検証する */
+function resolveGrade(c: Context): number | null {
+  const grade = Number(c.req.query("grade"));
+  return isValidGrade(grade) ? grade : null;
+}
+
+function shareUrl(c: Context, token: string): string {
+  return `${new URL(c.req.url).origin}/?shared=${token}`;
+}
+
 timetableRoutes.get("/", requireAuth(), async (c) => {
+  const grade = resolveGrade(c);
   const term = resolveTerm(c);
+  if (grade === null) return c.json({ error: "grade を正しく指定してください" }, 400);
   if (!term) return c.json({ error: "term は spring か fall を指定してください" }, 400);
   const user = c.get("user");
-  const entries = await listTimetable(c.env.DB, user.id, term);
+  const entries = await listTimetable(c.env.DB, user.id, grade, term);
   return c.json({ entries });
 });
 
@@ -35,6 +49,11 @@ timetableRoutes.put("/", requireAuth(), async (c) => {
     body = await c.req.json();
   } catch {
     return c.json({ error: "リクエストボディが不正なJSONです" }, 400);
+  }
+
+  const grade = (body as { grade?: unknown } | null)?.grade;
+  if (!isValidGrade(grade)) {
+    return c.json({ error: "grade を正しく指定してください" }, 400);
   }
 
   const term = (body as { term?: unknown } | null)?.term;
@@ -65,12 +84,14 @@ timetableRoutes.put("/", requireAuth(), async (c) => {
     validated.push(result.value);
   }
 
-  await replaceTimetable(c.env.DB, user.id, term, validated);
-  return c.json({ entries: await listTimetable(c.env.DB, user.id, term) });
+  await replaceTimetable(c.env.DB, user.id, grade, term, validated);
+  return c.json({ entries: await listTimetable(c.env.DB, user.id, grade, term) });
 });
 
 // 「科目名から追加」の自動入力候補。同じ学期・曜日・時限・科目名・担当教員で、自分以外の学生が
 // 登録している教室のうち最も多いものを返す（個人を特定できる情報は返さない）。
+// gradeでは絞らない: 同じ授業は毎年ほぼ同じ曜日・時限に開講されるため、学年をまたいで
+// プールした方が候補の母数が増えて有用（instructor+曜日+時限+科目名が既に十分具体的）。
 // instructor は任意（手入力科目など担当教員が無い場合は省略してよい＝NULL扱いで照合する）。
 timetableRoutes.get("/location-suggestion", requireAuth(), async (c) => {
   const term = resolveTerm(c);
@@ -99,34 +120,122 @@ timetableRoutes.get("/location-suggestion", requireAuth(), async (c) => {
   return c.json({ location });
 });
 
-// 友達の時間割を閲覧する。承諾済みの友達関係がある場合のみ許可する（サーバー側で必ず検証すること。
-// フロント側の表示制御だけに頼ると、URLを直接叩かれた場合に他人の時間割が漏洩する）。
-timetableRoutes.get("/friend/:userId", requireAuth(), async (c) => {
+// 自分が時間割を登録済みの(学年, 学期)一覧。「学年タブ」に何を並べるかに使う。
+timetableRoutes.get("/grades", requireAuth(), async (c) => {
+  const user = c.get("user");
+  const grades = await listMyGrades(c.env.DB, user.id);
+  return c.json({ grades });
+});
+
+// 指定(学年, 学期)スナップショットの公開範囲を取得する。
+timetableRoutes.get("/visibility", requireAuth(), async (c) => {
+  const grade = resolveGrade(c);
   const term = resolveTerm(c);
+  if (grade === null) return c.json({ error: "grade を正しく指定してください" }, 400);
+  if (!term) return c.json({ error: "term は spring か fall を指定してください" }, 400);
+
+  const user = c.get("user");
+  const settings = await getSnapshotSettings(c.env.DB, user.id, grade, term);
+  return c.json({
+    grade: settings.grade, term: settings.term, visibility: settings.visibility,
+    share_url: settings.share_token ? shareUrl(c, settings.share_token) : null,
+  });
+});
+
+// 指定(学年, 学期)スナップショットの公開範囲を変更する。
+timetableRoutes.put("/visibility", requireAuth(), async (c) => {
+  let body: unknown;
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: "リクエストボディが不正なJSONです" }, 400);
+  }
+  const grade = (body as { grade?: unknown } | null)?.grade;
+  const term = (body as { term?: unknown } | null)?.term;
+  const visibility = (body as { visibility?: unknown } | null)?.visibility;
+  if (!isValidGrade(grade)) return c.json({ error: "grade を正しく指定してください" }, 400);
+  if (!isValidTerm(term)) return c.json({ error: "term は spring か fall を指定してください" }, 400);
+  if (!isValidVisibility(visibility)) {
+    return c.json({ error: "visibility は private/friends/link/public のいずれかで指定してください" }, 400);
+  }
+
+  const user = c.get("user");
+  const settings = await upsertSnapshotSettings(c.env.DB, user.id, grade, term, visibility as Visibility);
+  return c.json({
+    grade: settings.grade, term: settings.term, visibility: settings.visibility,
+    share_url: settings.share_token ? shareUrl(c, settings.share_token) : null,
+  });
+});
+
+// 「みんなの時間割を探す」一覧。公開(public)設定のスナップショットのみ、学年/学期/学部/学科
+// （すべて任意）で絞り込む。
+timetableRoutes.get("/public", requireAuth(), async (c) => {
+  const gradeRaw = c.req.query("grade");
+  const grade = gradeRaw ? Number(gradeRaw) : undefined;
+  if (grade !== undefined && !isValidGrade(grade)) {
+    return c.json({ error: "grade を正しく指定してください" }, 400);
+  }
+  const termRaw = c.req.query("term");
+  if (termRaw && !isValidTerm(termRaw)) {
+    return c.json({ error: "term は spring か fall を指定してください" }, 400);
+  }
+  const faculty = c.req.query("faculty") || undefined;
+  const department = c.req.query("department") || undefined;
+
+  const user = c.get("user");
+  const snapshots = await listPublicSnapshots(c.env.DB, {
+    grade, term: termRaw as Term | undefined, faculty, department, excludeUserId: user.id,
+  });
+  return c.json({ snapshots });
+});
+
+// 他のユーザーの(学年, 学期)スナップショットを閲覧する。公開範囲(private/friends/public)を
+// サーバー側で必ず検証する（フロント側の表示制御だけに頼ると、URLを直接叩かれた場合に
+// 他人の時間割が漏洩する）。'link'モードのスナップショットはこのルートでは見られない
+// （/shared/:token 専用。userIdが分かれば誰でも直接呼べてしまうこのルートで許可すると
+// 「リンクを知っている人だけ」という前提が崩れるため）。
+timetableRoutes.get("/view/:userId", requireAuth(), async (c) => {
+  const grade = resolveGrade(c);
+  const term = resolveTerm(c);
+  if (grade === null) return c.json({ error: "grade を正しく指定してください" }, 400);
   if (!term) return c.json({ error: "term は spring か fall を指定してください" }, 400);
 
   const me = c.get("user");
-  const friendId = Number(c.req.param("userId"));
-  if (!Number.isInteger(friendId)) {
+  const targetId = Number(c.req.param("userId"));
+  if (!Number.isInteger(targetId)) {
     return c.json({ error: "userId が不正です" }, 400);
   }
-  if (friendId === me.id) {
-    return c.json({ error: "自分自身は指定できません" }, 400);
+
+  const allowed = await canViewSnapshot(c.env.DB, me.id, targetId, grade, term);
+  if (!allowed) {
+    return c.json({ error: "この時間割を閲覧する権限がありません" }, 403);
   }
 
-  const isFriend = await areFriends(c.env.DB, me.id, friendId);
-  if (!isFriend) {
-    return c.json({ error: "友達関係が確認できません" }, 403);
-  }
-
-  const friend = await findUserById(c.env.DB, friendId);
-  if (!friend) {
+  const target = await findUserById(c.env.DB, targetId);
+  if (!target) {
     return c.json({ error: "ユーザーが見つかりません" }, 404);
   }
 
-  const entries = await listTimetable(c.env.DB, friendId, term);
+  const entries = await listTimetable(c.env.DB, targetId, grade, term);
   return c.json({
-    user: { id: friend.id, display_name: friend.nickname ?? friend.display_name },
-    entries,
+    user: { id: target.id, display_name: target.nickname ?? target.display_name },
+    grade, term, entries,
+  });
+});
+
+// 共有リンク（?shared=token）経由での閲覧。ログイン（大学Googleアカウント）は必須。
+// トークンが一致すれば、友達関係の有無に関わらず閲覧できる
+// （visibilityが'link'/'public'の間だけトークンが発行されている前提。upsertSnapshotSettings参照）。
+timetableRoutes.get("/shared/:token", requireAuth(), async (c) => {
+  const token = c.req.param("token") ?? "";
+  const snapshot = token ? await findSnapshotByToken(c.env.DB, token) : null;
+  if (!snapshot) {
+    return c.json({ error: "共有リンクが無効です" }, 404);
+  }
+
+  const entries = await listTimetable(c.env.DB, snapshot.user_id, snapshot.grade, snapshot.term);
+  return c.json({
+    user: { id: snapshot.user_id, display_name: snapshot.display_name },
+    grade: snapshot.grade, term: snapshot.term, entries,
   });
 });
