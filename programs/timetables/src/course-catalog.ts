@@ -1,11 +1,15 @@
 // シラバスから収集した開講科目データ(programs/syllabus_courses)を検索するためのモジュール。
-// データ本体は public/courses.json（Viteがdistにそのままコピーする静的アセット）。
-// 更新するには programs/timetables/scripts/sync-courses.sh を参照。
+// データ本体は public/courses/{年度}.json（Viteがdistにそのままコピーする静的アセット。
+// 2020〜2026年度分を収集済み）。更新するには programs/timetables/scripts/sync-courses.sh を参照。
 //
 // 注意: このデータは「開講予定の一覧」であって、特定の学生の履修状況を示すものではない。
 // 科目名オートコンプリート・曜日/時限の自動入力の参考データとしてのみ使うこと。
 
 import type { Term } from "./api";
+
+/** シラバスデータが揃っている年度（public/courses/{year}.json が存在する年度）。降順で表示に使う */
+export const AVAILABLE_COURSE_YEARS = [2026, 2025, 2024, 2023, 2022, 2021, 2020];
+export const DEFAULT_COURSE_YEAR = AVAILABLE_COURSE_YEARS[0];
 
 export interface CourseCatalogEntry {
   course_name: string;
@@ -29,17 +33,39 @@ export interface CourseOffering {
   slots: { day_of_week: number; period: number }[];
 }
 
-let cachePromise: Promise<CourseCatalogEntry[]> | null = null;
+const catalogCache = new Map<number, Promise<CourseCatalogEntry[]>>();
 
-/** 初回呼び出し時だけ /courses.json を取得し、以降はメモリキャッシュを返す */
-export function loadCatalog(): Promise<CourseCatalogEntry[]> {
-  if (!cachePromise) {
-    cachePromise = fetch("/courses.json").then((res) => {
-      if (!res.ok) throw new Error("科目データを取得できませんでした");
+/** 指定年度の /courses/{year}.json を取得する。年度ごとに初回だけ取得し、以降はメモリキャッシュを返す */
+export function loadCatalog(year: number = DEFAULT_COURSE_YEAR): Promise<CourseCatalogEntry[]> {
+  let cached = catalogCache.get(year);
+  if (!cached) {
+    cached = fetch(`/courses/${year}.json`).then((res) => {
+      if (!res.ok) throw new Error(`${year}年度の科目データを取得できませんでした`);
       return res.json() as Promise<CourseCatalogEntry[]>;
     });
+    catalogCache.set(year, cached);
   }
-  return cachePromise;
+  return cached;
+}
+
+export interface DepartmentCatalog {
+  faculties: { name: string; departments: { name: string }[] }[];
+}
+
+let departmentsCache: Promise<DepartmentCatalog> | null = null;
+
+/**
+ * 学部/学科一覧（年度に依存しない共通データ）。プロフィール設定・「みんなの時間割を探す」の
+ * 絞り込みセレクトのデータソース。
+ */
+export function loadDepartmentCatalog(): Promise<DepartmentCatalog> {
+  if (!departmentsCache) {
+    departmentsCache = fetch("/departments.json").then((res) => {
+      if (!res.ok) throw new Error("学部/学科データを取得できませんでした");
+      return res.json() as Promise<DepartmentCatalog>;
+    });
+  }
+  return departmentsCache;
 }
 
 export function listFaculties(catalog: CourseCatalogEntry[]): string[] {
