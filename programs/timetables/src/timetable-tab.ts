@@ -94,12 +94,17 @@ export async function renderTimetableTab(content: HTMLElement, me: Me): Promise<
   backToViewBtn.textContent = "← 表示に戻る";
   const saveBtn = document.createElement("button");
   saveBtn.className = "btn btn-primary";
-  saveBtn.textContent = "保存（前期・後期まとめて）";
+  saveBtn.textContent = "今すぐ保存（前期・後期まとめて）";
   const saveMessageEl = document.createElement("span");
   saveMessageEl.className = "message";
   saveMessageEl.hidden = true;
   editHeaderRow.append(backToViewBtn, saveBtn, saveMessageEl);
   editSection.appendChild(editHeaderRow);
+
+  const autoSaveHint = document.createElement("p");
+  autoSaveHint.className = "hint";
+  autoSaveHint.textContent = "追加・削除すると自動的に保存されます（このボタンを押す必要はありません。押すとすぐに保存されます）。";
+  editSection.appendChild(autoSaveHint);
 
   const editGradeTermHint = document.createElement("p");
   editGradeTermHint.className = "hint edit-grade-term-hint";
@@ -351,28 +356,59 @@ export async function renderTimetableTab(content: HTMLElement, me: Me): Promise<
     btn.addEventListener("click", () => void showTerm(btn.dataset.term as Term));
   });
 
-  saveBtn.addEventListener("click", async () => {
-    saveBtn.disabled = true;
+  /**
+   * 指定した学年の前期・後期をまとめて保存する。追加・削除のたびに自動保存
+   * （scheduleAutoSave）される他、保存ボタンからも即時呼び出される
+   * （保存し忘れによる編集内容のロストを防ぐため、手動保存を必須にしない）。
+   */
+  async function saveGrade(grade: number): Promise<void> {
     saveMessageEl.hidden = true;
     try {
       const [springRes, fallRes] = await Promise.all([
-        api.putTimetable(currentGrade, "spring", slotMapToEntries(slotsByKey[snapshotKey(currentGrade, "spring")] ?? new Map())),
-        api.putTimetable(currentGrade, "fall", slotMapToEntries(slotsByKey[snapshotKey(currentGrade, "fall")] ?? new Map())),
+        api.putTimetable(grade, "spring", slotMapToEntries(slotsByKey[snapshotKey(grade, "spring")] ?? new Map())),
+        api.putTimetable(grade, "fall", slotMapToEntries(slotsByKey[snapshotKey(grade, "fall")] ?? new Map())),
       ]);
-      slotsByKey[snapshotKey(currentGrade, "spring")] = buildSlotMap(springRes.entries);
-      slotsByKey[snapshotKey(currentGrade, "fall")] = buildSlotMap(fallRes.entries);
-      knownGrades.add(currentGrade);
+      slotsByKey[snapshotKey(grade, "spring")] = buildSlotMap(springRes.entries);
+      slotsByKey[snapshotKey(grade, "fall")] = buildSlotMap(fallRes.entries);
+      knownGrades.add(grade);
       refreshGradeTabs();
-      refreshViewGrid();
-      refreshEditGrid();
+      if (grade === currentGrade) {
+        refreshViewGrid();
+        refreshEditGrid();
+      }
       void refreshNavPanel();
-      saveMessageEl.textContent = `${gradeLabel(currentGrade)}の前期・後期どちらも保存しました`;
+      saveMessageEl.textContent = `${gradeLabel(grade)}の前期・後期どちらも保存しました`;
       saveMessageEl.className = "message message-ok";
     } catch (err) {
       saveMessageEl.textContent = err instanceof ApiError ? err.message : "保存に失敗しました";
       saveMessageEl.className = "message message-error";
     } finally {
       saveMessageEl.hidden = false;
+    }
+  }
+
+  // 追加・削除のたびに毎回即保存すると連続操作中に無駄なPUTが増えるので少し間引く。
+  // 間引いている間に複数の学年をまたいで編集された場合に備え、保存待ちの学年を集合で持つ。
+  const AUTO_SAVE_DEBOUNCE_MS = 600;
+  let autoSaveTimer: ReturnType<typeof setTimeout> | null = null;
+  const dirtyGrades = new Set<number>();
+
+  function scheduleAutoSave(grade: number): void {
+    dirtyGrades.add(grade);
+    if (autoSaveTimer !== null) clearTimeout(autoSaveTimer);
+    autoSaveTimer = setTimeout(() => {
+      autoSaveTimer = null;
+      const grades = [...dirtyGrades];
+      dirtyGrades.clear();
+      for (const g of grades) void saveGrade(g);
+    }, AUTO_SAVE_DEBOUNCE_MS);
+  }
+
+  saveBtn.addEventListener("click", async () => {
+    saveBtn.disabled = true;
+    try {
+      await saveGrade(currentGrade);
+    } finally {
       saveBtn.disabled = false;
     }
   });
@@ -403,6 +439,7 @@ export async function renderTimetableTab(content: HTMLElement, me: Me): Promise<
       refreshEditGrid();
     }
     void refreshNavPanel();
+    scheduleAutoSave(currentGrade);
     return true;
   }
 
@@ -417,6 +454,7 @@ export async function renderTimetableTab(content: HTMLElement, me: Me): Promise<
       refreshEditGrid();
     }
     void refreshNavPanel();
+    scheduleAutoSave(currentGrade);
     return true;
   }
 
