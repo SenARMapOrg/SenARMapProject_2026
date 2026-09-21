@@ -174,6 +174,13 @@ export async function renderTimetableTab(content: HTMLElement, me: Me): Promise<
     addBtn.textContent = "+ 学年を追加";
     addBtn.addEventListener("click", () => void addGrade());
     gradeTabs.appendChild(addBtn);
+
+    const renameBtn = document.createElement("button");
+    renameBtn.type = "button";
+    renameBtn.className = "btn-link grade-add-btn";
+    renameBtn.textContent = `${gradeLabel(currentGrade)}を変更`;
+    renameBtn.addEventListener("click", () => void renameGrade());
+    gradeTabs.appendChild(renameBtn);
   }
 
   async function addGrade(): Promise<void> {
@@ -184,9 +191,57 @@ export async function renderTimetableTab(content: HTMLElement, me: Me): Promise<
       alert("学年は1〜8の整数で入力してください。");
       return;
     }
+    if (knownGrades.has(grade)) {
+      alert(`${gradeLabel(grade)}は既にあります。`);
+      return;
+    }
     knownGrades.add(grade);
     refreshGradeTabs();
     await showGrade(grade);
+  }
+
+  /**
+   * 「1年次として登録したけど実は2年次だった」のような、後からの学年の付け替え。
+   * 今表示中の学年(currentGrade)を丸ごと別の番号に変更する（前期・後期・公開範囲設定ごと）。
+   * 変更先の学年に既に時間割や公開設定がある場合はサーバー側で拒否される
+   * （黙って上書き・混在させると既存のデータが消えてしまうため）。
+   */
+  async function renameGrade(): Promise<void> {
+    const raw = prompt(
+      `${gradeLabel(currentGrade)}を何年次に変更しますか？（1〜8の整数）`, String(currentGrade),
+    );
+    if (raw === null) return;
+    const toGrade = Number(raw.trim());
+    if (!Number.isInteger(toGrade) || toGrade < 1 || toGrade > 8) {
+      alert("学年は1〜8の整数で入力してください。");
+      return;
+    }
+    if (toGrade === currentGrade) return;
+    if (knownGrades.has(toGrade)) {
+      alert(`${gradeLabel(toGrade)}は既にあります。先にそちらを削除するか別の番号にしてください。`);
+      return;
+    }
+
+    const fromGrade = currentGrade;
+    try {
+      const res = await api.changeGrade(fromGrade, toGrade);
+      for (const term of ["spring", "fall"] as Term[]) {
+        const slots = slotsByKey[snapshotKey(fromGrade, term)];
+        delete slotsByKey[snapshotKey(fromGrade, term)];
+        if (slots) slotsByKey[snapshotKey(toGrade, term)] = slots;
+      }
+      knownGrades.delete(fromGrade);
+      knownGrades.add(toGrade);
+      currentGrade = toGrade;
+      me.current_grade = res.current_grade;
+      refreshGradeTabs();
+      refreshViewGrid();
+      refreshEditGrid();
+      void refreshVisibilityPanel();
+      void refreshNavPanel();
+    } catch (err) {
+      alert(err instanceof ApiError ? err.message : "学年の変更に失敗しました");
+    }
   }
 
   /**

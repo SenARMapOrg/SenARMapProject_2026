@@ -237,6 +237,50 @@ export async function getSnapshotSettings(
 }
 
 /**
+ * 学年タブそのものを付け替える（前期・後期どちらのtimetable_entriesも、公開範囲設定
+ * (timetable_snapshot_settings)も、まとめてfromGrade→toGradeに移動する）。
+ * 「1年次として登録したけど実は2年次だった」のような後からの学年訂正に使う。
+ *
+ * 移動先(toGrade)に既に時間割か公開設定がある場合は失敗させる（黙って上書き・混在させると
+ * 既存のスナップショットが消えてしまうため。先にtoGrade側を削除/移動してもらう）。
+ * fromGradeがそのユーザーのcurrent_grade（「今の学年」、ナビ機能が見る学年）だった場合は、
+ * current_gradeも一緒にtoGradeへスライドさせる（同じスナップショットの番号が変わっただけなので）。
+ */
+export async function changeGrade(
+  db: D1Database, userId: number, fromGrade: number, toGrade: number,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (fromGrade === toGrade) {
+    return { ok: false, error: "変更後の学年が変更前と同じです" };
+  }
+
+  const [existingEntries, existingSettings, user] = await Promise.all([
+    db.prepare("SELECT 1 FROM timetable_entries WHERE user_id = ? AND grade = ? LIMIT 1")
+      .bind(userId, toGrade).first(),
+    db.prepare("SELECT 1 FROM timetable_snapshot_settings WHERE user_id = ? AND grade = ? LIMIT 1")
+      .bind(userId, toGrade).first(),
+    findUserById(db, userId),
+  ]);
+  if (existingEntries || existingSettings) {
+    return { ok: false, error: `${toGrade}年次には既に時間割または公開設定があるため変更できません` };
+  }
+
+  const stmts = [
+    db.prepare("UPDATE timetable_entries SET grade = ?, updated_at = datetime('now') WHERE user_id = ? AND grade = ?")
+      .bind(toGrade, userId, fromGrade),
+    db.prepare("UPDATE timetable_snapshot_settings SET grade = ?, updated_at = datetime('now') WHERE user_id = ? AND grade = ?")
+      .bind(toGrade, userId, fromGrade),
+  ];
+  if (user?.current_grade === fromGrade) {
+    stmts.push(
+      db.prepare("UPDATE users SET current_grade = ?, updated_at = datetime('now') WHERE id = ?")
+        .bind(toGrade, userId),
+    );
+  }
+  await db.batch(stmts);
+  return { ok: true };
+}
+
+/**
  * 公開範囲を変更する。visibilityが'link'/'public'になった時だけ共有トークンを発行し
  * （既にあれば使い回す）、'private'/'friends'に戻したらトークンを破棄する
  * （トークンの存在＝共有リンクが有効、という不変条件をここで維持する）。
