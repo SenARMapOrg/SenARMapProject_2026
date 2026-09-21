@@ -190,8 +190,11 @@ export async function renderTimetableTab(content: HTMLElement, me: Me): Promise<
   }
 
   /**
-   * 「今の教室→次の教室」ナビボタン。表示中の学年・学期タブとは無関係に、実際の「今」の
-   * 学年+学期（me.current_grade + guessCurrentTerm()）のデータを見る。
+   * 「今の教室→次の教室」ナビボタン。学年は表示中の学年タブとは無関係に、実際の「今」の学年
+   * （me.current_grade）を見る。学期は「今が前期か後期か」をカレンダーだけから機械的に
+   * 判定すると学期の切り替わり時期にずれることがあるため、代わりに今開いている学期タブ
+   * （currentTerm）をそのまま「今の学期」として使う。学期タブを切り替えると、この案内も
+   * その学期の登録内容に基づいて更新される。
    * 次の時限に教室が登録されていない場合はナビを開けない（行き先が無いと案内できないため）。
    * 今の時限に教室が無い場合は「空」のまま出発地なしで開く。
    */
@@ -207,7 +210,7 @@ export async function renderTimetableTab(content: HTMLElement, me: Me): Promise<
       return;
     }
 
-    const liveTerm = guessCurrentTerm();
+    const liveTerm = currentTerm;
     await ensureSnapshotLoaded(me.current_grade, liveTerm);
     const todaySlots = slotsByKey[snapshotKey(me.current_grade, liveTerm)] ?? new Map();
     const currentEntry = now.currentPeriod !== null
@@ -224,7 +227,7 @@ export async function renderTimetableTab(content: HTMLElement, me: Me): Promise<
 
     const statusEl = document.createElement("p");
     statusEl.className = "hint nav-status";
-    statusEl.textContent = `現在: ${now.currentPeriod !== null ? describe(now.currentPeriod, currentEntry) : "授業時間外"}　次: ${now.nextPeriod !== null ? describe(now.nextPeriod, nextEntry) : "本日はこれ以上時限がありません"}`;
+    statusEl.textContent = `(${TERM_LABELS[liveTerm]}の時間割を表示中) 現在: ${now.currentPeriod !== null ? describe(now.currentPeriod, currentEntry) : "授業時間外"}　次: ${now.nextPeriod !== null ? describe(now.nextPeriod, nextEntry) : "本日はこれ以上時限がありません"}`;
     navPanel.appendChild(statusEl);
 
     if (now.nextPeriod === null) return;
