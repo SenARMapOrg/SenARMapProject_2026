@@ -2,7 +2,7 @@ import type { Context } from "hono";
 import { Hono } from "hono";
 
 import {
-  canViewSnapshot, findCommonLocationForCourse, findSnapshotByToken, findUserById,
+  canViewSnapshot, changeGrade, findCommonLocationForCourse, findSnapshotByToken, findUserById,
   getSnapshotSettings, listMyGrades, listPublicSnapshots, listTimetable, replaceTimetable,
   upsertSnapshotSettings,
 } from "../db";
@@ -125,6 +125,28 @@ timetableRoutes.get("/grades", requireAuth(), async (c) => {
   const user = c.get("user");
   const grades = await listMyGrades(c.env.DB, user.id);
   return c.json({ grades });
+});
+
+// 学年タブを付け替える（前期・後期・公開設定ごと丸ごと別の学年番号に移動する）。
+// 「1年次で登録したけど実は2年次だった」のような後からの学年訂正用。
+timetableRoutes.put("/grade", requireAuth(), async (c) => {
+  let body: unknown;
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: "リクエストボディが不正なJSONです" }, 400);
+  }
+  const fromGrade = (body as { from_grade?: unknown } | null)?.from_grade;
+  const toGrade = (body as { to_grade?: unknown } | null)?.to_grade;
+  if (!isValidGrade(fromGrade)) return c.json({ error: "from_grade を正しく指定してください" }, 400);
+  if (!isValidGrade(toGrade)) return c.json({ error: "to_grade を正しく指定してください" }, 400);
+
+  const user = c.get("user");
+  const result = await changeGrade(c.env.DB, user.id, fromGrade, toGrade);
+  if (!result.ok) return c.json({ error: result.error }, 409);
+
+  const updated = await findUserById(c.env.DB, user.id);
+  return c.json({ from_grade: fromGrade, to_grade: toGrade, current_grade: updated?.current_grade ?? user.current_grade });
 });
 
 // 指定(学年, 学期)スナップショットの公開範囲を取得する。

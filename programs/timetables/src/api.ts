@@ -145,6 +145,15 @@ export const api = {
     return apiFetch("/api/timetable/grades");
   },
 
+  /** 学年タブを付け替える（前期・後期・公開設定ごと丸ごと別の学年番号に移動する） */
+  changeGrade(
+    fromGrade: number, toGrade: number,
+  ): Promise<{ from_grade: number; to_grade: number; current_grade: number }> {
+    return apiFetch("/api/timetable/grade", {
+      method: "PUT", body: JSON.stringify({ from_grade: fromGrade, to_grade: toGrade }),
+    });
+  },
+
   getSnapshotSettings(grade: number, term: Term): Promise<SnapshotSettings> {
     return apiFetch(`/api/timetable/visibility?grade=${grade}&term=${term}`);
   },
