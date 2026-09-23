@@ -82,7 +82,7 @@ id,x,y,z,building,floor,type,svg_x,svg_y
 
 `right`/`left` は2026年9月時点でどの建物の `edge.csv` にも実データは入っていない（列自体が無くても空文字として動作する）。将来、音声案内（naviの右左折案内）などで「左手に◯◯教室があります」のような案内を出す際に使う想定の列。
 
-CSVには `from`→`to` 片方向の値しか記述しないが、経路探索でその区間を逆向き（`to`→`from`）に通る場合、`programs/3D_Graph/app.py` の `build_graph` がグラフに逆方向のエッジを追加する際に `right`/`left` を自動的に入れ替える。そのため CSV編集者は常に「CSVの `from`→`to` 方向を向いたときの右左」だけを意識すればよく、API（`path_edges`）から返る値は経路の実際の進行方向を基準にした値になる。
+CSVには `from`→`to` 片方向の値しか記述しないが、経路探索でその区間を逆向き（`to`→`from`）に通る場合、`programs/3D_Graph/ikunavi/graph.py` の `build_graph` がグラフに逆方向のエッジを追加する際に `right`/`left` を自動的に入れ替える。そのため CSV編集者は常に「CSVの `from`→`to` 方向を向いたときの右左」だけを意識すればよく、API（`path_edges`）から返る値は経路の実際の進行方向を基準にした値になる。
 
 ### エッジ種別 (`type`)
 
@@ -249,7 +249,7 @@ building,local_node_id,global_node_id
 
 #### アンカーによる接続エッジの自動生成
 
-`anchors.csv` の対応 1 行ごとに、建物ローカルノード ↔ 屋外ノードを繋ぐ **type 7（入口）** のエッジが自動生成されます。type 7 エッジには入口通過ペナルティ（`app.py` の `ENTRANCE_PENALTY = 50.0`）がコストに加算され、建物を通り抜けるだけのルートが選ばれにくくなっています。
+`anchors.csv` の対応 1 行ごとに、建物ローカルノード ↔ 屋外ノードを繋ぐ **type 7（入口）** のエッジが自動生成されます。type 7 エッジには入口通過ペナルティ（`ikunavi/config.py` の `ENTRANCE_PENALTY = 50.0`）がコストに加算され、建物を通り抜けるだけのルートが選ばれにくくなっています。
 
 ---
 

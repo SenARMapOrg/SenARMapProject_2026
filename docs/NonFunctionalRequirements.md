@@ -35,7 +35,7 @@
 
 ### コンテナ（Swarm サービス）構成
 
-nginx は Cloudflare Pages 移行に伴い完全撤去済み（`deploy_env/docker-compose.yml` にサービス定義なし）。外部からの振り分けは cloudflared の Public Hostname パスルーティングが直接行う（`/redirect/*` → counter、それ以外 → python）。CORS ヘッダは Flask（`app.py` の `after_request`）が返す。
+nginx は Cloudflare Pages 移行に伴い完全撤去済み（`deploy_env/docker-compose.yml` にサービス定義なし）。外部からの振り分けは cloudflared の Public Hostname パスルーティングが直接行う（`/redirect/*` → counter、それ以外 → python）。CORS ヘッダは Flask（`ikunavi/__init__.py` の `after_request`）が返す。
 
 | サービス名 | 役割 | 平常時レプリカ |
 | :--- | :--- | :---: |
@@ -83,7 +83,7 @@ nginx は Cloudflare Pages 移行に伴い完全撤去済み（`deploy_env/docke
 | 通信暗号化 | 静的サイト（Cloudflare Pages）・API（Cloudflare Tunnel）ともに Cloudflare 側で TLS 終端 |
 | 不要ポートの閉鎖 | パブリックポート公開なし。外部アクセスはすべて Pages または cloudflared 経由 |
 | gunicorn 外部非公開 | ポート 8000 はコンテナ内部通信のみ（Swarm overlay network）。cloudflared → python 直結（nginx 等の中継なし） |
-| CORS | Flask（`app.py` の `after_request`）が `iku-navi.net` / `www.iku-navi.net` / `*.pages.dev` のみ許可（GETのみの単純リクエストのためプリフライト対応は不要） |
+| CORS | Flask（`ikunavi/__init__.py` の `after_request`）が `iku-navi.net` / `www.iku-navi.net` / `*.pages.dev` のみ許可（GETのみの単純リクエストのためプリフライト対応は不要） |
 | ファイアウォール | `ufw` で SSH のみ許可（Swarm ノード間は 2377/7946/4789 を追加） |
 | パッケージ更新 | OS・依存ライブラリを月1回以上アップデート |
 | 機密情報管理 | `.env` で管理（Git 管理対象外）。Swarm では環境変数としてサービスに渡す。`GOOGLE_MAPS_API_KEY` はサーバー側では不要（Cloudflare Pages のビルド時環境変数として管理） |

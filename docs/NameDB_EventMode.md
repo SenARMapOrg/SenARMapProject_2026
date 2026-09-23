@@ -2,7 +2,7 @@
 
 `data/name.csv`・`data/building_name.csv`・`data/ignore.csv`・`data/event.csv` を編集するだけで、
 コード変更なしに表示名やイベント検索を設定できます。
-いずれも Flask（`programs/3D_Graph/app.py`）が起動時に読み込みます。編集後はサーバーの再起動（またはキャッシュクリア）が必要です。
+いずれも Flask（`programs/3D_Graph/`）が起動時に読み込みます。編集後はサーバーの再起動（またはキャッシュクリア）が必要です。
 
 ---
 
