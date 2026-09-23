@@ -27,9 +27,10 @@ AR 領域にはエッジ間の経路写真（Cloudflare R2 CDN 配信）を表�
 ```
 SenARMapProject_2026/
 ├── programs/
-│   ├── 3D_Graph/          # Flask バックエンド (app.py) + 3D 経路ビューア（経路探索APIの実体）
+│   ├── 3D_Graph/          # Flask バックエンド (app.py + ikunavi/) + 3D 経路ビューア（経路探索APIの実体）
 │   ├── html/               # Cloudflare Pages 公開ルート（ナビ UI・AR画面・blog・SVG 等。本番で実際に配信されるのはこちら）
 │   ├── Website/             # プロジェクト紹介 LP（学内発表用、Pages では非公開）
+│   ├── gui_common/          # 下記デスクトップツール群が共有するモジュール（パス・APIセッション・配色・起動処理）
 │   ├── Map_Editor/          # ノード・エッジ・経路写真をまとめて入力する統合編集GUI（PyQt6）
 │   ├── Image_Checker/       # CDN上のエッジ画像の存在確認GUI（PyQt6）
 │   ├── Route_Checker/       # 全教室ペア間ルートの異常検出GUI（PyQt6）
