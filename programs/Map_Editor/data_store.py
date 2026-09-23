@@ -12,14 +12,13 @@ data/{building}_bldg/node.csv・edge.csv・data/edge_image.csv の読み書き�
 
 import csv
 import re
+import sys
 from pathlib import Path
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
-DATA_DIR  = REPO_ROOT / "data"
-SVG_DIR   = REPO_ROOT / "programs" / "html" / "svg"
-PHOTO_DIR = REPO_ROOT / "captured_photos"
+sys.path.append(str(Path(__file__).resolve().parents[1]))
+from gui_common.paths import DATA_DIR, PHOTO_DIR, REPO_ROOT, SVG_DIR  # noqa: F401  (他モジュールが data_store 経由で参照する)
 
-ID_OFFSET = 100_000  # programs/3D_Graph/app.py の ID_OFFSET と一致させること
+ID_OFFSET = 100_000  # programs/3D_Graph/ikunavi/config.py の ID_OFFSET と一致させること
 
 NODE_TYPE_LABELS = {1: "通常ノード", 2: "出入り口"}
 EDGE_TYPE_LABELS = {

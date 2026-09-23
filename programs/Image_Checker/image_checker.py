@@ -18,10 +18,9 @@ import threading
 import unicodedata
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
+from pathlib import Path
 
 import requests
-from requests.adapters import HTTPAdapter
-from urllib3.util.retry import Retry
 
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QWidget,
@@ -33,60 +32,48 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt, QThread, pyqtSignal, QTimer
 from PyQt6.QtGui import QFont, QColor, QPixmap, QPainter, QPen
 
+sys.path.append(str(Path(__file__).resolve().parents[1]))
+from gui_common import qt_app
+from gui_common.api import BROWSER_HEADERS, DEFAULT_API, make_session
+from gui_common.labels import building_label as _bldg_label
+from gui_common.theme import (
+    ACCENT,
+    BG_BAR,
+    BG_WIN,
+    BORDER,
+    BTN_ACTIVE,
+    BTN_IDLE,
+    COL_ERR,
+    COL_OK,
+    COL_WARN,
+    INPUT_BG,
+    TXT_KEY,
+    TXT_PRIMARY,
+    TXT_SUB,
+    base_stylesheet,
+)
+
 
 # ── 設定 ──────────────────────────────────────────────────────────────────────
-DEFAULT_API = "http://localhost:5001"
 CARD_W      = 230
 CARD_H      = 215
 THUMB_H     = 135
 MAX_WORKERS = 6     # Cloudflare レート制限対策で抑え気味
 
-# Accept-Encoding に "br" を入れると Cloudflare が Brotli で返し、
-# brotli パッケージ未インストール環境では解凍できず空になるため除外。
-# requests のデフォルト (gzip, deflate) に任せる。
-BROWSER_HEADERS = {
-    "User-Agent": (
-        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
-        "AppleWebKit/537.36 (KHTML, like Gecko) "
-        "Chrome/125.0.0.0 Safari/537.36"
-    ),
-    "Accept-Language": "ja,en-US;q=0.9,en;q=0.8",
-    "Connection":      "keep-alive",
-}
-
-
 def _make_session() -> requests.Session:
-    s = requests.Session()
-    s.headers.update(BROWSER_HEADERS)
-    retry = Retry(total=3, backoff_factor=0.5,
-                  status_forcelist=[429, 500, 502, 503, 504])
-    adapter = HTTPAdapter(max_retries=retry)
-    s.mount("https://", adapter)
-    s.mount("http://",  adapter)
-    return s
+    return make_session(headers=BROWSER_HEADERS, total=3, backoff_factor=0.5,
+                        status_forcelist=(429, 500, 502, 503, 504))
 
 
-# ── パレット ──────────────────────────────────────────────────────────────────
-BG_WIN        = "#111827"
-BG_BAR        = "#1F2937"
-BG_CARD_OK    = "#0C2318"
-BG_CARD_NG    = "#2B0F0F"
-BG_CARD_UNREG = "#1A1A2A"
-BG_CARD_LOAD  = "#1A2233"
+# ── パレット（共通色は gui_common.theme、ここはこのツール固有の色だけ）──────────
+BG_CARD_OK     = "#0C2318"
+BG_CARD_NG     = "#2B0F0F"
+BG_CARD_UNREG  = "#1A1A2A"
+BG_CARD_LOAD   = "#1A2233"
 BG_CARD_NOTREQ = "#12283A"
-BG_THUMB      = "#0D1626"
-TXT_PRIMARY   = "#F1F5F9"
-TXT_SECONDARY = "#94A3B8"
-TXT_KEY       = "#CBD5E1"
-ACCENT        = "#00B8E6"
-COL_OK        = "#4ADE80"
-COL_NG        = "#F87171"
-COL_UNREG     = "#6B7280"
-COL_NOTREQ    = "#38BDF8"
-COL_WARN      = "#FBBF24"
-BTN_ACTIVE    = "#0E7490"
-BTN_IDLE      = "#374151"
-BORDER        = "#2D3748"
+BG_THUMB       = "#0D1626"
+COL_UNREG      = "#6B7280"
+COL_NOTREQ     = "#38BDF8"
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -256,7 +243,7 @@ class ImageCard(QFrame):
             bldg_txt += f" {self.floor}階"
         bldg_lbl = QLabel(bldg_txt)
         bldg_lbl.setFont(QFont("", 11))
-        bldg_lbl.setStyleSheet(f"color: {TXT_SECONDARY}; background: transparent;")
+        bldg_lbl.setStyleSheet(f"color: {TXT_SUB}; background: transparent;")
         vb.addWidget(bldg_lbl)
 
         root.addWidget(info)
@@ -282,11 +269,11 @@ class ImageCard(QFrame):
         conf = {
             "loading":      ("読み込み中...",      COL_WARN),
             "ok":           ("✔  OK",              COL_OK),
-            "missing":      ("✕  CDN に存在しない", COL_NG),
+            "missing":      ("✕  CDN に存在しない", COL_ERR),
             "unregistered": ("—  CSV 未登録",       COL_UNREG),
             "not_required": ("◎  AR起動区間（不要）", COL_NOTREQ),
         }
-        text, color = conf.get(self._state, ("", TXT_SECONDARY))
+        text, color = conf.get(self._state, ("", TXT_SUB))
         self._status.setText(text)
         self._status.setStyleSheet(
             f"color: {color}; background: transparent; padding-bottom: 2px;"
@@ -296,9 +283,9 @@ class ImageCard(QFrame):
 
     def _draw_thumb_for_state(self):
         if self._state == "loading":
-            self._draw_text_thumb("取得中...", TXT_SECONDARY, BG_THUMB)
+            self._draw_text_thumb("取得中...", TXT_SUB, BG_THUMB)
         elif self._state == "missing":
-            self._draw_text_thumb("✕  画像なし", COL_NG, "#180808")
+            self._draw_text_thumb("✕  画像なし", COL_ERR, "#180808")
         elif self._state == "unregistered":
             self._draw_text_thumb("—  未登録", COL_UNREG, "#111120")
         elif self._state == "not_required":
@@ -336,7 +323,7 @@ class ImageCard(QFrame):
                 return
 
         self._state = "missing"
-        self._draw_text_thumb("✕  画像なし", COL_NG, "#180808")
+        self._draw_text_thumb("✕  画像なし", COL_ERR, "#180808")
         self._update_status_label()
         self._apply_style()
 
@@ -394,7 +381,7 @@ class ExportDialog(QDialog):
 
         row = QHBoxLayout()
         lbl = QLabel("対象号館:")
-        lbl.setStyleSheet(f"color: {TXT_SECONDARY}; font-size: 15px;")
+        lbl.setStyleSheet(f"color: {TXT_SUB}; font-size: 15px;")
         row.addWidget(lbl)
 
         self._combo = QComboBox()
@@ -546,29 +533,7 @@ class MainWindow(QMainWindow):
     # ── テーマ ────────────────────────────────────────────────────────────────
 
     def _apply_theme(self):
-        self.setStyleSheet(f"""
-            QMainWindow, QWidget  {{ background: {BG_WIN}; color: {TXT_PRIMARY}; }}
-            QScrollArea           {{ background: {BG_WIN}; border: none; }}
-            QScrollBar:vertical   {{ background: {BG_BAR}; width: 8px; border-radius: 4px; }}
-            QScrollBar::handle:vertical {{
-                background: #4B5563; border-radius: 4px; min-height: 20px;
-            }}
-            QScrollBar:horizontal {{ background: {BG_BAR}; height: 8px; border-radius: 4px; }}
-            QScrollBar::handle:horizontal {{
-                background: #4B5563; border-radius: 4px; min-width: 20px;
-            }}
-            QLineEdit {{
-                background: #374151; color: {TXT_PRIMARY};
-                border: 1px solid #4B5563; border-radius: 6px;
-                padding: 5px 10px; font-size: 15px;
-            }}
-            QLineEdit:focus {{ border-color: {ACCENT}; }}
-            QProgressBar {{
-                background: #374151; border: none; border-radius: 4px;
-                color: transparent;
-            }}
-            QProgressBar::chunk {{ background: {ACCENT}; border-radius: 4px; }}
-        """)
+        self.setStyleSheet(base_stylesheet())
 
     # ── UI 構築 ───────────────────────────────────────────────────────────────
 
@@ -597,7 +562,7 @@ class MainWindow(QMainWindow):
 
         row.addSpacing(12)
         lbl = QLabel("API URL:")
-        lbl.setStyleSheet(f"color: {TXT_SECONDARY}; font-size: 16px;")
+        lbl.setStyleSheet(f"color: {TXT_SUB}; font-size: 16px;")
         row.addWidget(lbl)
 
         self._api_edit = QLineEdit(DEFAULT_API)
@@ -614,7 +579,7 @@ class MainWindow(QMainWindow):
             }}
             QPushButton:hover    {{ background: #22D4FF; }}
             QPushButton:pressed  {{ background: #0099BB; }}
-            QPushButton:disabled {{ background: #374151; color: {TXT_SECONDARY}; }}
+            QPushButton:disabled {{ background: {INPUT_BG}; color: {TXT_SUB}; }}
         """)
         self._fetch_btn.clicked.connect(self._start_fetch)
         row.addWidget(self._fetch_btn)
@@ -648,7 +613,7 @@ class MainWindow(QMainWindow):
         row.addStretch()
 
         self._status_lbl = QLabel("API URL を入力して「取得開始」")
-        self._status_lbl.setStyleSheet(f"color: {TXT_SECONDARY}; font-size: 16px;")
+        self._status_lbl.setStyleSheet(f"color: {TXT_SUB}; font-size: 16px;")
         row.addWidget(self._status_lbl)
 
         return bar
@@ -675,7 +640,7 @@ class MainWindow(QMainWindow):
 
         # ── 号館フィルタ ─────────────────────────────────────────────────────
         lbl1 = QLabel("号館:")
-        lbl1.setStyleSheet(f"color: {TXT_SECONDARY}; font-size: 16px;")
+        lbl1.setStyleSheet(f"color: {TXT_SUB}; font-size: 16px;")
         self._filterbar_row.addWidget(lbl1)
 
         all_bldg = self._make_pill("全て", True)
@@ -700,7 +665,7 @@ class MainWindow(QMainWindow):
 
         # ── 状態フィルタ ──────────────────────────────────────────────────────
         lbl2 = QLabel("表示:")
-        lbl2.setStyleSheet(f"color: {TXT_SECONDARY}; font-size: 16px;")
+        lbl2.setStyleSheet(f"color: {TXT_SUB}; font-size: 16px;")
         self._filterbar_row.addWidget(lbl2)
 
         self._state_btns: dict[str, QPushButton] = {}
@@ -720,7 +685,7 @@ class MainWindow(QMainWindow):
         self._filterbar_row.addStretch()
 
         self._count_lbl = QLabel("")
-        self._count_lbl.setStyleSheet(f"color: {TXT_SECONDARY}; font-size: 16px;")
+        self._count_lbl.setStyleSheet(f"color: {TXT_SUB}; font-size: 16px;")
         self._filterbar_row.addWidget(self._count_lbl)
 
     def _make_pill(self, text: str, active: bool) -> QPushButton:
@@ -760,7 +725,7 @@ class MainWindow(QMainWindow):
     def _placeholder_label(self, text: str) -> QLabel:
         lbl = QLabel(text)
         lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        lbl.setStyleSheet(f"color: {TXT_SECONDARY}; font-size: 16px;")
+        lbl.setStyleSheet(f"color: {TXT_SUB}; font-size: 16px;")
         return lbl
 
     def _build_scroll(self) -> QScrollArea:
@@ -789,7 +754,7 @@ class MainWindow(QMainWindow):
         self._filter_state     = FILTER_ALL
 
         self._fetch_btn.setEnabled(False)
-        self._set_status("API に接続中...", TXT_SECONDARY)
+        self._set_status("API に接続中...", TXT_SUB)
         self._progress.setRange(0, 1)
         self._progress.setValue(0)
 
@@ -800,7 +765,7 @@ class MainWindow(QMainWindow):
 
     def _on_fetch_error(self, msg: str):
         self._fetch_btn.setEnabled(True)
-        self._set_status(f"エラー: {msg}", COL_NG)
+        self._set_status(f"エラー: {msg}", COL_ERR)
         QMessageBox.critical(
             self, "取得エラー",
             f"API への接続に失敗しました:\n\n{msg}\n\n"
@@ -810,7 +775,7 @@ class MainWindow(QMainWindow):
     def _on_graph_data(self, nodes_map: dict, edges_list: list, edge_images: dict):
         """グラフ上の全エッジ（両方向）を網羅してカードを生成する"""
 
-        self._set_status("グラフを解析中...", TXT_SECONDARY)
+        self._set_status("グラフを解析中...", TXT_SUB)
 
         buildings_set: set[int] = set()
         tasks: list[tuple[str, str]] = []   # 登録済みエッジの (key, url) リスト
@@ -865,7 +830,7 @@ class MainWindow(QMainWindow):
         self._set_status(
             f"全 {total_edges} エッジ  登録済 {registered}  未登録 {unreg}  "
             f"AR起動区間(不要) {not_required}  — 画像取得中...",
-            TXT_SECONDARY,
+            TXT_SUB,
         )
         self._progress.setRange(0, max(1, registered))
         self._progress.setValue(0)
@@ -891,7 +856,7 @@ class MainWindow(QMainWindow):
 
     def _on_progress(self, done: int, total: int):
         self._progress.setValue(done)
-        self._set_status(f"画像取得中... {done} / {total}", TXT_SECONDARY)
+        self._set_status(f"画像取得中... {done} / {total}", TXT_SUB)
 
     def _on_images_done(self):
         self._fetch_btn.setEnabled(True)
@@ -901,7 +866,7 @@ class MainWindow(QMainWindow):
         if missing or unreg:
             self._set_status(
                 f"完了: 全 {total} エッジ  ✔ {ok}  ✕ 欠損 {missing}  — 未登録 {unreg}",
-                COL_NG,
+                COL_ERR,
             )
         else:
             self._set_status(f"完了: 全 {total} エッジ  ✔ 全て OK", COL_OK)
@@ -1005,7 +970,7 @@ class MainWindow(QMainWindow):
         else:
             parts.append(f"[表示 {visible}]")
 
-        color = COL_NG if (missing or unreg) else (TXT_SECONDARY if loading else COL_OK)
+        color = COL_ERR if (missing or unreg) else (TXT_SUB if loading else COL_OK)
         self._count_lbl.setText("  ".join(parts))
         self._count_lbl.setStyleSheet(f"color: {color}; font-size: 16px;")
 
@@ -1020,11 +985,7 @@ class MainWindow(QMainWindow):
 # ─────────────────────────────────────────────────────────────────────────────
 
 def main():
-    app = QApplication(sys.argv)
-    app.setStyle("Fusion")
-    w = MainWindow()
-    w.show()
-    sys.exit(app.exec())
+    qt_app.run(MainWindow)
 
 
 if __name__ == "__main__":
