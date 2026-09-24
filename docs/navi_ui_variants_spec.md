@@ -18,7 +18,7 @@ IKU NAVI（専修大学 生田キャンパスのAR教室検索ナビ）には現
 
 - 作るファイルは **`programs/html/navi{N}/index.html` の1つだけ**。CSSは別ファイルに分けず
   `<style>` タグ内にすべて書く。JS用の別ディレクトリ・別ファイルも作らない。
-- JSは既存の4ファイルを**そのまま**外部参照する（中身は一切変更しない・コピーしない・
+- JSは既存のファイルを**そのまま**外部参照する（中身は一切変更しない・コピーしない・
   改造しない。相対パスで既存ファイルを参照するだけ）。読み込み順・配置は次の通り厳守:
 
   ```html
@@ -29,7 +29,16 @@ IKU NAVI（専修大学 生田キャンパスのAR教室検索ナビ）には現
   <body>
     ...（あなたのHTML）...
 
-    <script src="../navi/script/app.js"></script>
+    <script src="../navi/script/state.js"></script>
+    <script src="../navi/script/data.js"></script>
+    <script src="../navi/script/search-form.js"></script>
+    <script src="../navi/script/gps.js"></script>
+    <script src="../navi/script/route.js"></script>
+    <script src="../navi/script/voice.js"></script>
+    <script src="../navi/script/photo.js"></script>
+    <script src="../navi/script/map.js"></script>
+    <script src="../navi/script/floormap.js"></script>
+    <script src="../navi/script/page.js"></script>
     <script src="../navi/script/ar.js"></script>
     <script src="../navi/script/maps-loader.js"></script>
   </body>
@@ -38,7 +47,10 @@ IKU NAVI（専修大学 生田キャンパスのAR教室検索ナビ）には現
   - `config.js` は Cloudflare Pages のビルド時に自動生成される（Google Maps APIキーを含む）。
     `programs/html/navi/script/config.js` にしか生成されないため、必ず `../navi/script/config.js`
     という相対パスで参照すること（コピーしても動かない）。
-  - `app.js` がページの全ロジック（検索・経路計算・音声案内・SVGフロアマップ・写真AR）を持つ。
+  - `state.js` 〜 `page.js` がページの全ロジック（検索・経路計算・音声案内・SVGフロアマップ・
+    写真AR）で、いずれも通常のスクリプト（`type="module"` ではない）。**`state.js` を必ず最初に**
+    読み込むこと（共有する定数・状態をここで宣言しているため）。残りの順序は入れ替えても動くが、
+    上の並びのままにしておくのが無難。
     `ar.js` は屋外AR（Three.js + GPS + ジャイロ）、`maps-loader.js` はGoogle Maps APIの読み込み。
 - 画像・トップページへのリンクなど `../images/...` `../index.html` 形式の相対パスは、
   `navi{N}/` も `navi/` と同じ階層（`programs/html/` 直下）に置かれるのでそのまま使える。
@@ -46,9 +58,9 @@ IKU NAVI（専修大学 生田キャンパスのAR教室検索ナビ）には現
 
 ## 必須DOM要素（絶対に外せない契約）
 
-`app.js`・`ar.js` は変更しない前提なので、以下の **ID** を持つ要素が実在しないと動作しません。
+`state.js`〜`page.js`・`ar.js` は変更しない前提なので、以下の **ID** を持つ要素が実在しないと動作しません。
 IDの綴りは1文字も変えられません。**配置場所・タグの種類（一部を除く）・見た目・親子構造・
-DOM上の順序は完全に自由**です（`app.js` は基本的に `document.getElementById(id)` でしか
+DOM上の順序は完全に自由**です（これらのスクリプトは基本的に `document.getElementById(id)` でしか
 要素を探さないので、どこに置いても、どんな入れ子構造にしても構いません）。
 
 ### 検索パネル — 教室 → 教室
@@ -82,7 +94,7 @@ DOM上の順序は完全に自由**です（`app.js` は基本的に `document.g
 
 検索実行ボタンは `onclick="doSearch()"` を持つ要素であればIDは不要（`<button onclick="doSearch()">経路を探す</button>` のように自由に書ける）。
 
-**重要（ID表に無いが必須のクラス）**: `app.js` の `toggleSearchPanel()`/`collapseSearchPanel()` は
+**重要（ID表に無いが必須のクラス）**: `search-form.js` の `toggleSearchPanel()`/`collapseSearchPanel()` は
 `document.querySelector(".search-content-inner")` で**クラス名から**要素を取得します（IDではない）。
 検索パネルの中身を囲む要素のどこかに **`search-content-inner` というクラス**を必ず付けてください
 （`#search-content`の直下である必要はなく、ページ内に1つあれば足ります）。付け忘れるとパネルの
@@ -148,7 +160,7 @@ DOM上の順序は完全に自由**です（`app.js` は基本的に `document.g
 
 ## JSが自動的に付け外しするクラス名（CSSで見た目を定義するのはあなたの仕事）
 
-`app.js`・`ar.js` は次のクラス名を `classList` で操作します。**クラス名自体は固定**なので、
+`state.js`〜`page.js`・`ar.js` は次のクラス名を `classList` で操作します。**クラス名自体は固定**なので、
 それぞれの状態をどう見せるかはCSSで自由に設計してください（例: `.open`のとき`display:block`にする、
 矢印を回転させる、アニメーションさせる、など）。
 
@@ -364,7 +376,16 @@ DOM上の順序は完全に自由**です（`app.js` は基本的に `document.g
 
 <div id="loading"><div id="loading-box">検索中...</div></div>
 
-<script src="script/app.js"></script>
+<script src="script/state.js"></script>
+<script src="script/data.js"></script>
+<script src="script/search-form.js"></script>
+<script src="script/gps.js"></script>
+<script src="script/route.js"></script>
+<script src="script/voice.js"></script>
+<script src="script/photo.js"></script>
+<script src="script/map.js"></script>
+<script src="script/floormap.js"></script>
+<script src="script/page.js"></script>
 <script src="script/ar.js"></script>
 <script src="script/maps-loader.js"></script>
 </body>
@@ -372,7 +393,7 @@ DOM上の順序は完全に自由**です（`app.js` は基本的に `document.g
 ```
 
 （このコードは `navi/` のもので、あなたが作るのは `navi{N}/` なのでJSのパスは
-`script/app.js` ではなく `../navi/script/app.js` に変える必要があります。）
+`script/state.js` ではなく `../navi/script/state.js` のように、いずれも `../navi/` を付ける必要があります。）
 
 ## デザインの方向性について
 

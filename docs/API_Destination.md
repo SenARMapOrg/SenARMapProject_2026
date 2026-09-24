@@ -1,6 +1,6 @@
-# 3D_Graph/app.py API 仕様書
+# 3D_Graph API 仕様書
 
-`programs/3D_Graph/app.py` を実行（デフォルトポート: `5001`）することで利用できる、JSONを返すAPIエンドポイントの仕様です。
+`programs/3D_Graph/app.py` を実行（実装は同ディレクトリの `ikunavi/` パッケージ。デフォルトポート: `5001`）することで利用できる、JSONを返すAPIエンドポイントの仕様です。
 
 ---
 

@@ -13,10 +13,9 @@ import json
 import sys
 import threading
 from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
 
 import requests
-from requests.adapters import HTTPAdapter
-from urllib3.util.retry import Retry
 
 from PyQt6.QtCore import Qt, QThread, QTimer, pyqtSignal
 from PyQt6.QtGui import QBrush, QColor, QFont
@@ -43,8 +42,29 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
+sys.path.append(str(Path(__file__).resolve().parents[1]))
+from gui_common import qt_app
+from gui_common.api import DEFAULT_API, JSON_HEADERS, make_session
+from gui_common.labels import TOILET_ROOMS, building_label, floor_label
+from gui_common.theme import (
+    ACCENT,
+    BG_BAR,
+    BG_WIN,
+    BORDER,
+    BTN_ACTIVE,
+    BTN_IDLE,
+    COL_ERR,
+    COL_OK,
+    COL_WARN,
+    INPUT_BG,
+    INPUT_BORDER,
+    TXT_KEY,
+    TXT_PRIMARY,
+    TXT_SUB,
+    base_stylesheet,
+)
+
 # ── 定数 ──────────────────────────────────────────────────────────────────────
-DEFAULT_API = "http://localhost:5001"
 MAX_WORKERS = 8
 
 EDGE_TYPE_LABELS = {
@@ -57,28 +77,14 @@ EDGE_TYPE_LABELS = {
     "7": "入口",
 }
 
-TOILET_ROOMS = {"M_Toilet", "F_Toilet", "C_Toilet"}
-
-# ── パレット ──────────────────────────────────────────────────────────────────
-BG_WIN      = "#111827"
-BG_BAR      = "#1F2937"
+# ── パレット（共通色は gui_common.theme、ここはこのツール固有の色だけ）──────────
 BG_TABLE    = "#141E2E"
 BG_ROW_ALT  = "#1A2436"
 BG_SEL      = "#0E3A50"
-TXT_PRIMARY = "#F1F5F9"
-TXT_SUB     = "#94A3B8"
-TXT_KEY     = "#CBD5E1"
-ACCENT      = "#00B8E6"
-COL_OK      = "#4ADE80"
-COL_ANOM    = "#FBBF24"
 COL_NOPATH  = "#A855F7"
-COL_ERR     = "#F87171"
 COL_PEND    = "#4B5563"
-BTN_ACTIVE  = "#0E7490"
-BTN_IDLE    = "#374151"
-BORDER      = "#2D3748"
 
-STATUS_COLOR = {"ok": COL_OK, "anomaly": COL_ANOM,
+STATUS_COLOR = {"ok": COL_OK, "anomaly": COL_WARN,
                 "no_path": COL_NOPATH, "error": COL_ERR, "pending": COL_PEND}
 STATUS_LABEL = {"ok": "OK", "anomaly": "異常",
                 "no_path": "経路なし", "error": "エラー", "pending": "待機中"}
@@ -106,22 +112,11 @@ TABLE_HEADERS = [
 # ── ヘルパー ──────────────────────────────────────────────────────────────────
 
 def _make_session() -> requests.Session:
-    s = requests.Session()
-    s.headers.update({"User-Agent": "IKU-NAVI-RouteChecker/1.0",
-                       "Accept": "application/json"})
-    retry = Retry(total=2, backoff_factor=0.3, status_forcelist=[500, 502, 503, 504])
-    adp = HTTPAdapter(max_retries=retry)
-    s.mount("https://", adp)
-    s.mount("http://", adp)
-    return s
+    return make_session(headers={"User-Agent": "IKU-NAVI-RouteChecker/1.0", **JSON_HEADERS})
 
 
-def _fl(floor: int) -> str:
-    return "屋外" if floor == 0 else f"{floor}F"
-
-
-def _bl(building: int) -> str:
-    return "屋外" if building == 0 else f"{building}号館"
+_fl = floor_label
+_bl = building_label
 
 
 def floor_sequence_str(path_coords: list) -> str:
@@ -455,14 +450,14 @@ class PathDetailDialog(QDialog):
         if anomalies:
             box = QFrame()
             box.setStyleSheet(
-                f"QFrame {{ background: #2B1A0A; border: 1px solid {COL_ANOM}; border-radius: 6px; }}"
+                f"QFrame {{ background: #2B1A0A; border: 1px solid {COL_WARN}; border-radius: 6px; }}"
             )
             bvbox = QVBoxLayout(box)
             bvbox.setContentsMargins(12, 8, 12, 8)
             bvbox.setSpacing(8)
             warn = QLabel(f"⚠  {len(anomalies)} 件の異常が検出されました")
             warn.setFont(QFont("", 12, QFont.Weight.Bold))
-            warn.setStyleSheet(f"color: {COL_ANOM}; background: transparent;")
+            warn.setStyleSheet(f"color: {COL_WARN}; background: transparent;")
             bvbox.addWidget(warn)
             for atype, adesc in anomalies:
                 lbl = QLabel(f"【{ANOMALY_LABEL.get(atype, atype)}】\n{adesc}")
@@ -652,29 +647,14 @@ class MainWindow(QMainWindow):
     # ── テーマ ────────────────────────────────────────────────────────────────
 
     def _apply_theme(self):
-        self.setStyleSheet(f"""
-            QMainWindow, QWidget {{ background: {BG_WIN}; color: {TXT_PRIMARY}; }}
-            QScrollBar:vertical   {{ background: {BG_BAR}; width: 8px; border-radius: 4px; }}
-            QScrollBar::handle:vertical {{ background: #4B5563; border-radius: 4px; min-height: 20px; }}
-            QScrollBar:horizontal {{ background: {BG_BAR}; height: 8px; border-radius: 4px; }}
-            QScrollBar::handle:horizontal {{ background: #4B5563; border-radius: 4px; min-width: 20px; }}
-            QLineEdit {{
-                background: #374151; color: {TXT_PRIMARY};
-                border: 1px solid #4B5563; border-radius: 6px;
-                padding: 5px 10px; font-size: 15px;
-            }}
-            QLineEdit:focus {{ border-color: {ACCENT}; }}
-            QProgressBar {{
-                background: #374151; border: none; border-radius: 4px; color: transparent;
-            }}
-            QProgressBar::chunk {{ background: {ACCENT}; border-radius: 4px; }}
+        self.setStyleSheet(base_stylesheet() + f"""
             QComboBox {{
-                background: #374151; color: {TXT_PRIMARY};
-                border: 1px solid #4B5563; border-radius: 6px;
+                background: {INPUT_BG}; color: {TXT_PRIMARY};
+                border: 1px solid {INPUT_BORDER}; border-radius: 6px;
                 padding: 3px 8px; font-size: 13px; min-width: 80px;
             }}
             QComboBox QAbstractItemView {{
-                background: #374151; color: {TXT_PRIMARY};
+                background: {INPUT_BG}; color: {TXT_PRIMARY};
                 selection-background-color: {BTN_ACTIVE};
             }}
             QCheckBox {{ color: {TXT_SUB}; font-size: 13px; spacing: 6px; }}
@@ -687,11 +667,11 @@ class MainWindow(QMainWindow):
             QTableWidget::item {{ padding: 3px 8px; }}
             QTableWidget::item:selected {{ background: {BG_SEL}; }}
             QHeaderView::section {{
-                background: #1F2937; color: {TXT_KEY};
+                background: {BG_BAR}; color: {TXT_KEY};
                 border: none; border-right: 1px solid {BORDER};
                 padding: 5px 8px; font-size: 13px; font-weight: bold;
             }}
-            QHeaderView::section:hover {{ background: #2D3748; }}
+            QHeaderView::section:hover {{ background: {BORDER}; }}
         """)
 
     # ── UI構築 ────────────────────────────────────────────────────────────────
@@ -970,7 +950,7 @@ class MainWindow(QMainWindow):
         self._flush_timer.stop()
         self._flush_pending()
         self._stop_btn.setEnabled(False)
-        self._set_status("停止中...", COL_ANOM)
+        self._set_status("停止中...", COL_WARN)
 
     def _on_route_ready(self, result: dict):
         # メインスレッドのブロックを避けるためバッファに積むだけ
@@ -1011,7 +991,7 @@ class MainWindow(QMainWindow):
         np_ = sum(1 for r in self._all_results if r["status"] == "no_path")
         er  = sum(1 for r in self._all_results if r["status"] == "error")
         tot = len(self._all_results)
-        col = COL_ANOM if (an or er) else COL_OK
+        col = COL_WARN if (an or er) else COL_OK
         self._set_status(
             f"完了: 全{tot}ペア  ✔OK:{ok}  ⚠異常:{an}  ✕経路なし:{np_}  ✕エラー:{er}",
             col,
@@ -1050,7 +1030,7 @@ class MainWindow(QMainWindow):
                 if status == "anomaly":
                     item.setFont(QFont("", 12, QFont.Weight.Bold))
             elif ci == C_ANOM and anom_str:
-                item.setForeground(QBrush(QColor(COL_ANOM)))
+                item.setForeground(QBrush(QColor(COL_WARN)))
 
             # 結果dictを col 0 アイテムに格納（ダブルクリック時に取得）
             if ci == 0:
@@ -1138,11 +1118,7 @@ class MainWindow(QMainWindow):
 # ── エントリーポイント ────────────────────────────────────────────────────────
 
 def main():
-    app = QApplication(sys.argv)
-    app.setStyle("Fusion")
-    w = MainWindow()
-    w.show()
-    sys.exit(app.exec())
+    qt_app.run(MainWindow)
 
 
 if __name__ == "__main__":

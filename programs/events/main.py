@@ -13,18 +13,16 @@ Usage:
 """
 
 import sys
+from pathlib import Path
 
-from PyQt6.QtWidgets import QApplication
+sys.path.append(str(Path(__file__).resolve().parents[1]))
+from gui_common import qt_app
 
 from app_window import MainWindow
 
 
 def main():
-    app = QApplication(sys.argv)
-    app.setStyle("Fusion")
-    win = MainWindow()
-    win.show()
-    sys.exit(app.exec())
+    qt_app.run(MainWindow)
 
 
 if __name__ == "__main__":

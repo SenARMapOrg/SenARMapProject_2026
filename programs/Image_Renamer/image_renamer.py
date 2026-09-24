@@ -18,6 +18,9 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QFont, QColor, QPainter, QKeySequence, QShortcut, QIntValidator
 
+sys.path.append(str(Path(__file__).resolve().parents[1]))
+from gui_common import qt_app
+
 IMAGE_EXTS = {".jpg", ".jpeg", ".png", ".gif", ".bmp",
               ".tiff", ".tif", ".webp", ".heic", ".heif"}
 
@@ -469,11 +472,7 @@ class MainWindow(QMainWindow):
 
 
 def main():
-    app = QApplication(sys.argv)
-    app.setStyle("Fusion")
-    w = MainWindow()
-    w.show()
-    sys.exit(app.exec())
+    qt_app.run(MainWindow)
 
 
 if __name__ == "__main__":
