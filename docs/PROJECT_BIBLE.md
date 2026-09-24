@@ -29,17 +29,19 @@
 
 ### 1.2 静的データ配信への移行（既に方針決定済み・実行フェーズへ）
 
-`[[static-data-migration-plan]]` として既に合意済みの通り、経路探索を Flask（`app.py`）から Cloudflare Pages 上の静的 `graph.json` + ブラウザ側 Dijkstra（JS）へ移行する計画がある。グラフ規模（約360ノード・300エッジ）ならブラウザ計算は1ms未満で終わる。
+`[[static-data-migration-plan]]` として既に合意済みの通り、経路探索を Flask（`programs/3D_Graph/`）から Cloudflare Pages 上の静的 `graph.json` + ブラウザ側 Dijkstra（JS）へ移行する計画がある。グラフ規模（約360ノード・300エッジ）ならブラウザ計算は1ms未満で終わる。
 
 - **移行の効果**: VPS上の `python` コンテナと CORS 設定が不要になり、2GBサーバーの負荷が下がる。イベント時の同時接続増（現状ピーク100人想定）にも静的配信は強い。
 - **移行のタイミング**: 現状のように「全建物データ投入中でロジックがPython1箇所に集中している方が変更が楽」というフェーズが終わり、経路ロジック（エスカレータ一方向・エレベータ除外・入口ペナルティ・目的エッジ延長など）が安定してから着手するのが合理的。1.1のデータ整備が一段落したタイミングが良い節目になる。
 - 移行後も `/3d` ビューア・検証ツール群（Route_Checker等）はローカルFlask運用のまま残せる設計にしておくとよい（既にその前提で計画されている）。
 
-### 1.3 テスト・CI の追加
+### 1.3 テスト・CI（導入済み。残っている宿題）
 
-- `.github/workflows/build-push.yml` は Docker イメージのビルド＆GHCRプッシュのみで、**自動テストが一切ない**。経路探索ロジック（`app.py` の Dijkstra 周り：エスカレータ一方向補正・エレベータ除外・入口ペナルティ・目的エッジ延長）は仕様として文書化されているのに、コードの回帰を検知する仕組みがない。
+回帰テストと GitHub Actions は導入済み（8.4節参照）。まだ手が付いていないのは次の点。
+
 - `Route_Checker` が持つ異常検出ロジック（`SAME_FLOOR_DETOUR` / `FLOOR_OVERSHOOT` / `FLOOR_REVERSAL` / `UNEXPECTED_BUILDING`）は、GUIツールとしてだけでなく **pytest化してCIに組み込む**と、データ追加やロジック変更のたびに手動チェックしなくて済む。全教室ペアの経路検証は数百〜数千パターンあるが、CIで自動実行できれば「新しい建物を足したら知らないうちに変な迂回ルートが生まれていた」という事故を防げる。
-- `app.py` 単体の関数（`_calc_transforms_from_anchors`・`build_graph`・`_extend_to_far_endpoint` など）はFlask依存が薄いので、pytestでのユニットテスト化が比較的容易。
+- ナビ画面のJS（`programs/html/navi/script/`）にはテストランナーが無く、HTMLとの噛み合わせ（必要なID・関数の有無・読み込み順）を静的に照合しているだけ。実際の操作の回帰はまだ人手で見ている。
+- Cloudflare Pages のデプロイはダッシュボード側の設定で走るため、GitHub Actions のテスト結果ではブロックできない（VPS側のDockerイメージはブロックできる）。
 
 ### 1.4 屋内ARの発展
 
@@ -73,7 +75,7 @@
 | フロントエンド | HTML / CSS / Vanilla JavaScript（フレームワークなし）/ Google Maps JavaScript API / Three.js（屋外AR）/ インラインSVG（屋内マップ）|
 | インフラ | Docker Swarm（ConoHa VPS）/ Cloudflare Pages（静的配信）/ Cloudflare Tunnel（API公開）/ Cloudflare R2（画像CDN）|
 | 監視 | Prometheus / Grafana / cAdvisor |
-| CI/CD | GitHub Actions（GHCRへのDockerイメージビルド＆プッシュ）|
+| CI/CD | GitHub Actions（テスト → GHCRへのDockerイメージビルド＆プッシュ）|
 | データ運用 | スプレッドシート → スクリプト → GitHub Push（CSV更新）|
 
 ### ディレクトリ構成（全体）
@@ -81,7 +83,7 @@
 ```
 SenARMapProject_2026/
 ├── programs/
-│   ├── 3D_Graph/        # Flaskバックエンド (app.py) + 3D経路ビューア (templates/index.html)
+│   ├── 3D_Graph/        # Flaskバックエンド (app.py + ikunavi/) + 3D経路ビューア (templates/index.html)
 │   ├── html/             # Cloudflare Pages 公開ルート（トップページ・navi・blog・SVG等）
 │   ├── Website/          # プロジェクト紹介LP（学内発表用、Pagesでは非公開）
 │   ├── Map_Editor/       # ノード・エッジ・経路写真の統合編集GUI（PyQt6）
@@ -95,7 +97,7 @@ SenARMapProject_2026/
 ├── deploy_env/           # 本番Docker Swarm構成 + Cloudflare Pagesビルド + (不採用の)k8s構成
 ├── enviroments/           # ローカル開発用Docker構成
 ├── images/               # ロゴ・構成図
-└── .github/workflows/    # CI（Dockerイメージビルド）
+└── .github/workflows/    # CI（テスト + Dockerイメージビルド）
 ```
 
 ---
@@ -136,13 +138,13 @@ SenARMapProject_2026/
   画像配信: Cloudflare R2 → https://cdn.iku-navi.net （edge_image.csv で管理）
 ```
 
-**2026-07-13 の大きな変更点**: それまで静的配信・リバースプロキシを担っていた `nginx` サービスを完全撤去し、静的コンテンツは Cloudflare Pages、API振り分けは cloudflared のパスルーティング機能で代替した（`[[cloudflare-pages-migration]]`）。理由は2GB VPSの負荷軽減。CORSはFlask側 `app.py` の `after_request` フックで対応し、`iku-navi.net` / `www.iku-navi.net` / `*.pages.dev`（Pagesプレビュー環境）を許可している。nginx関連ファイルはロールバック用に温存されているのみで本番稼働はしていない。
+**2026-07-13 の大きな変更点**: それまで静的配信・リバースプロキシを担っていた `nginx` サービスを完全撤去し、静的コンテンツは Cloudflare Pages、API振り分けは cloudflared のパスルーティング機能で代替した（`[[cloudflare-pages-migration]]`）。理由は2GB VPSの負荷軽減。CORSはFlask側 `ikunavi/__init__.py` の `after_request` フックで対応し、`iku-navi.net` / `www.iku-navi.net` / `*.pages.dev`（Pagesプレビュー環境）を許可している。nginx関連ファイルはロールバック用に温存されているのみで本番稼働はしていない。
 
 ### 3.2 データフロー（経路探索1回分）
 
 1. ユーザーがナビ画面（`navi/index.html`）で出発地・目的地（教室名／現在地GPS／イベント名）を指定
 2. フロントエンドが `GET https://api.iku-navi.net/api/route?...` を呼び出す
-3. Flask (`app.py`) が起動時にキャッシュ済みの `networkx.DiGraph` に対し `nx.bidirectional_dijkstra` を実行（教室はエッジ属性なので両端点の全組み合わせを試して最短を採用）
+3. Flask (`programs/3D_Graph/`) が起動時にキャッシュ済みの `networkx.DiGraph` に対し `nx.bidirectional_dijkstra` を実行（教室はエッジ属性なので両端点の全組み合わせを試して最短を採用）
 4. レスポンス（`path_coords` / `path_edges` 等）をフロントが受け取り、ステップごとに屋外はGoogle Maps、屋内はSVGへ描画を振り分け
 5. 各ステップの `from_node_to_node` キーで `GET /api/edge_images` から取得済みのCDN画像URLをAR領域に表示
 
@@ -185,7 +187,7 @@ SenARMapProject_2026/
 屋外ノード（global_node.csv 由来）: id = local_id + 9,000,000
 ```
 
-`app.py` の `ID_OFFSET = 100_000`、`GLOBAL_NODE_OFFSET = 9_000_000` が実装。`connect_edge.csv`（建物間直接接続、現状データなし）や `global_edge.csv` の `from/to` にはグローバルID（`building_id × 100000 + local_id`）または屋外ノードの元の小さいIDをそのまま書け、内部で自動変換される。
+`ikunavi/config.py` の `ID_OFFSET = 100_000`、`GLOBAL_NODE_OFFSET = 9_000_000` が実装。`connect_edge.csv`（建物間直接接続、現状データなし）や `global_edge.csv` の `from/to` にはグローバルID（`building_id × 100000 + local_id`）または屋外ノードの元の小さいIDをそのまま書け、内部で自動変換される。
 
 ### 4.3 データディレクトリ構成
 
@@ -260,7 +262,7 @@ data/
 
 ### 4.8 座標変換パラメータ（アンカー方式・推奨）
 
-`anchors.csv`（列: `building, local_node_id, global_node_id`）に、建物ローカルノードと対応する屋外グローバルノードのペアを記録すると、`app.py` の `_calc_transforms_from_anchors()` が以下を自動計算する。
+`anchors.csv`（列: `building, local_node_id, global_node_id`）に、建物ローカルノードと対応する屋外グローバルノードのペアを記録すると、`ikunavi/transform.py` の `calc_transforms_from_anchors()` が以下を自動計算する。
 
 | アンカー点数 | 自動計算内容 |
 |:---:|---|
@@ -311,38 +313,57 @@ Z_global = Z_local + tz
 
 ---
 
-## 5. バックエンド（`programs/3D_Graph/app.py`）
+## 5. バックエンド（`programs/3D_Graph/`）
 
 ### 5.1 概要
 
-Flask製の単一ファイルアプリ（約1300行）。データ読み込み・座標変換・グラフ構築・経路探索・API・3Dビューア（`/3d`）配信を全て1ファイルで担う「ロジック集約」設計。`[[static-data-migration-plan]]` により、この集約状態を維持したまま全建物データ投入・経路ロジック安定化を待ってから、経路探索ロジックをJSへ移植し静的配信に切り替える計画。
+Flask製のアプリ。データ読み込み・座標変換・グラフ構築・経路探索・API・3Dビューア（`/3d`）配信を担う。
+`app.py` は `create_app()` を呼ぶだけのエントリポイントで、実装は `ikunavi/` パッケージにある。
+
+| ファイル | 担当 |
+|---|---|
+| `app.py` | エントリポイント（gunicorn が読む `app:app`）|
+| `ikunavi/config.py` | データファイルのパスと定数（`ID_OFFSET`・`ENTRANCE_PENALTY`・建物色・CORS許可オリジン等）|
+| `ikunavi/transform.py` | 建物ローカル座標 → キャンパス共通座標 の変換パラメータ算出・適用 |
+| `ikunavi/dataset.py` | CSV読み込み（全建物＋屋外を1組のDataFrameに正規化）|
+| `ikunavi/graph.py` | `networkx.DiGraph` の構築 |
+| `ikunavi/naming.py` | 内部識別子 → 表示名（`name.csv`・`building_name.csv`・`ignore.csv`）|
+| `ikunavi/cache.py` | 起動後に一度だけ作る派生データ（DataFrame・グラフ・教室索引・イベント索引等）|
+| `ikunavi/search.py` | 候補ノードへの解決と全組み合わせDijkstra |
+| `ikunavi/serialize.py` | 探索結果 → APIレスポンス用dict（`path_result`・`dest_info` 等）|
+| `ikunavi/payloads.py` | `/api/graph` 用ペイロード |
+| `ikunavi/errors.py` | `ApiError` とそのJSON化 |
+| `ikunavi/routes/` | エンドポイント（Blueprint: viewer / rooms / events / navigation / facilities / images）|
+
+`[[static-data-migration-plan]]` により、全建物データ投入・経路ロジック安定化を待ってから、経路探索ロジックをJSへ移植し静的配信に切り替える計画。`dataset.py` + `graph.py` はそのまま `graph.json` の生成側に流用できる。
 
 起動: `cd programs/3D_Graph && python app.py` → `http://localhost:5001`（本番は `gunicorn -w 4 -b 0.0.0.0:8000 app:app`）
 
 ### 5.2 キャッシュ機構
 
-初回リクエスト時に全CSVを読み込み、モジュールレベルのグローバル変数にキャッシュする。**CSVを更新した場合はプロセス（gunicorn）を再起動しないと反映されない。**
+初回リクエスト時に全CSVを読み込み、モジュールレベルの変数にキャッシュする。**CSVを更新した場合はプロセス（gunicorn）を再起動しないと反映されない。**
 
-| 変数 | 内容 |
+| アクセサ（`ikunavi/cache.py`、表示名のみ `naming.py`）| 内容 |
 |---|---|
-| `_cached_nodes_df` / `_cached_edges_df` | pandas DataFrame（全建物・屋外を結合済み）|
-| `_cached_graph_with_ev` / `_cached_graph_without_ev` | networkx.DiGraph（エレベータ有無で2種類キャッシュし切替コストをゼロに）|
-| `_cached_room_index` / `_cached_rooms_list` | 教室名→エッジ行の索引、API用整形済みリスト |
-| `_cached_name_map` / `_cached_building_name_map` | 表示名DB |
-| `_cached_event_index` / `_cached_events_list` | イベントDB |
-| `_cached_graph_payload` | `/api/graph` レスポンス全体 |
+| `get_data()` | pandas DataFrame（全建物・屋外を結合済み）|
+| `get_graph(use_elevator)` | networkx.DiGraph（エレベータ有無で2種類キャッシュし切替コストをゼロに）|
+| `get_room_index()` | 教室名→エッジ行の索引、API用整形済みリスト |
+| `get_name_map()` / `get_building_name_map()` | 表示名DB |
+| `get_event_index()` | イベントDB |
+| `get_nodes_list()` / `get_node_xyz()` / `get_cafeteria_list()` | API用の整形済みノード一覧・座標表・食堂一覧 |
+| `payloads.get_graph_payload()` | `/api/graph` レスポンス全体 |
 
-`clear_cache()` で全キャッシュをリセット可能（現状APIエンドポイントとしては未公開、プロセス再起動が実質的なキャッシュクリア手段）。
+`ikunavi.clear_all_caches()` で全キャッシュをリセット可能（現状APIエンドポイントとしては未公開、プロセス再起動が実質的なキャッシュクリア手段）。
 
-### 5.3 データロード処理 (`load_data()`)
+### 5.3 データロード処理 (`dataset.load_data()`)
 
 1. `buildings.json` を読み込み、`anchors.csv` があれば自動計算した変換パラメータで上書き
-2. `data/*_bldg/` を走査し、各建物の `node.csv`/`edge.csv` にグローバルIDオフセットを付与、`_apply_transform()` で座標変換
+2. `data/*_bldg/` を走査し、各建物の `node.csv`/`edge.csv` にグローバルIDオフセットを付与、`transform.apply_transform()` で座標変換
 3. `connect_edge.csv`（存在すれば）・`global_node.csv`（+9,000,000オフセット、`building=0` 付与）・`global_edge.csv`（屋外/建物ノードIDを自動判別して解決）を追加
 4. `anchors.csv` の各行から type=7 の入口エッジを自動生成（ID起点は `8000000 + 行インデックス`）
 5. 全データを結合し、座標欠損行を除外、`type` 列を整数正規化
 
-### 5.4 グラフ構築 (`build_graph()`)
+### 5.4 グラフ構築 (`graph.build_graph()`)
 
 `networkx.DiGraph`（有向グラフ）を使用。基本は双方向（順・逆エッジを両方追加）で無向グラフと等価に扱うが、エスカレータ（type 5/6）だけは以下のロジックで一方向のみ追加する:
 
@@ -368,7 +389,7 @@ for s_node in start_candidates:
         # 最短を採用
 ```
 
-目的地がエッジ（教室・トイレ・食堂）の場合、最寄り端点で止めず、`_extend_to_far_endpoint()` によりエッジのもう一方の端点まで経路を延長する（教室はエッジ区間に面しているため、区間を歩き切ることで必ずドアの前を通る案内になる）。ただし到着経路が既にそのエッジを歩いて到着している場合は延長しない。
+目的地がエッジ（教室・トイレ・食堂）の場合、最寄り端点で止めず、`search.extend_to_far_endpoint()` によりエッジのもう一方の端点まで経路を延長する（教室はエッジ区間に面しているため、区間を歩き切ることで必ずドアの前を通る案内になる）。ただし到着経路が既にそのエッジを歩いて到着している場合は延長しない。
 
 ### 5.6 API一覧
 
@@ -386,7 +407,7 @@ for s_node in start_candidates:
 | `GET /api/shortest_path` | ノードID直指定の経路探索（従来仕様）|
 | `GET /api/edge_images` | `{from}_{to}` → CDN画像URLのマッピング |
 
-各エンドポイントの詳細なクエリパラメータ・レスポンス例は第10章の `docs/API_Destination.md` 原文、および付録の `app.py` 全文コメントを参照（全エンドポイントに日本語docstringあり）。全ての探索系エンドポイントは `use_elevator=0/1`（省略時1）をサポートする。
+各エンドポイントの詳細なクエリパラメータ・レスポンス例は第10章の `docs/API_Destination.md` 原文、および `ikunavi/routes/` の各関数のdocstringを参照（全エンドポイントに日本語docstringあり）。全ての探索系エンドポイントは `use_elevator=0/1`（省略時1）をサポートする。
 
 ### 5.7 名前DB・建物名DB・イベントモード
 
@@ -396,7 +417,7 @@ for s_node in start_candidates:
 
 ### 5.8 CORS
 
-nginx撤去後、cloudflaredがFlaskに直結する構成になったため、CORSヘッダはFlask側の `after_request` フックで返す。許可オリジンは `https://iku-navi.net` / `https://www.iku-navi.net` / 正規表現 `^https://[a-z0-9.-]+\.pages\.dev$`（Pagesプレビュー環境）。全APIがGETのみ・カスタムヘッダなしの「単純リクエスト」のため、プリフライト（OPTIONS）対応は実装していない。
+nginx撤去後、cloudflaredがFlaskに直結する構成になったため、CORSヘッダはFlask側の `after_request` フック（`ikunavi/__init__.py`）で返す。許可オリジンは `https://iku-navi.net` / `https://www.iku-navi.net` / 正規表現 `^https://[a-z0-9.-]+\.pages\.dev$`（Pagesプレビュー環境）。全APIがGETのみ・カスタムヘッダなしの「単純リクエスト」のため、プリフライト（OPTIONS）対応は実装していない。
 
 ---
 
@@ -472,7 +493,7 @@ SVGフロアマップ上でクリック操作によりノード・エッジ（`{
 - **4モード**: 移動（パン/ズームのみ）、入力（空白クリックでノード作成ダイアログ、既存ノード2つのクリックでエッジ作成ダイアログ。1つ目クリック後はオレンジ色で「接続待ち」表示、階をまたいで選択可）、削除（クリックで削除、ノード削除時は接続エッジも連鎖削除）、撮影（エッジクリックでカメラパネルに切替、撮影ボタンで `captured_photos/{fromグローバルID}_to_{toグローバルID}.jpg` 保存＋`edge_image.csv`登録）。
 - **エッジ種別提案**: `suggest_edge_type(floor_a, floor_b)` が階が異なれば階段(2)、同じなら通常通路(1)を初期値提案。エスカレータ上り/下りはz座標で自動判定されるためfrom/to入力順は気にしなくてよい。
 - **対象外（手動編集が必要）**: `anchors.csv`・`global_node.csv`・`global_edge.csv`・`connect_edge.csv`・`buildings.json`（座標変換パラメータ、屋外ノード、建物間接続）、SVGファイル自体の作成。
-- 保存後は `app.py`（Flask）の再起動が必要（キャッシュ機構のため）。
+- 保存後は Flask の再起動が必要（キャッシュ機構のため）。
 - 依存: `PyQt6>=6.4.0`, `opencv-python>=4.8.0`, `numpy>=1.24.0`
 
 ### 7.2 Image_Checker（PyQt6）
@@ -544,17 +565,59 @@ YOLOv8セグメンテーションモデル（`yolov8n-seg.pt` 同梱）で写真
 
 ### 8.3 CI/CD（`.github/workflows/build-push.yml`）
 
-`main` へのpushをトリガーに、`deploy_env/python/Dockerfile` からDockerイメージをビルドし `ghcr.io/senarmaporg/iki_project_2026_python`（`latest` + short SHA タグ）へプッシュする。**自動テストは無い**（1.3節の改善提案参照）。旧nginxイメージのビルドステップはPages移行に伴い削除済み（コメントとして記録が残る）。
+`main` へのpushをトリガーに、`deploy_env/python/Dockerfile` からDockerイメージをビルドし `ghcr.io/senarmaporg/iki_project_2026_python`（`latest` + short SHA タグ）へプッシュする。ビルドの前に `test.yml` を呼び出しており、テストが通らなければイメージは作られない（`needs: test`）。旧nginxイメージのビルドステップはPages移行に伴い削除済み（コメントとして記録が残る）。
 
-### 8.4 監視（Prometheus / Grafana / cAdvisor）
+### 8.4 自動テスト
+
+CIで走るテストは3系統。いずれも `.github/workflows/test.yml` が push / Pull Request と、
+`build-push.yml` からの呼び出しで実行する。
+
+| 対象 | 置き場所 | 実行 |
+|---|---|---|
+| 経路探索API（`ikunavi`）| `programs/3D_Graph/tests/` | `pytest`（リポジトリ直下の `pytest.ini` が両方のテストを拾う）|
+| ナビ画面のHTML/JSの噛み合わせ | `programs/html/tests/` | 同上 |
+| 時間割サービス | `programs/timetables/tests/` | `npm run test`（vitest）+ `npm run typecheck` + `npm run build` |
+
+**経路探索APIのテスト**は、リポジトリの `data/` ではなく `tests/conftest.py` が組み立てる
+小さな合成キャンパス（2建物＋屋外、階段・エスカレータ・エレベータ・トイレ・食堂・イベントを1つずつ）
+に対して行う。CSVを1行足すだけで件数が変わる実データに期待値を書くと、データ編集のたびに
+テストが赤くなってしまうため。読み込み先は環境変数 `IKUNAVI_DATA_DIR` で差し替える
+（`ikunavi/config.py` の `data_path()`）。
+
+ロックしている主な仕様: グローバルIDの採番、アンカーからの座標変換、入口エッジの自動生成、
+エスカレータの一方向制約、エレベータ除外、入口通過ペナルティ、目的エッジへの経路延長、
+進行方向に応じた right/left の入れ替え、表示名の解決順、各エンドポイントのレスポンス形と
+エラーメッセージ、CORSヘッダの許可範囲。
+
+実データ（`data/`）に対しては `tests/test_real_data.py` が別途「壊れていないか」だけを見る
+（ノードIDの重複、端点の無いエッジ、グラフに載らない教室、食堂名とエッジの対応、
+イベント行が全て解決できるか、主要APIが応答するか）。件数など編集で普通に変わる値は見ない。
+
+**ナビ画面のテスト**は、HTMLとJSの間の暗黙の契約を静的に照合する。スクリプトの読み込み順
+（`state.js` が先頭）、`getElementById` で探している約50個のIDが各ページに実在すること、
+`onclick` から呼ばれる関数が定義されていること、分割したファイル間で関数や共有変数が
+二重定義されていないこと。navi1〜navi9 も同じ検査にかける。
+
+ローカルでの実行:
+
+```bash
+# 経路探索API + ナビ画面（リポジトリ直下で）
+pip install -r programs/3D_Graph/requirements-dev.txt
+pytest
+
+# 時間割サービス
+cd programs/timetables && npm ci && npm run typecheck && npm test
+```
+
+### 8.5 監視（Prometheus / Grafana / cAdvisor）
 
 `prometheus.yml` は `scrape_interval:15s`、`dockerswarm_sd_configs`（`role: tasks`）でSwarmタスクを動的ディスカバリ。`relabel_configs` でcadvisorタスクのみ対象化、`metric_relabel_configs` で `container_label_com_docker_swarm_service_name` から短い `service` ラベル（例 `iku_python`）を生成（ローリング更新での系列増殖対策、Grafana集計は必ずこの `service` ラベル単位）。Grafanaダッシュボードは ID 14282 推奨。cAdvisorは `--docker_only=true`（非コンテナcgroup除外）、`--housekeeping_interval=15s`（負荷抑制）。
 
-### 8.5 ローカル開発環境（`enviroments/`）
+### 8.6 ローカル開発環境（`enviroments/`）
 
 `deploy_env/`（本番用）とは別に、開発用の軽量Docker構成。`python`コンテナ（ポート5001、`tail -f /dev/null`で待機しシェル作業、ソース全体をバインドマウント）と`nginx`コンテナ（8081→80, 4430→443、SSL証明書の有無で起動時にHTTP/HTTPSをentrypointが動的切替）の2サービスのみ。`connect.sh` が `docker compose up -d`（`renew`引数で`--build`）→`docker exec -it`で開発者をコンテナ内シェルに導く起動スクリプト。Dockerfileには開発補助として `nodejs npm` / `typescript` も追加インストールされる。
 
-### 8.6 Kubernetes（`deploy_env/k8s/`）— 過去の検証・不採用
+### 8.7 Kubernetes（`deploy_env/k8s/`）— 過去の検証・不採用
 
 **現在の本番構成ではない。** `docs/k8s.md` 冒頭に明記の通り、2GB VPS単体ではkubeadm+CNIのオーバーヘッドが大きく、ワーカートークンの有効期限運用コストも高いため、Docker Swarmへ切り替えられた経緯がある（コミットログにも「【検証】k8s検証（失敗）」の記録あり）。
 
@@ -564,7 +627,7 @@ YOLOv8セグメンテーションモデル（`yolov8n-seg.pt` 同梱）で写真
 
 マニフェスト（`kustomization.yaml`でnamespace `iki-project` に集約）はcompose環境とほぼ1:1対応（python/counter/nginxのDeployment、dbのStatefulSet、cloudflared、prometheus/grafana/cadvisor/node-exporter/kube-state-metrics）。`secrets.yaml.template` が雛形（実ファイルは`.gitignore`対象）。`auto-update-cronjob.yaml` は30分毎のrollout restart相当の仕組み。
 
-### 8.7 nginx（撤去済み・ロールバック資産）
+### 8.8 nginx（撤去済み・ロールバック資産）
 
 `deploy_env/nginx/`（Dockerfile, nginx.conf, docker-entrypoint.sh, errors/）は本番では不使用だが、意図的にロールバック用として残置。中身はPages移行前の旧ルーティング定義そのもの（`/`→静的配信、`/3d/`・`/api/`→python:8000、`/redirect/`→counter:3000）。ロールバック手順はPagesのカスタムドメイン解除＋DNSを旧トンネル向けに戻すのみで、GHCRに旧イメージが残っている限り再デプロイ可能。
 
@@ -615,58 +678,396 @@ TLS終端はCloudflare側（Tunnel経由）。パブリックポート非公開�
 ### `programs/3D_Graph/app.py`
 
 ```python
+"""IKU NAVI 経路探索APIのエントリポイント（gunicorn は app:app を読む）。
+
+実装は ikunavi/ パッケージにある。構成の概要は ikunavi/__init__.py の
+docstring と docs/PROJECT_BIBLE.md を参照。
+"""
+from ikunavi import create_app
+
+app = create_app()
+
+if __name__ == "__main__":
+    app.run(debug=False, host="0.0.0.0", port=5001)
+```
+
+### `programs/3D_Graph/ikunavi/__init__.py`
+
+```python
+"""IKU NAVI 経路探索API本体。
+
+構成:
+  config.py     … データのパスと定数
+  transform.py  … 建物ローカル座標 → キャンパス共通座標 の変換
+  dataset.py    … CSV読み込み（全建物＋屋外を1組のDataFrameに）
+  graph.py      … NetworkXグラフの構築
+  naming.py     … 内部識別子 → 表示名
+  cache.py      … 起動後に一度だけ作る派生データ
+  search.py     … 候補ノードの解決と最短経路探索
+  serialize.py  … 探索結果 → APIレスポンス用dict
+  payloads.py   … /api/graph 用のペイロード
+  routes/       … エンドポイント（Blueprint）
+"""
 import os
-import glob
-import json
-import math
 import re
+
+from flask import Flask, request
+
+from . import cache, naming, payloads
+from .config import BASE_DIR, CORS_ALLOWED_ORIGINS, CORS_ORIGIN_PATTERN
+from .errors import register_error_handler
+from .routes import BLUEPRINTS
+
+_cors_origin_pattern = re.compile(CORS_ORIGIN_PATTERN)
+
+
+def _register_cors(app):
+    @app.after_request
+    def add_cors_headers(response):
+        origin = request.headers.get("Origin", "")
+        if origin in CORS_ALLOWED_ORIGINS or _cors_origin_pattern.match(origin):
+            response.headers["Access-Control-Allow-Origin"] = origin
+            response.headers["Vary"] = "Origin"
+        return response
+
+
+def create_app():
+    app = Flask(
+        __name__,
+        template_folder=os.path.join(BASE_DIR, "templates"),
+        static_folder=os.path.join(BASE_DIR, "static"),
+    )
+    _register_cors(app)
+    register_error_handler(app)
+    for bp in BLUEPRINTS:
+        app.register_blueprint(bp)
+    return app
+
+
+def clear_all_caches():
+    """CSVを読み直したいときに、全モジュールのキャッシュを捨てる"""
+    cache.clear_caches()
+    naming.clear_caches()
+    payloads.clear_caches()
+```
+
+### `programs/3D_Graph/ikunavi/cache.py`
+
+```python
+"""起動後に一度だけ構築し、以降は使い回す派生データ。
+
+CSVの読み込みとグラフ構築は数百ms〜秒単位かかるため、リクエストごとにはやらない。
+データを更新したときはプロセスを再起動するか clear_caches() を呼ぶ
+（ikunavi.clear_all_caches() が全モジュールのキャッシュをまとめて落とす）。
+"""
+import os
+
 import pandas as pd
-import networkx as nx
-from flask import Flask, render_template, jsonify, request
 
-app = Flask(__name__)
+from .config import CAFETERIA_CSV, EVENT_CSV, GLOBAL_NODE_OFFSET, ID_OFFSET
+from .dataset import load_data
+from .graph import build_graph
+from .naming import TOILET_NAMES, display_name, get_ignore_set
 
-# Cloudflare Pages (iku-navi.net) から api.iku-navi.net へのクロスオリジン fetch を許可する。
-# nginx 撤去後は cloudflared → Flask 直結のため、CORS ヘッダはここで返す。
-# API は GET のみ・カスタムヘッダなしの「単純リクエスト」なのでプリフライト対応は不要。
-CORS_ALLOWED_ORIGINS = {
-    "https://iku-navi.net",
-    "https://www.iku-navi.net",
-}
-CORS_ORIGIN_PATTERN = re.compile(r"^https://[a-z0-9.-]+\.pages\.dev$")  # Pages プレビュー用
-
-
-@app.after_request
-def add_cors_headers(response):
-    origin = request.headers.get("Origin", "")
-    if origin in CORS_ALLOWED_ORIGINS or CORS_ORIGIN_PATTERN.match(origin):
-        response.headers["Access-Control-Allow-Origin"] = origin
-        response.headers["Vary"] = "Origin"
-    return response
+_nodes_df = None
+_edges_df = None
+_graph_with_ev = None
+_graph_without_ev = None
+_room_index = None    # {(教室名, building): [edge行, ...]}
+_rooms_list = None    # /api/rooms・/api/all 用の整形済み教室リスト
+_nodes_list = None    # /api/all 用の整形済みノードリスト
+_node_xyz = None      # {node_id: (x, y, z)}
+_event_index = None   # event.csv: {title: [(node_id, edge行|None), ...]}
+_events_list = None   # /api/events 用の整形済みイベント一覧
+_cafeteria_list = None
 
 
-BASE_DIR        = os.path.dirname(os.path.abspath(__file__))
-DATA_DIR        = os.path.join(BASE_DIR, "../../data")
-BUILDINGS_JSON  = os.path.join(DATA_DIR, "buildings.json")
-CONNECT_EDGE_CSV = os.path.join(DATA_DIR, "connect_edge.csv")
-GLOBAL_NODE_CSV  = os.path.join(DATA_DIR, "global_node.csv")
-GLOBAL_EDGE_CSV  = os.path.join(DATA_DIR, "global_edge.csv")
-EDGE_IMAGE_CSV      = os.path.join(DATA_DIR, "edge_image.csv")
-CAFETERIA_CSV       = os.path.join(DATA_DIR, "cafeteria_edge.csv")
-NAME_CSV            = os.path.join(DATA_DIR, "name.csv")
-BUILDING_NAME_CSV   = os.path.join(DATA_DIR, "building_name.csv")
-EVENT_CSV           = os.path.join(DATA_DIR, "event.csv")
-CDN_BASE         = "https://cdn.iku-navi.net"
+def get_data():
+    """(nodes_df, edges_df)"""
+    global _nodes_df, _edges_df
+    if _nodes_df is None or _edges_df is None:
+        _nodes_df, _edges_df = load_data()
+    return _nodes_df, _edges_df
+
+
+def get_graph(use_elevator=True):
+    """経路探索用グラフ。エレベータ有無で別々にキャッシュする"""
+    global _graph_with_ev, _graph_without_ev
+    nodes_df, edges_df = get_data()
+    if use_elevator:
+        if _graph_with_ev is None:
+            _graph_with_ev = build_graph(nodes_df, edges_df, use_elevator=True)
+        return _graph_with_ev
+    if _graph_without_ev is None:
+        _graph_without_ev = build_graph(nodes_df, edges_df, use_elevator=False)
+    return _graph_without_ev
+
+
+def get_node_xyz():
+    """{node_id: (x, y, z)}"""
+    global _node_xyz
+    if _node_xyz is None:
+        nodes_df, _ = get_data()
+        _node_xyz = {
+            int(r["id"]): (float(r["x"]), float(r["y"]), float(r["z"]))
+            for _, r in nodes_df.iterrows()
+        }
+    return _node_xyz
+
+
+def get_nodes_list():
+    """/api/all 用の、座標を持たない軽量なノード一覧"""
+    global _nodes_list
+    if _nodes_list is None:
+        nodes_df, _ = get_data()
+        nodes = []
+        for _, row in nodes_df.iterrows():
+            if any(pd.isna(row[c]) for c in ["id", "building", "floor", "type"]):
+                continue
+            nd = {
+                "id":       int(row["id"]),
+                "building": int(row["building"]),
+                "floor":    int(row["floor"]),
+                "type":     int(row["type"]),
+            }
+            if "lat" in row and pd.notna(row["lat"]):
+                nd["lat"] = float(row["lat"])
+            if "lng" in row and pd.notna(row["lng"]):
+                nd["lng"] = float(row["lng"])
+            nodes.append(nd)
+        nodes.sort(key=lambda n: n["id"])
+        _nodes_list = nodes
+    return _nodes_list
+
+
+def _build_room_index(edges_df):
+    """エッジの name 列を分解し、教室名→エッジ行 の索引と教室一覧を一度だけ構築する"""
+    ignore_set = get_ignore_set()
+    index, rooms_list, seen = {}, [], set()
+    for _, row in edges_df.iterrows():
+        raw_name = str(row["name"]).strip()
+        if not raw_name or raw_name == "nan":
+            continue
+        building = int(row["building"])
+        for room in raw_name.split(";"):
+            room = room.strip()
+            if not room:
+                continue
+            index.setdefault((room, building), []).append(row)
+            if (room, building) in seen:
+                continue
+            seen.add((room, building))
+            if room in TOILET_NAMES or room in ignore_set:
+                continue  # 教室検索の候補には含めない（索引には残す）
+            rooms_list.append({
+                "room":     room,
+                "display":  display_name(building, room),
+                "building": building,
+                "floor":    int(row["floor"]),
+                "edge_id":  int(row["id"]),
+                "from":     int(row["from"]),
+                "to":       int(row["to"]),
+            })
+    rooms_list.sort(key=lambda r: (r["building"], r["room"]))
+    return index, rooms_list
+
+
+def get_room_index():
+    """({(room, building): [edge行, ...]}, 教室一覧)"""
+    global _room_index, _rooms_list
+    if _room_index is None:
+        _, edges_df = get_data()
+        _room_index, _rooms_list = _build_room_index(edges_df)
+    return _room_index, _rooms_list
+
+
+def find_edges_for_room(room_name, building):
+    """教室名が含まれるエッジ行のリストを返す（起動時に構築した索引から引く）"""
+    index, _ = get_room_index()
+    return index.get((room_name, int(building)), [])
+
+
+def edges_by_names(names):
+    """room_index から name が names に含まれるエッジ行を収集する（複数種別併記のエッジはIDで重複排除）"""
+    room_index, _ = get_room_index()
+    edges, seen_ids = [], set()
+    for (name, _bldg), rows in room_index.items():
+        if name not in names:
+            continue
+        for row in rows:
+            eid = int(row["id"])
+            if eid in seen_ids:
+                continue
+            seen_ids.add(eid)
+            edges.append(row)
+    return edges
+
+
+def _event_candidates_from_row(row, edges_df, node_floor):
+    """
+    event.csv の1行から到達候補 [(node_id, edge行|None), ...] と階を解決する。
+    room / edge_id / node_id の優先順で見る。戻り値: (candidates, floor|None)
+    """
+    building = int(float(row["building"])) if row["building"] else 0
+    candidates, floor = [], None
+
+    if row["room"]:
+        for e_row in find_edges_for_room(row["room"], building):
+            floor = int(e_row["floor"])
+            candidates += [(int(e_row["from"]), e_row), (int(e_row["to"]), e_row)]
+    elif row["edge_id"]:
+        local_id = int(float(row["edge_id"]))
+        gid = local_id if building == 0 else building * ID_OFFSET + local_id
+        hits = edges_df[(edges_df["id"].astype(int) == gid)
+                        & (edges_df["building"].astype(int) == building)]
+        for _, e_row in hits.iterrows():
+            floor = int(e_row["floor"])
+            candidates += [(int(e_row["from"]), e_row), (int(e_row["to"]), e_row)]
+    elif row["node_id"]:
+        nid = int(float(row["node_id"]))
+        gid = nid + GLOBAL_NODE_OFFSET if building == 0 else building * ID_OFFSET + nid
+        if gid in node_floor:
+            floor = node_floor[gid]
+            candidates.append((gid, None))
+
+    return candidates, floor
+
+
+def _build_event_index():
+    """
+    event.csv（列: title,building,room,node_id,edge_id）を読み込み、
+    イベント名→到達候補ノード の索引と一覧を構築する。
+
+    1行につき room / node_id / edge_id のいずれか1つでタイトルの場所を指定する:
+      room    … 既存の教室名（;区切りのエッジ name に含まれる名前）
+      node_id … 建物内のローカルノードID（building=0 なら global_node.csv のID）
+      edge_id … 建物内のローカルエッジID（building=0 なら global_edge.csv のID）
+    同じ title の行が複数あれば候補を統合する（複数箇所で開催する屋台など）。
+    """
+    index, events_list, seen_titles = {}, [], set()
+    if not os.path.exists(EVENT_CSV):
+        return index, events_list
+
+    df = pd.read_csv(EVENT_CSV, dtype=str).fillna("")
+    df.columns = df.columns.str.strip()
+    nodes_df, edges_df = get_data()
+    node_floor = {int(r["id"]): int(r["floor"]) for _, r in nodes_df.iterrows()}
+
+    for _, raw in df.iterrows():
+        row = {c: str(raw.get(c, "")).strip()
+               for c in ("title", "building", "room", "node_id", "edge_id")}
+        if not row["title"]:
+            continue
+
+        candidates, floor = _event_candidates_from_row(row, edges_df, node_floor)
+        if not candidates:
+            print(f"[event.csv] 位置を解決できない行をスキップ: title={row['title']}")
+            continue
+
+        index.setdefault(row["title"], []).extend(candidates)
+        if row["title"] not in seen_titles:
+            seen_titles.add(row["title"])
+            events_list.append({
+                "title":    row["title"],
+                "building": int(float(row["building"])) if row["building"] else 0,
+                "floor":    floor if floor is not None else 1,
+            })
+    return index, events_list
+
+
+def get_event_index():
+    """({title: [(node_id, edge行|None), ...]}, イベント一覧)"""
+    global _event_index, _events_list
+    if _event_index is None:
+        _event_index, _events_list = _build_event_index()
+    return _event_index, _events_list
+
+
+def find_event_candidates(title):
+    """イベント名→ [(node_id, edge行|None), ...]（未登録なら空リスト）"""
+    index, _ = get_event_index()
+    return index.get(title, [])
+
+
+def get_cafeteria_list():
+    """cafeteria_edge.csv の食堂一覧（無ければ空リスト）"""
+    global _cafeteria_list
+    if _cafeteria_list is None:
+        result = []
+        if os.path.exists(CAFETERIA_CSV):
+            df = pd.read_csv(CAFETERIA_CSV, dtype=str).fillna("")
+            for _, row in df.iterrows():
+                name = row.get("name", "").strip()
+                if not name:
+                    continue
+                result.append({
+                    "name":         name,
+                    "building":     row.get("building", "").strip(),
+                    "display_name": row.get("display_name", name).strip(),
+                })
+        _cafeteria_list = result
+    return _cafeteria_list
+
+
+def get_cafeteria_names():
+    return [c["name"] for c in get_cafeteria_list()]
+
+
+def clear_caches():
+    global _nodes_df, _edges_df, _graph_with_ev, _graph_without_ev
+    global _room_index, _rooms_list, _nodes_list, _node_xyz
+    global _event_index, _events_list, _cafeteria_list
+    _nodes_df = None
+    _edges_df = None
+    _graph_with_ev = None
+    _graph_without_ev = None
+    _room_index = None
+    _rooms_list = None
+    _nodes_list = None
+    _node_xyz = None
+    _event_index = None
+    _events_list = None
+    _cafeteria_list = None
+```
+
+### `programs/3D_Graph/ikunavi/config.py`
+
+```python
+"""データファイルのパスと、経路探索・描画で使う定数。
+
+ここにある値はデータの意味そのものに関わるため、変更するときは
+data/ 配下のCSVの作り方（programs/Map_Editor）と合わせて見直すこと。
+"""
+import os
+
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+DATA_DIR = os.path.join(BASE_DIR, "../../data")
+
+BUILDINGS_JSON    = os.path.join(DATA_DIR, "buildings.json")
+ANCHORS_CSV       = os.path.join(DATA_DIR, "anchors.csv")
+CONNECT_EDGE_CSV  = os.path.join(DATA_DIR, "connect_edge.csv")
+GLOBAL_NODE_CSV   = os.path.join(DATA_DIR, "global_node.csv")
+GLOBAL_EDGE_CSV   = os.path.join(DATA_DIR, "global_edge.csv")
+EDGE_IMAGE_CSV    = os.path.join(DATA_DIR, "edge_image.csv")
+CAFETERIA_CSV     = os.path.join(DATA_DIR, "cafeteria_edge.csv")
+NAME_CSV          = os.path.join(DATA_DIR, "name.csv")
+BUILDING_NAME_CSV = os.path.join(DATA_DIR, "building_name.csv")
+EVENT_CSV         = os.path.join(DATA_DIR, "event.csv")
+IGNORE_CSV        = os.path.join(DATA_DIR, "ignore.csv")
+
+CDN_BASE = "https://cdn.iku-navi.net"
 
 # グローバルID = building_id * ID_OFFSET + ローカルID
 ID_OFFSET          = 100_000
 GLOBAL_NODE_OFFSET = 9_000_000   # 屋外ノードIDのオフセット
+ANCHOR_EDGE_ID_BASE = 8_000_000  # anchors.csv から生成する仮想エッジのID開始値
 
 # 建物出入り口を通過するコスト加算（単位: weight×length と同じ ≒ メートル相当）
 # 値を大きくするほど建物を通り抜けるルートを避けやすくなる
 # 0 にするとペナルティなし（従来動作）
-ENTRANCE_PENALTY   = 50.0
-OUTDOOR_COLOR      = "#5AFF5A"
+ENTRANCE_PENALTY = 50.0
+
+OUTDOOR_COLOR = "#5AFF5A"
 
 # Building color palette (up to 10 buildings)
 BUILDING_COLORS = [
@@ -675,24 +1076,797 @@ BUILDING_COLORS = [
     "#E8A44C", "#4C74E8",
 ]
 
+# Cloudflare Pages (iku-navi.net) から api.iku-navi.net へのクロスオリジン fetch を許可する。
+# nginx 撤去後は cloudflared → Flask 直結のため、CORS ヘッダはここで返す。
+# API は GET のみ・カスタムヘッダなしの「単純リクエスト」なのでプリフライト対応は不要。
+CORS_ALLOWED_ORIGINS = {
+    "https://iku-navi.net",
+    "https://www.iku-navi.net",
+}
+CORS_ORIGIN_PATTERN = r"^https://[a-z0-9.-]+\.pages\.dev$"  # Pages プレビュー用
+```
 
-def _load_transform_config():
+### `programs/3D_Graph/ikunavi/dataset.py`
+
+```python
+"""data/ 配下のCSVを読み込み、全建物＋屋外をつないだ1組のDataFrameにまとめる。
+
+出力は「グローバルID空間」に正規化済みのノード表・エッジ表で、以降の
+グラフ構築・教室索引はすべてこの2つだけを入力にする。
+"""
+import glob
+import os
+import re
+
+import pandas as pd
+
+from .config import (
+    ANCHOR_EDGE_ID_BASE,
+    ANCHORS_CSV,
+    CONNECT_EDGE_CSV,
+    DATA_DIR,
+    GLOBAL_EDGE_CSV,
+    GLOBAL_NODE_CSV,
+    GLOBAL_NODE_OFFSET,
+    ID_OFFSET,
+)
+from .transform import apply_transform, resolved_transform_config
+
+
+def _read_csv(path, **kwargs):
+    """列名の前後空白を落としてCSVを読む（手書きCSVの揺れを吸収する）"""
+    df = pd.read_csv(path, **kwargs)
+    df.columns = df.columns.str.strip()
+    return df
+
+
+def _load_building_frames(config):
+    """data/{N}_bldg/ を全て読み、ローカルID→グローバルID変換と座標変換をかける"""
+    nodes, edges = [], []
+    for bldg_dir in sorted(glob.glob(os.path.join(DATA_DIR, "*_bldg"))):
+        m = re.match(r'(\d+)_bldg', os.path.basename(bldg_dir))
+        if not m:
+            continue
+        bldg_id = int(m.group(1))
+
+        nodes_df = _read_csv(os.path.join(bldg_dir, "node.csv"))
+        edges_df = _read_csv(os.path.join(bldg_dir, "edge.csv"))
+        if nodes_df.empty:
+            continue
+
+        # ローカルID → グローバルID (building * ID_OFFSET + local_id)
+        offset = bldg_id * ID_OFFSET
+        nodes_df["id"]   += offset
+        edges_df["id"]   += offset
+        edges_df["from"] += offset
+        edges_df["to"]   += offset
+
+        # 座標変換 (平行移動 + Z軸回転)
+        nodes_df = apply_transform(nodes_df, config.get(str(bldg_id), {}))
+
+        nodes.append(nodes_df)
+        edges.append(edges_df)
+    return nodes, edges
+
+
+def _load_connect_edges():
+    """建物間接続CSV: グローバルIDで記述、存在する場合のみ読み込む"""
+    if not os.path.exists(CONNECT_EDGE_CSV):
+        return None
+    conn_df = _read_csv(CONNECT_EDGE_CSV)
+    return conn_df if not conn_df.empty else None
+
+
+def _load_global_nodes():
+    """屋外ノード (global_node.csv) — building=0 として追加。戻り値: (DataFrame|None, 元のID集合)"""
+    if not os.path.exists(GLOBAL_NODE_CSV):
+        return None, set()
+    gn_raw = _read_csv(GLOBAL_NODE_CSV).dropna(subset=["id", "x", "y", "z"])
+    if gn_raw.empty:
+        return None, set()
+
+    global_node_ids = set(gn_raw["id"].astype(int))
+    gn_raw = gn_raw.copy()
+    gn_raw["id"] = gn_raw["id"].astype(int) + GLOBAL_NODE_OFFSET
+    gn_raw["building"] = 0
+    for col, default in [("floor", 1), ("type", 1)]:
+        if col not in gn_raw.columns:
+            gn_raw[col] = default
+    return gn_raw, global_node_ids
+
+
+def _load_global_edges(global_node_ids):
+    """屋外エッジ (global_edge.csv) — from/to の小さいIDはグローバルノードローカルID"""
+    if not os.path.exists(GLOBAL_EDGE_CSV):
+        return None
+    ge_raw = _read_csv(GLOBAL_EDGE_CSV).dropna(subset=["id", "from", "to"])
+    if ge_raw.empty:
+        return None
+
+    def _resolve(x):
+        xi = int(x)
+        return xi + GLOBAL_NODE_OFFSET if xi in global_node_ids else xi
+
+    ge_raw = ge_raw.copy()
+    ge_raw["from"] = ge_raw["from"].astype(int).apply(_resolve)
+    ge_raw["to"]   = ge_raw["to"].astype(int).apply(_resolve)
+    for col, default in [("building", 0), ("name", ""), ("floor", 1),
+                         ("type", 1), ("weight", 1.0), ("length", 0.0)]:
+        if col not in ge_raw.columns:
+            ge_raw[col] = default
+    return ge_raw
+
+
+def _build_anchor_edges():
+    """anchors.csv から、グローバルノードとローカルノードを繋ぐエッジを生成する"""
+    if not os.path.exists(ANCHORS_CSV):
+        return None
+    anchors_df = _read_csv(ANCHORS_CSV)
+    if anchors_df.empty:
+        return None
+
+    anchor_edges = []
+    for idx, row in anchors_df.iterrows():
+        bldg_id = int(row["building"])
+        l_id = int(row["local_node_id"])
+        g_id = int(row["global_node_id"])
+
+        anchor_edges.append({
+            "id": ANCHOR_EDGE_ID_BASE + idx,
+            "from": bldg_id * ID_OFFSET + l_id,
+            "to": g_id + GLOBAL_NODE_OFFSET,
+            "building": 0,
+            "floor": 1,
+            "weight": 1.0,
+            "length": 0.0,
+            "type": 7,
+            "name": "",
+        })
+    return pd.DataFrame(anchor_edges) if anchor_edges else None
+
+
+def _normalize(nodes_combined, edges_combined):
+    """欠損行の除外と、エッジの name/type/right/left 列の型そろえ"""
+    # NaN・座標欠損行のみ除外（building=0 = 屋外ノードは許容）
+    nodes_combined = nodes_combined.dropna(subset=["id", "x", "y", "z", "building", "floor"])
+    valid_ids = set(nodes_combined["id"])
+    edges_combined = edges_combined[
+        edges_combined["from"].isin(valid_ids) & edges_combined["to"].isin(valid_ids)
+    ]
+
+    edges_combined["name"] = edges_combined["name"].fillna("").astype(str)
+    # 空行によりfloat化したtype列を整数に正規化 ("1.0" → "1" となるよう)
+    edges_combined["type"] = pd.to_numeric(edges_combined["type"], errors="coerce").fillna(1).astype(int)
+    # right/left列（進行方向の右側・左側にある教室名を、nameとは独立にfrom→toの正しい順序で
+    # ";"区切りで入れたもの。nameのリストは順序通りとは限らないため別立てにしている）は
+    # まだ一部の建物のedge.csvにしか無い任意列。無い建物の行はNaNになるので空文字にする。
+    for col in ("right", "left"):
+        if col not in edges_combined.columns:
+            edges_combined[col] = ""
+        edges_combined[col] = edges_combined[col].fillna("").astype(str)
+    return nodes_combined, edges_combined
+
+
+def load_data():
+    """全建物＋屋外のノード・エッジを読み込み、(nodes_df, edges_df) を返す"""
+    config = resolved_transform_config()
+    all_nodes, all_edges = _load_building_frames(config)
+
+    conn_df = _load_connect_edges()
+    if conn_df is not None:
+        all_edges.append(conn_df)
+
+    gn_df, global_node_ids = _load_global_nodes()
+    if gn_df is not None:
+        all_nodes.append(gn_df)
+
+    ge_df = _load_global_edges(global_node_ids)
+    if ge_df is not None:
+        all_edges.append(ge_df)
+
+    anchor_df = _build_anchor_edges()
+    if anchor_df is not None:
+        all_edges.append(anchor_df)
+
+    if not all_nodes:
+        return pd.DataFrame(), pd.DataFrame()
+
+    return _normalize(pd.concat(all_nodes, ignore_index=True),
+                      pd.concat(all_edges, ignore_index=True))
+```
+
+### `programs/3D_Graph/ikunavi/errors.py`
+
+```python
+"""APIのエラー応答。
+
+ルート関数の途中で ApiError を送出すると {"error": メッセージ} と
+指定ステータスのJSONになる。エラーのたびに return jsonify(...), status を
+書かずに済むので、ルート本体は正常系だけを読めばよくなる。
+"""
+from flask import jsonify
+
+
+class ApiError(Exception):
+    def __init__(self, message, status=400):
+        super().__init__(message)
+        self.message = message
+        self.status = status
+
+
+def register_error_handler(app):
+    @app.errorhandler(ApiError)
+    def _handle_api_error(err):
+        return jsonify({"error": err.message}), err.status
+```
+
+### `programs/3D_Graph/ikunavi/graph.py`
+
+```python
+"""ノード表・エッジ表から NetworkX の有向グラフを組み立てる。
+
+双方向に歩ける通路は往復2本の辺として張り、進行方向で左右が入れ替わるため
+right/left 属性も反転させて持たせる。エスカレータ(type 5/6)だけは
+高低差から通行可能な向きを決めて片方向のみ張る。
+"""
+import networkx as nx
+import pandas as pd
+
+from .config import ENTRANCE_PENALTY
+
+# 上りエスカレータ(5)・下りエスカレータ(6)は一方向のみ
+DIRECTED_EDGE_TYPES = {"5", "6"}
+ELEVATOR_EDGE_TYPE = "4"
+ENTRANCE_EDGE_TYPE = "7"
+
+
+def _node_attrs(row):
+    attrs = dict(
+        x=float(row["x"]),
+        y=float(row["y"]),
+        z=float(row["z"]),
+        building=int(row["building"]),
+        floor=int(row["floor"]),
+        node_type=int(row["type"]),
+    )
+    if "lat" in row and pd.notna(row["lat"]):
+        attrs["lat"] = float(row["lat"])
+    if "lng" in row and pd.notna(row["lng"]):
+        attrs["lng"] = float(row["lng"])
+    if "svg_x" in row and pd.notna(row["svg_x"]):
+        attrs["svg_x"] = float(row["svg_x"])
+        attrs["svg_y"] = float(row["svg_y"])
+    return attrs
+
+
+def _edge_attrs(row, edge_type):
+    return dict(
+        edge_id=int(row["id"]),
+        name=str(row["name"]),
+        right=str(row.get("right", "")),
+        left=str(row.get("left", "")),
+        building=int(row["building"]),
+        floor=int(row["floor"]),
+        weight=float(row["weight"]) * float(row["length"])
+               + (ENTRANCE_PENALTY if edge_type == ENTRANCE_EDGE_TYPE else 0.0),
+        length=float(row["length"]),
+        edge_type=edge_type,
+    )
+
+
+def build_graph(nodes_df, edges_df, use_elevator=True):
+    G = nx.DiGraph()
+    for _, row in nodes_df.iterrows():
+        G.add_node(int(row["id"]), **_node_attrs(row))
+
+    for _, row in edges_df.iterrows():
+        edge_type = str(row["type"]).strip()
+        if not use_elevator and edge_type == ELEVATOR_EDGE_TYPE:
+            continue
+        u, v = int(row["from"]), int(row["to"])
+        edge_attrs = _edge_attrs(row, edge_type)
+
+        if edge_type == "5":
+            # 上りESC: z が低い→高い方向のみ通行可
+            lo, hi = (u, v) if G.nodes[u]["z"] <= G.nodes[v]["z"] else (v, u)
+            G.add_edge(lo, hi, **edge_attrs)
+        elif edge_type == "6":
+            # 下りESC: z が高い→低い方向のみ通行可
+            hi, lo = (u, v) if G.nodes[u]["z"] >= G.nodes[v]["z"] else (v, u)
+            G.add_edge(hi, lo, **edge_attrs)
+        else:
+            G.add_edge(u, v, **edge_attrs)
+            if edge_type not in DIRECTED_EDGE_TYPES:
+                # 逆方向(v→u)は進行方向が反転するため、right/leftも入れ替えて渡す
+                reversed_attrs = dict(edge_attrs, right=edge_attrs["left"], left=edge_attrs["right"])
+                G.add_edge(v, u, **reversed_attrs)
+    return G
+```
+
+### `programs/3D_Graph/ikunavi/naming.py`
+
+```python
+"""生の名前（CSVに書かれた識別子）→ 画面・音声で使う表示名 の解決。
+
+edge.csv の name/right/left 列には "101A" や "M_Toilet" のような内部識別子が
+入っている。利用者に見せる文字列はすべてここを通して組み立てる。
+対応表は data/name.csv・data/building_name.csv、候補から隠す名前は data/ignore.csv。
+"""
+import os
+
+import pandas as pd
+
+from .config import BUILDING_NAME_CSV, IGNORE_CSV, NAME_CSV
+
+# トイレは name.csv に表示名を持たず、種別ごとに固定のラベルを使う
+TOILET_LABEL = {"M_Toilet": "男子トイレ", "F_Toilet": "女子トイレ", "C_Toilet": "多目的トイレ"}
+TOILET_NAMES = set(TOILET_LABEL)
+TOILET_TYPE_MAP = {
+    "M":   ["M_Toilet"],
+    "F":   ["F_Toilet"],
+    "C":   ["C_Toilet"],
+    "ALL": ["M_Toilet", "F_Toilet", "C_Toilet"],
+}
+
+_name_map          = None   # name.csv: {(building|None, name): display_name}
+_building_name_map = None   # building_name.csv: {building: display_name}
+_ignore_set        = None   # ignore.csv: {name, ...}
+
+
+def _read_text_csv(path):
+    """全列を文字列として読み、欠損を空文字に揃える（表示名CSV共通の読み方）"""
+    df = pd.read_csv(path, dtype=str).fillna("")
+    df.columns = df.columns.str.strip()
+    return df
+
+
+def get_name_map():
+    """
+    name.csv（列: building,name,display_name）を読み込み、
+    {(building, name): display_name} の辞書を返す。
+    building 列が空の行は全建物共通の表示名として (None, name) キーで保持する。
+    """
+    global _name_map
+    if _name_map is None:
+        name_map = {}
+        if os.path.exists(NAME_CSV):
+            for _, row in _read_text_csv(NAME_CSV).iterrows():
+                name    = str(row.get("name", "")).strip()
+                display = str(row.get("display_name", "")).strip()
+                bldg    = str(row.get("building", "")).strip()
+                if not name or not display:
+                    continue
+                key = (int(float(bldg)), name) if bldg else (None, name)
+                name_map[key] = display
+        _name_map = name_map
+    return _name_map
+
+
+def get_building_name_map():
+    """
+    building_name.csv（列: building,display_name）を読み込み、
+    {building: display_name} の辞書を返す。
+    """
+    global _building_name_map
+    if _building_name_map is None:
+        name_map = {}
+        if os.path.exists(BUILDING_NAME_CSV):
+            for _, row in _read_text_csv(BUILDING_NAME_CSV).iterrows():
+                bldg    = str(row.get("building", "")).strip()
+                display = str(row.get("display_name", "")).strip()
+                if not bldg or not display:
+                    continue
+                name_map[int(float(bldg))] = display
+        _building_name_map = name_map
+    return _building_name_map
+
+
+def get_ignore_set():
+    """
+    ignore.csv（列: id）を読み込み、教室検索の候補一覧から隠す生の名前の集合を返す。
+    building 列は無く、建物を問わずこの名前に一致するエッジが対象になる。
+    ルート検索（from_room/to_room）・最寄りトイレ/食堂検索・event.csvのroom紐付けは
+    索引（room_index）を直接参照するため、ここでの除外の影響を受けない。
+    """
+    global _ignore_set
+    if _ignore_set is None:
+        ignore_set = set()
+        if os.path.exists(IGNORE_CSV):
+            for _, row in _read_text_csv(IGNORE_CSV).iterrows():
+                name = str(row.get("id", "")).strip()
+                if name:
+                    ignore_set.add(name)
+        _ignore_set = ignore_set
+    return _ignore_set
+
+
+def display_name(building, name):
+    """name.csv の表示名を返す。建物指定 → 全建物共通 → 生の名前+「教室」 の順で解決"""
+    name_map = get_name_map()
+    return (
+        name_map.get((int(building), name))
+        or name_map.get((None, name))
+        or f"{name}教室"
+    )
+
+
+def building_display_name(building):
+    """building_name.csv の表示名を返す。未登録なら 屋外/{building}号館 にフォールバック"""
+    building = int(building)
+    display = get_building_name_map().get(building)
+    if display:
+        return display
+    return "屋外" if building == 0 else f"{building}号館"
+
+
+def first_display_label(building, raw_value):
+    """
+    ";"区切りの生の名前（name/right/left列の値）の先頭要素だけを、読み上げ用の表示名に変換する。
+    トイレ（M_Toilet等）はname.csvに表示名が無く display_name のフォールバックだと不自然になる
+    （例: "M_Toilet教室"）ため、TOILET_LABEL を先に見る。それ以外は name.csv に委ねる。
+    """
+    first = str(raw_value or "").split(";")[0].strip()
+    if not first:
+        return ""
+    if first in TOILET_LABEL:
+        return TOILET_LABEL[first]
+    return display_name(building, first)
+
+
+def clear_caches():
+    global _name_map, _building_name_map, _ignore_set
+    _name_map = None
+    _building_name_map = None
+    _ignore_set = None
+```
+
+### `programs/3D_Graph/ikunavi/payloads.py`
+
+```python
+"""3Dビューア(/3d)向けの、グラフ全体を1レスポンスにまとめたペイロード。
+
+ノード数が数千規模で毎回組み立てると重いので、構築結果をそのまま保持する。
+"""
+import pandas as pd
+
+from .cache import get_data
+from .config import BUILDING_COLORS, OUTDOOR_COLOR
+from .serialize import edge_to_dict
+from .transform import resolved_transform_config
+
+_graph_payload = None
+
+
+def _building_color(building):
+    if building == 0:
+        return OUTDOOR_COLOR
+    return BUILDING_COLORS[(building - 1) % len(BUILDING_COLORS)]
+
+
+def _node_dict(row):
+    bldg = int(row["building"])
+    node_dict = {
+        "id":       int(row["id"]),
+        "x":        float(row["x"]),
+        "y":        float(row["y"]),
+        "z":        float(row["z"]),
+        "building": bldg,
+        "floor":    int(row["floor"]),
+        "type":     int(row["type"]),
+        "color":    _building_color(bldg),
+        "label":    f"Node {int(row['id'])}<br>{'屋外' if bldg == 0 else f'Building {bldg}'} / Floor {int(row['floor'])}",
+    }
+    if "lat" in row and pd.notna(row["lat"]):
+        node_dict["lat"] = float(row["lat"])
+    if "lng" in row and pd.notna(row["lng"]):
+        node_dict["lng"] = float(row["lng"])
+    return node_dict
+
+
+def get_graph_payload():
+    """/api/graph 用のノード・エッジ・変換設定を一度だけ構築して使い回す"""
+    global _graph_payload
+    if _graph_payload is None:
+        nodes_df, edges_df = get_data()
+
+        nodes = [
+            _node_dict(row)
+            for _, row in nodes_df.iterrows()
+            if not any(pd.isna(row[c]) for c in ["id", "x", "y", "z", "building", "floor"])
+        ]
+        valid_edges = edges_df.dropna(subset=["id", "from", "to", "building", "floor", "weight", "length"])
+        edges = [edge_to_dict(row) for _, row in valid_edges.iterrows()]
+
+        _graph_payload = {
+            "nodes": nodes,
+            "edges": edges,
+            "building_colors": BUILDING_COLORS,
+            "config": resolved_transform_config(),
+        }
+    return _graph_payload
+
+
+def clear_caches():
+    global _graph_payload
+    _graph_payload = None
+```
+
+### `programs/3D_Graph/ikunavi/search.py`
+
+```python
+"""出発地・目的地の「候補ノード」への解決と、その総当たりによる最短経路探索。
+
+教室・トイレ・食堂・イベントはいずれもノードではなくエッジ（または複数ノード）に
+紐づくため、候補ノードを列挙して全組み合わせでDijkstraを回し、最短のものを採る。
+"""
+import networkx as nx
+
+
+def candidates_from_edges(G, edge_rows, dedupe=False):
+    """エッジ行のリスト → [(node_id, edge行), ...]（両端点。グラフに無いノードは除く）"""
+    seen, result = set(), []
+    for row in edge_rows:
+        for nid in (int(row["from"]), int(row["to"])):
+            if nid not in G.nodes:
+                continue
+            if dedupe:
+                if nid in seen:
+                    continue
+                seen.add(nid)
+            result.append((nid, row))
+    return result
+
+
+def candidates_from_event(G, event_candidates):
+    """イベント索引の候補 → グラフ上に存在するノードだけの [(node_id, edge行|None), ...]"""
+    seen, result = set(), []
+    for nid, row in event_candidates:
+        if nid in G.nodes and nid not in seen:
+            seen.add(nid)
+            result.append((nid, row))
+    return result
+
+
+def extend_to_far_endpoint(G, path, length, dest_edge_row):
+    """
+    目的地がエッジ（教室・トイレ・食堂）の場合、最寄り端点で止めず、
+    そのエッジのもう一方の端点まで経路を延長する。
+    教室はエッジ区間に面しているため、区間そのものを歩かせることで
+    必ずドアの前を通る案内になる。
+    直前ノードが反対側端点（＝既に目的エッジを歩いて到着）の場合は延長しない。
+    """
+    if dest_edge_row is None or not path:
+        return path, length
+    u, v = int(dest_edge_row["from"]), int(dest_edge_row["to"])
+    last = path[-1]
+    far = v if last == u else u if last == v else None
+    if far is None:
+        return path, length
+    if len(path) >= 2 and path[-2] == far:
+        return path, length
+    if not G.has_edge(last, far):
+        return path, length
+    return path + [far], length + G.edges[last, far].get("weight", 0.0)
+
+
+def best_route(G, start_candidates, dest_candidates, allow_same_node=True):
+    """
+    出発候補×目的候補の全組み合わせでDijkstraを実行し、最短経路を採用する。
+
+    allow_same_node=False のときは出発と目的が同一ノードの組み合わせをスキップする
+    （最寄りトイレ・食堂検索では、出発点自体が目的地そのものである場合を
+    経路として扱わないため）。
+
+    戻り値: (best_path|None, best_length, best_start_row, best_dest_row)
+    """
+    best_path, best_length = None, float("inf")
+    best_start_row = best_dest_row = None
+    for (s_node, s_row) in start_candidates:
+        for (d_node, d_row) in dest_candidates:
+            if s_node == d_node:
+                if not allow_same_node:
+                    continue
+                # 出発と目的が同一ノードを共有する場合は距離0の自明な経路
+                length, path = 0.0, [s_node]
+            else:
+                try:
+                    length, path = nx.bidirectional_dijkstra(G, s_node, d_node, weight="weight")
+                except (nx.NetworkXNoPath, nx.NodeNotFound):
+                    continue
+            if length < best_length:
+                best_length, best_path = length, path
+                best_start_row, best_dest_row = s_row, d_row
+    return best_path, best_length, best_start_row, best_dest_row
+```
+
+### `programs/3D_Graph/ikunavi/serialize.py`
+
+```python
+"""探索結果とCSV行を、APIレスポンス用のdictに整形する。
+
+「どちら側にあるか」「手前から何番目か」といった案内文言のもとになる情報も
+ここで組み立てる。左右は進行方向に補正済みのエッジ属性からしか判定しないこと。
+"""
+from .cache import get_node_xyz
+from .naming import first_display_label
+
+
+def edge_to_dict(row):
+    """edgeの行を座標付きdictに変換するヘルパー"""
+    node_xyz = get_node_xyz()
+    x0, y0, z0 = node_xyz[int(row["from"])]
+    x1, y1, z1 = node_xyz[int(row["to"])]
+    return {
+        "id":       int(row["id"]),
+        "name":     str(row["name"]),
+        "right":    str(row.get("right", "")),
+        "left":     str(row.get("left", "")),
+        "from":     int(row["from"]),
+        "to":       int(row["to"]),
+        "building": int(row["building"]),
+        "floor":    int(row["floor"]),
+        "weight":   float(row["weight"]),
+        "length":   float(row["length"]),
+        "type":     str(row["type"]),
+        "x0": x0, "y0": y0, "z0": z0,
+        "x1": x1, "y1": y1, "z1": z1,
+    }
+
+
+def path_result(G, path, length):
+    """Dijkstraの結果をJSON用dictに整形するヘルパー"""
+    path_coords = []
+    for node_id in path:
+        n = G.nodes[node_id]
+        coord_dict = {"id": node_id, "x": n["x"], "y": n["y"], "z": n["z"],
+                      "building": n["building"], "floor": n["floor"]}
+        if "lat" in n:
+            coord_dict["lat"] = n["lat"]
+        if "lng" in n:
+            coord_dict["lng"] = n["lng"]
+        if "svg_x" in n and n["svg_x"] == n["svg_x"]:  # NaN check
+            coord_dict["svg_x"] = n["svg_x"]
+            coord_dict["svg_y"] = n["svg_y"]
+        path_coords.append(coord_dict)
+
+    path_edges = []
+    for u, v in zip(path, path[1:]):
+        edata = G.edges[u, v]
+        n0, n1 = G.nodes[u], G.nodes[v]
+        building = edata.get("building")
+        name, right, left = edata.get("name", ""), edata.get("right", ""), edata.get("left", "")
+        path_edges.append({
+            "from": u, "to": v,
+            "name":   name,
+            "right":  right,
+            "left":   left,
+            # 読み上げ用の表示名（先頭要素のみ、トイレ等の内部コードも日本語表記に変換済み）。
+            # 生の name/right/left はそのままエッジ照合用に残す。
+            "name_display":  first_display_label(building, name),
+            "right_display": first_display_label(building, right),
+            "left_display":  first_display_label(building, left),
+            "length": edata.get("length", 0),
+            "type":   edata.get("edge_type", "1"),
+            "x0": n0["x"], "y0": n0["y"], "z0": n0["z"],
+            "x1": n1["x"], "y1": n1["y"], "z1": n1["z"],
+        })
+    return {"path": path, "total_weight": length,
+            "path_coords": path_coords, "path_edges": path_edges}
+
+
+def _split_names(raw):
+    """";"区切りの名前列を、空要素を落としたリストにする"""
+    return [n.strip() for n in str(raw or "").split(";") if n.strip()]
+
+
+def side_for_room(edge_like, room_name):
+    """
+    edge_like（"right"/"left"キーを持つdict、またはCSV行のように.get()できるもの）を見て、
+    room_nameがどちら側にあるかを "right"/"left" で返す。
+    right/leftは";"区切りで複数名を持ちうるため、個別の名前として厳密一致で照合する。
+    どちらにも無い・room_name未指定・edge_like無しの場合は ""（呼び出し側でフォールバック表示）。
+
+    注意: 必ず「実際に歩く向き」に補正済みのright/left（build_graphが逆方向エッジ用に
+    入れ替え済みのもの。例えば path_result() が返す path_edges の各要素）を渡すこと。
+    edge.csvの生の行（from→to方向のright/leftのみを持つ）を渡すと、経路がCSVのfrom/toと
+    逆向きに通る場合に左右が逆の結果になる。
+    """
+    if edge_like is None or not room_name:
+        return ""
+    room_name = str(room_name).strip()
+    if room_name in _split_names(edge_like.get("right", "")):
+        return "right"
+    if room_name in _split_names(edge_like.get("left", "")):
+        return "left"
+    return ""
+
+
+_EMPTY_DEST_INFO = {"side": "", "position": None, "count": None,
+                    "nearest_display": None, "dest_display": None}
+
+
+def dest_info(result, room_name):
+    """
+    path_result() が返した result["path_edges"] の最終区間（実際に歩く向きに補正済み）を見て、
+    room_nameの左右・手前から数えた順番を判定する。API各エンドポイントの dest_side 等は
+    これ経由で計算すること（edge.csvの生の行を直接 side_for_room に渡さない）。
+
+    right/leftは";"区切りで手前から奥への物理的な並び順を持つ列（edge.csvの想定通り）なので、
+    その並び順の中でroom_nameが何番目かがそのまま「手前から数えてN番目」になる。
+
+    戻り値:
+      side: "right"/"left"/""（どちらにも一致しなければ""）
+      position: 1始まりの順位（一致しなければNone）
+      count: その側にある教室の総数（一致しなければNone）
+      nearest_display: 一番手前（先頭）の教室の表示名（一致しなければNone）
+      dest_display: room_name自体の表示名（一致しなければNone）
+    """
+    edges = result.get("path_edges") or []
+    if not edges or not room_name:
+        return dict(_EMPTY_DEST_INFO)
+    last = edges[-1]
+    room_name = str(room_name).strip()
+    coords = result.get("path_coords") or []
+    building = coords[-1].get("building") if coords else None
+
+    for side in ("right", "left"):
+        names = _split_names(last.get(side, ""))
+        if room_name in names:
+            return {
+                "side": side,
+                "position": names.index(room_name) + 1,
+                "count": len(names),
+                "nearest_display": first_display_label(building, names[0]),
+                "dest_display": first_display_label(building, room_name),
+            }
+    return dict(_EMPTY_DEST_INFO)
+
+
+def apply_dest_info(result, room_name):
+    """dest_info()の結果をresultのdest_*フィールドとして書き込む共通処理"""
+    info = dest_info(result, room_name)
+    result["dest_side"] = info["side"]
+    result["dest_position"] = info["position"]
+    result["dest_count"] = info["count"]
+    result["dest_nearest_display"] = info["nearest_display"]
+    result["dest_display"] = info["dest_display"]
+```
+
+### `programs/3D_Graph/ikunavi/transform.py`
+
+```python
+"""建物ローカル座標 → キャンパス共通座標 への変換パラメータの算出と適用。
+
+各建物の node.csv はその建物だけのローカル座標で書かれている。これを
+anchors.csv（ローカルノードと屋外ノードの対応）から求めた回転・平行移動で
+共通座標に載せ替えることで、建物をまたぐ経路探索ができるようになる。
+座標系の考え方は docs/XYZ_Design.md を参照。
+"""
+import json
+import math
+import os
+
+import pandas as pd
+
+from .config import ANCHORS_CSV, BUILDINGS_JSON, DATA_DIR, GLOBAL_NODE_CSV
+
+
+def load_transform_config():
+    """buildings.json に手書きされた変換パラメータを読む（無ければ空）"""
     if os.path.exists(BUILDINGS_JSON):
         with open(BUILDINGS_JSON) as f:
             return json.load(f)
     return {}
 
 
-def _calc_transforms_from_anchors():
+def calc_transforms_from_anchors():
     """
     global_node.csv と anchors.csv から各建物の変換パラメータを自動計算する。
     2点アンカー: 回転+平行移動を自動計算。
     1点アンカー: 平行移動のみ自動計算、rot_deg は buildings.json から取得（なければ 0）。
     tz_offset が buildings.json にあれば加算する。
     """
-    anchor_path = os.path.join(DATA_DIR, "anchors.csv")
-
-    if not os.path.exists(GLOBAL_NODE_CSV) or not os.path.exists(anchor_path):
+    if not os.path.exists(GLOBAL_NODE_CSV) or not os.path.exists(ANCHORS_CSV):
         return {}
 
     gn = pd.read_csv(GLOBAL_NODE_CSV)
@@ -701,12 +1875,12 @@ def _calc_transforms_from_anchors():
         return {}
     gn = gn.set_index("id")
 
-    anchors = pd.read_csv(anchor_path)
+    anchors = pd.read_csv(ANCHORS_CSV)
     anchors.columns = anchors.columns.str.strip()
     if anchors.empty:
         return {}
 
-    config = _load_transform_config()
+    config = load_transform_config()
     transforms = {}
     for bldg_id, group in anchors.groupby("building"):
         if len(group) < 1:
@@ -752,7 +1926,14 @@ def _calc_transforms_from_anchors():
     return transforms
 
 
-def _apply_transform(nodes_df, cfg):
+def resolved_transform_config():
+    """buildings.json をベースに、anchors.csv がある建物は自動計算で上書きした設定"""
+    config = load_transform_config()
+    config.update(calc_transforms_from_anchors())
+    return config
+
+
+def apply_transform(nodes_df, cfg):
     """変換パラメータをノード座標に適用する"""
     θ  = math.radians(cfg.get("rot_deg", 0.0))
     tx = cfg.get("tx", 0.0)
@@ -769,593 +1950,426 @@ def _apply_transform(nodes_df, cfg):
         nodes_df["y"] += ty
     nodes_df["z"] += tz
     return nodes_df
+```
+
+### `programs/3D_Graph/ikunavi/routes/__init__.py`
+
+```python
+"""APIのエンドポイント定義。機能ごとにBlueprintを分けている"""
+from . import events, facilities, images, navigation, rooms, viewer
+
+BLUEPRINTS = (
+    viewer.bp,
+    rooms.bp,
+    events.bp,
+    navigation.bp,
+    facilities.bp,
+    images.bp,
+)
+```
+
+### `programs/3D_Graph/ikunavi/routes/_common.py`
+
+```python
+"""ルート間で共通のクエリパラメータ解釈。
+
+出発点の指定方法（教室名 / ノードID / イベント名）は複数のエンドポイントで
+同じ書式なので、解釈と候補ノードへの解決をここにまとめている。
+"""
+from flask import request
+
+from .. import cache
+from ..errors import ApiError
+from ..search import candidates_from_edges, candidates_from_event
+from ..serialize import edge_to_dict
 
 
-def load_data():
-    # buildings.json をベースに、anchors.csv がある建物は自動計算で上書き
-    config = _load_transform_config()
-    config.update(_calc_transforms_from_anchors())
-    all_nodes, all_edges = [], []
-
-    for bldg_dir in sorted(glob.glob(os.path.join(DATA_DIR, "*_bldg"))):
-        m = re.match(r'(\d+)_bldg', os.path.basename(bldg_dir))
-        if not m:
-            continue
-        bldg_id = int(m.group(1))
-
-        nodes_df = pd.read_csv(os.path.join(bldg_dir, "node.csv"))
-        edges_df = pd.read_csv(os.path.join(bldg_dir, "edge.csv"))
-        nodes_df.columns = nodes_df.columns.str.strip()
-        edges_df.columns = edges_df.columns.str.strip()
-
-        if nodes_df.empty:
-            continue
-
-        # ローカルID → グローバルID (building * ID_OFFSET + local_id)
-        offset = bldg_id * ID_OFFSET
-        nodes_df["id"]   += offset
-        edges_df["id"]   += offset
-        edges_df["from"] += offset
-        edges_df["to"]   += offset
-
-        # 座標変換 (平行移動 + Z軸回転)
-        nodes_df = _apply_transform(nodes_df, config.get(str(bldg_id), {}))
-
-        all_nodes.append(nodes_df)
-        all_edges.append(edges_df)
-
-    # 建物間接続CSV: グローバルIDで記述、存在する場合のみ読み込む
-    if os.path.exists(CONNECT_EDGE_CSV):
-        conn_df = pd.read_csv(CONNECT_EDGE_CSV)
-        conn_df.columns = conn_df.columns.str.strip()
-        if not conn_df.empty:
-            all_edges.append(conn_df)
-
-    # 屋外ノード (global_node.csv) — building=0 として追加
-    global_node_ids: set = set()
-    if os.path.exists(GLOBAL_NODE_CSV):
-        gn_raw = pd.read_csv(GLOBAL_NODE_CSV)
-        gn_raw.columns = gn_raw.columns.str.strip()
-        gn_raw = gn_raw.dropna(subset=["id", "x", "y", "z"])
-        if not gn_raw.empty:
-            global_node_ids = set(gn_raw["id"].astype(int))
-            gn_raw = gn_raw.copy()
-            gn_raw["id"] = gn_raw["id"].astype(int) + GLOBAL_NODE_OFFSET
-            gn_raw["building"] = 0
-            for col, default in [("floor", 1), ("type", 1)]:
-                if col not in gn_raw.columns:
-                    gn_raw[col] = default
-            all_nodes.append(gn_raw)
-
-    # 屋外エッジ (global_edge.csv) — from/to の小さいIDはグローバルノードローカルID
-    if os.path.exists(GLOBAL_EDGE_CSV):
-        ge_raw = pd.read_csv(GLOBAL_EDGE_CSV)
-        ge_raw.columns = ge_raw.columns.str.strip()
-        ge_raw = ge_raw.dropna(subset=["id", "from", "to"])
-        if not ge_raw.empty:
-            def _resolve(x, _ids=global_node_ids):
-                xi = int(x)
-                return xi + GLOBAL_NODE_OFFSET if xi in _ids else xi
-            ge_raw = ge_raw.copy()
-            ge_raw["from"] = ge_raw["from"].astype(int).apply(_resolve)
-            ge_raw["to"]   = ge_raw["to"].astype(int).apply(_resolve)
-            for col, default in [("building", 0), ("name", ""), ("floor", 1),
-                                  ("type", 1), ("weight", 1.0), ("length", 0.0)]:
-                if col not in ge_raw.columns:
-                    ge_raw[col] = default
-            all_edges.append(ge_raw)
-
-    # anchors.csvから、グローバルノードとローカルノードを繋ぐエッジを生成
-    anchor_path = os.path.join(DATA_DIR, "anchors.csv")
-    if os.path.exists(anchor_path):
-        anchors_df = pd.read_csv(anchor_path)
-        anchors_df.columns = anchors_df.columns.str.strip()
-        if not anchors_df.empty:
-            anchor_edges = []
-            for idx, row in anchors_df.iterrows():
-                bldg_id = int(row["building"])
-                l_id = int(row["local_node_id"])
-                g_id = int(row["global_node_id"])
-
-                local_global_id = bldg_id * ID_OFFSET + l_id
-                outdoor_global_id = g_id + GLOBAL_NODE_OFFSET
-
-                anchor_edges.append({
-                    "id": 8000000 + idx,
-                    "from": local_global_id,
-                    "to": outdoor_global_id,
-                    "building": 0,
-                    "floor": 1,
-                    "weight": 1.0,
-                    "length": 0.0,
-                    "type": 7,
-                    "name": ""
-                })
-            if anchor_edges:
-                all_edges.append(pd.DataFrame(anchor_edges))
-
-    if not all_nodes:
-        return pd.DataFrame(), pd.DataFrame()
-
-    nodes_combined = pd.concat(all_nodes, ignore_index=True)
-    edges_combined = pd.concat(all_edges, ignore_index=True)
-
-    # NaN・座標欠損行のみ除外（building=0 = 屋外ノードは許容）
-    nodes_combined = nodes_combined.dropna(subset=["id", "x", "y", "z", "building", "floor"])
-    valid_ids = set(nodes_combined["id"])
-    edges_combined = edges_combined[
-        edges_combined["from"].isin(valid_ids) & edges_combined["to"].isin(valid_ids)
-    ]
-
-    edges_combined["name"] = edges_combined["name"].fillna("").astype(str)
-    # 空行によりfloat化したtype列を整数に正規化 ("1.0" → "1" となるよう)
-    edges_combined["type"] = pd.to_numeric(edges_combined["type"], errors="coerce").fillna(1).astype(int)
-    return nodes_combined, edges_combined
+def use_elevator_param():
+    """use_elevator=0 のときだけエレベータを使わない（省略時は使う）"""
+    return request.args.get("use_elevator", "1") != "0"
 
 
-_DIRECTED_EDGE_TYPES = {"5", "6"}  # 上りエスカレータ(5)・下りエスカレータ(6)は一方向のみ
+def edges_for_room_or_404(room_name, building, label="教室"):
+    """教室名→エッジ行。見つからなければ404"""
+    edges = cache.find_edges_for_room(room_name, building)
+    if not edges:
+        raise ApiError(f"建物 {building} に{label} '{room_name}' が見つかりません", 404)
+    return edges
 
 
-def build_graph(nodes_df, edges_df, use_elevator=True):
-    G = nx.DiGraph()
-    for _, row in nodes_df.iterrows():
-        node_attrs = dict(
-            x=float(row["x"]),
-            y=float(row["y"]),
-            z=float(row["z"]),
-            building=int(row["building"]),
-            floor=int(row["floor"]),
-            node_type=int(row["type"]),
+class FromSpec:
+    """出発点の指定（from_room＋from_building / from_node / from_event）"""
+
+    def __init__(self, room="", building=None, node_id=None, event=""):
+        self.room = room
+        self.building = building
+        self.node_id = node_id
+        self.event = event
+
+    @classmethod
+    def from_request(cls):
+        return cls(
+            room=request.args.get("from_room", "").strip(),
+            building=request.args.get("from_building", type=int),
+            node_id=request.args.get("from_node", type=int),
+            event=request.args.get("from_event", "").strip(),
         )
-        if "lat" in row and pd.notna(row["lat"]):
-            node_attrs["lat"] = float(row["lat"])
-        if "lng" in row and pd.notna(row["lng"]):
-            node_attrs["lng"] = float(row["lng"])
-        if "svg_x" in row and pd.notna(row["svg_x"]):
-            node_attrs["svg_x"] = float(row["svg_x"])
-            node_attrs["svg_y"] = float(row["svg_y"])
-        G.add_node(int(row["id"]), **node_attrs)
-    for _, row in edges_df.iterrows():
-        edge_type = str(row["type"]).strip()
-        if not use_elevator and edge_type == "4":
-            continue
-        u, v = int(row["from"]), int(row["to"])
-        edge_attrs = dict(
-            edge_id=int(row["id"]),
-            name=str(row["name"]),
-            building=int(row["building"]),
-            floor=int(row["floor"]),
-            weight=float(row["weight"]) * float(row["length"]) + (ENTRANCE_PENALTY if edge_type == "7" else 0.0),
-            length=float(row["length"]),
-            edge_type=edge_type,
-        )
-        if edge_type == "5":
-            # 上りESC: z が低い→高い方向のみ通行可
-            lo, hi = (u, v) if G.nodes[u]["z"] <= G.nodes[v]["z"] else (v, u)
-            G.add_edge(lo, hi, **edge_attrs)
-        elif edge_type == "6":
-            # 下りESC: z が高い→低い方向のみ通行可
-            hi, lo = (u, v) if G.nodes[u]["z"] >= G.nodes[v]["z"] else (v, u)
-            G.add_edge(hi, lo, **edge_attrs)
-        else:
-            G.add_edge(u, v, **edge_attrs)
-            if edge_type not in _DIRECTED_EDGE_TYPES:
-                G.add_edge(v, u, **edge_attrs)
-    return G
+
+    def require(self):
+        """いずれも指定されていなければ400"""
+        if not self.room and not self.event and self.node_id is None:
+            raise ApiError("from_room（＋from_building）・from_event・from_node のいずれかを指定してください")
+        return self
+
+    def candidates(self, G):
+        """
+        出発点指定（from_event / from_room / from_node の優先順）を
+        候補ノードのリスト [(node_id, edge行|None), ...] に解決する。
+        """
+        if self.event:
+            result = candidates_from_event(G, cache.find_event_candidates(self.event))
+            if not result:
+                raise ApiError(f"イベント '{self.event}' が見つかりません", 404)
+            return result
+
+        if self.room:
+            if self.building is None:
+                raise ApiError("from_building を指定してください")
+            edges = edges_for_room_or_404(self.room, self.building)
+            return candidates_from_edges(G, edges, dedupe=True)
+
+        if self.node_id not in G.nodes:
+            raise ApiError(f"ノード {self.node_id} が存在しません", 404)
+        return [(self.node_id, None)]
+
+    def annotate(self, result, start_edge_row):
+        """レスポンスに出発点情報（from_event / from_room / from_edge）を書き足す"""
+        if self.event:
+            result["from_event"] = self.event
+        if start_edge_row is not None:
+            if self.room:
+                result["from_room"] = self.room
+            result["from_edge"] = edge_to_dict(start_edge_row)
+        return result
+```
+
+### `programs/3D_Graph/ikunavi/routes/events.py`
+
+```python
+"""イベントモード（data/event.csv に登録した屋台・催し）"""
+from flask import Blueprint, jsonify
+
+from .. import cache
+
+bp = Blueprint("events", __name__)
 
 
-# ------------------------------------------------------------------ #
-#  Cache Mechanism
-# ------------------------------------------------------------------ #
-_cached_nodes_df = None
-_cached_edges_df = None
-_cached_graph_with_ev = None
-_cached_graph_without_ev = None
-_cached_room_index = None   # {(教室名, building): [edge行, ...]}
-_cached_rooms_list = None   # api_rooms / api_all 用の整形済み教室リスト
-_cached_nodes_list = None   # api_all 用の整形済みノードリスト
-_cached_node_xyz   = None   # {node_id: (x, y, z)}
-_cached_graph_payload = None   # /api/graph レスポンス全体
-_cached_name_map    = None   # name.csv: {(building|None, name): display_name}
-_cached_event_index = None   # event.csv: {title: [(node_id, edge行|None), ...]}
-_cached_events_list = None   # /api/events 用の整形済みイベント一覧
-
-def get_cached_data():
-    global _cached_nodes_df, _cached_edges_df
-    if _cached_nodes_df is None or _cached_edges_df is None:
-        _cached_nodes_df, _cached_edges_df = load_data()
-    return _cached_nodes_df, _cached_edges_df
-
-
-def get_cached_name_map():
+@bp.route("/api/events")
+def api_events():
     """
-    name.csv（列: building,name,display_name）を読み込み、
-    {(building, name): display_name} の辞書を返す。
-    building 列が空の行は全建物共通の表示名として (None, name) キーで保持する。
+    event.csv に登録されたイベント（屋台など）の一覧を返す。
+    返却形式: [ { "title": "たこ焼き屋台", "building": 10, "floor": 1 }, ... ]
     """
-    global _cached_name_map
-    if _cached_name_map is None:
-        name_map = {}
-        if os.path.exists(NAME_CSV):
-            df = pd.read_csv(NAME_CSV, dtype=str).fillna("")
-            df.columns = df.columns.str.strip()
-            for _, row in df.iterrows():
-                name    = str(row.get("name", "")).strip()
-                display = str(row.get("display_name", "")).strip()
-                bldg    = str(row.get("building", "")).strip()
-                if not name or not display:
-                    continue
-                key = (int(float(bldg)), name) if bldg else (None, name)
-                name_map[key] = display
-        _cached_name_map = name_map
-    return _cached_name_map
+    _, events_list = cache.get_event_index()
+    return jsonify(events_list)
+```
+
+### `programs/3D_Graph/ikunavi/routes/facilities.py`
+
+```python
+"""最寄り施設（トイレ・食堂）の検索。
+
+いずれも「出発点から一番近い候補エッジ」を全探索で選ぶ点は同じで、
+目的地の集め方とレスポンスに添える情報だけが違う。
+"""
+from flask import Blueprint, jsonify, request
+
+from .. import cache
+from ..errors import ApiError
+from ..naming import TOILET_LABEL, TOILET_TYPE_MAP
+from ..search import best_route, candidates_from_edges, extend_to_far_endpoint
+from ..serialize import apply_dest_info, edge_to_dict, path_result
+from ._common import FromSpec, use_elevator_param
+
+bp = Blueprint("facilities", __name__)
 
 
-def _display_name(building, name):
-    """name.csv の表示名を返す。建物指定 → 全建物共通 → 生の名前 の順で解決"""
-    name_map = get_cached_name_map()
-    return name_map.get((int(building), name)) or name_map.get((None, name)) or name
+def _route_to_facility(G, start_candidates, facility_edges, no_path_error):
+    """出発点から施設エッジ群への最短経路。出発点そのものは目的地として扱わない"""
+    dest_candidates = candidates_from_edges(G, facility_edges)
+
+    best_path, best_length, best_start_row, best_dest_row = best_route(
+        G, start_candidates, dest_candidates, allow_same_node=False)
+    if best_path is None:
+        raise ApiError(no_path_error, 404)
+
+    best_path, best_length = extend_to_far_endpoint(G, best_path, best_length, best_dest_row)
+    return path_result(G, best_path, best_length), best_start_row, best_dest_row
 
 
-_cached_building_name_map = None   # building_name.csv: {building: display_name}
+def _names_in(edge_row):
+    return [n.strip() for n in str(edge_row["name"]).split(";")]
 
 
-def get_cached_building_name_map():
+@bp.route("/api/cafeterias")
+def api_cafeterias():
+    return jsonify(cache.get_cafeteria_list())
+
+
+@bp.route("/api/nearest_toilet")
+def api_nearest_toilet():
     """
-    building_name.csv（列: building,display_name）を読み込み、
-    {building: display_name} の辞書を返す。
+    最寄りのトイレへの最短経路を返す。
+
+    出発点（いずれか）:
+      from_room=101A&from_building=10
+      from_node=100001
+      from_event=たこ焼き屋台
+
+    種別:
+      type=M / F / C / all (省略時 all)
+
+    条件:
+      use_elevator=0/1 (省略時 1)
     """
-    global _cached_building_name_map
-    if _cached_building_name_map is None:
-        name_map = {}
-        if os.path.exists(BUILDING_NAME_CSV):
-            df = pd.read_csv(BUILDING_NAME_CSV, dtype=str).fillna("")
-            df.columns = df.columns.str.strip()
-            for _, row in df.iterrows():
-                bldg    = str(row.get("building", "")).strip()
-                display = str(row.get("display_name", "")).strip()
-                if not bldg or not display:
-                    continue
-                name_map[int(float(bldg))] = display
-        _cached_building_name_map = name_map
-    return _cached_building_name_map
+    toilet_type = request.args.get("type", "all").strip().upper()
+    from_spec = FromSpec.from_request().require()
+
+    targets = TOILET_TYPE_MAP.get(toilet_type, TOILET_TYPE_MAP["ALL"])
+    G = cache.get_graph(use_elevator=use_elevator_param())
+    start_candidates = from_spec.candidates(G)
+
+    # トイレエッジを全建物から収集（教室名索引から引く。複数種別併記のエッジはIDで重複排除）
+    toilet_edges = cache.edges_by_names(targets)
+    if not toilet_edges:
+        raise ApiError("該当するトイレがデータ内に見つかりません", 404)
+
+    result, best_start_row, best_toilet_row = _route_to_facility(
+        G, start_candidates, toilet_edges,
+        "指定された出発点から該当するトイレへの経路が見つかりません")
+
+    t_names = _names_in(best_toilet_row)
+    found_key = next((t for t in TOILET_TYPE_MAP["ALL"] if t in t_names), "")
+
+    result["toilet_type"]     = found_key.split("_")[0] if found_key else ""
+    result["toilet_name"]     = found_key
+    result["toilet_label"]    = TOILET_LABEL.get(found_key, "トイレ")
+    result["toilet_building"] = int(best_toilet_row["building"])
+    result["toilet_floor"]    = int(best_toilet_row["floor"])
+    result["toilet_edge"]     = edge_to_dict(best_toilet_row)
+    apply_dest_info(result, found_key)
+    from_spec.annotate(result, best_start_row)
+    return jsonify(result)
 
 
-def _building_display_name(building):
-    """building_name.csv の表示名を返す。未登録なら 屋外/{building}号館 にフォールバック"""
-    building = int(building)
-    display = get_cached_building_name_map().get(building)
-    if display:
-        return display
-    return "屋外" if building == 0 else f"{building}号館"
-
-
-def _build_room_index(edges_df):
-    """エッジの name 列を分解し、教室名→エッジ行 の索引と教室一覧を一度だけ構築する"""
-    index, rooms_list, seen = {}, [], set()
-    for _, row in edges_df.iterrows():
-        raw_name = str(row["name"]).strip()
-        if not raw_name or raw_name == "nan":
-            continue
-        building = int(row["building"])
-        for room in raw_name.split(";"):
-            room = room.strip()
-            if not room:
-                continue
-            index.setdefault((room, building), []).append(row)
-            if (room, building) not in seen:
-                seen.add((room, building))
-                rooms_list.append({
-                    "room":     room,
-                    "display":  _display_name(building, room),
-                    "building": building,
-                    "floor":    int(row["floor"]),
-                    "edge_id":  int(row["id"]),
-                    "from":     int(row["from"]),
-                    "to":       int(row["to"]),
-                })
-    rooms_list.sort(key=lambda r: (r["building"], r["room"]))
-    return index, rooms_list
-
-
-def get_cached_room_index():
-    global _cached_room_index, _cached_rooms_list
-    if _cached_room_index is None:
-        _, edges_df = get_cached_data()
-        _cached_room_index, _cached_rooms_list = _build_room_index(edges_df)
-    return _cached_room_index, _cached_rooms_list
-
-
-def _build_event_index():
+@bp.route("/api/nearest_cafeteria")
+def api_nearest_cafeteria():
     """
-    event.csv（列: title,building,room,node_id,edge_id）を読み込み、
-    イベント名→到達候補ノード の索引と一覧を構築する。
+    最寄りの食堂への最短経路を返す。
 
-    1行につき room / node_id / edge_id のいずれか1つでタイトルの場所を指定する:
-      room    … 既存の教室名（;区切りのエッジ name に含まれる名前）
-      node_id … 建物内のローカルノードID（building=0 なら global_node.csv のID）
-      edge_id … 建物内のローカルエッジID（building=0 なら global_edge.csv のID）
-    同じ title の行が複数あれば候補を統合する（複数箇所で開催する屋台など）。
+    出発点（いずれか）:
+      from_room=101A&from_building=10
+      from_node=100001
+      from_event=たこ焼き屋台
+
+    条件:
+      use_elevator=0/1 (省略時 1)
     """
-    index, events_list, seen_titles = {}, [], set()
-    if not os.path.exists(EVENT_CSV):
-        return index, events_list
+    from_spec = FromSpec.from_request().require()
 
-    df = pd.read_csv(EVENT_CSV, dtype=str).fillna("")
+    cafeteria_names = cache.get_cafeteria_names()
+    if not cafeteria_names:
+        raise ApiError("cafeteria_edge.csv が見つかりません", 500)
+
+    caf_name = request.args.get("name", "all").strip()
+    targets  = [caf_name] if caf_name != "all" else cafeteria_names
+
+    G = cache.get_graph(use_elevator=use_elevator_param())
+    start_candidates = from_spec.candidates(G)
+
+    caf_edges = cache.edges_by_names(targets)
+    if not caf_edges:
+        raise ApiError("食堂エッジがデータ内に見つかりません", 404)
+
+    result, best_start_row, best_caf_row = _route_to_facility(
+        G, start_candidates, caf_edges, "食堂への経路が見つかりません")
+
+    matched_caf = next((t for t in targets if t in _names_in(best_caf_row)), "")
+
+    result["cafeteria_building"] = int(best_caf_row["building"])
+    result["cafeteria_floor"]    = int(best_caf_row["floor"])
+    result["cafeteria_edge"]     = edge_to_dict(best_caf_row)
+    apply_dest_info(result, matched_caf)
+    from_spec.annotate(result, best_start_row)
+    return jsonify(result)
+```
+
+### `programs/3D_Graph/ikunavi/routes/images.py`
+
+```python
+"""エッジ（区間）ごとの経路写真のURL一覧"""
+import os
+
+import pandas as pd
+from flask import Blueprint, jsonify
+
+from ..config import CDN_BASE, EDGE_IMAGE_CSV
+
+bp = Blueprint("images", __name__)
+
+
+@bp.route("/api/edge_images")
+def api_edge_images():
+    """
+    エッジ画像マップを返す。
+    返却形式: { "1000001_1000002": "https://cdn.iku-navi.net/1000001_to_1000002.jpg", ... }
+    """
+    if not os.path.exists(EDGE_IMAGE_CSV):
+        return jsonify({})
+    df = pd.read_csv(EDGE_IMAGE_CSV)
     df.columns = df.columns.str.strip()
-    nodes_df, edges_df = get_cached_data()
-    node_floor = {int(r["id"]): int(r["floor"]) for _, r in nodes_df.iterrows()}
-
+    df = df.dropna(subset=["from", "to"])
+    result = {}
     for _, row in df.iterrows():
-        title = str(row.get("title", "")).strip()
-        if not title:
+        f, t = int(row["from"]), int(row["to"])
+        if f == 0 and t == 0:
             continue
-        bldg    = str(row.get("building", "")).strip()
-        room    = str(row.get("room", "")).strip()
-        node_id = str(row.get("node_id", "")).strip()
-        edge_id = str(row.get("edge_id", "")).strip()
-        building = int(float(bldg)) if bldg else 0
+        name = str(row["image_name"]).strip()
+        if not name or name == "nan":
+            continue
+        result[f"{f}_{t}"] = f"{CDN_BASE}/{name}"
+    return jsonify(result)
+```
 
-        candidates, floor = [], None
-        if room:
-            for e_row in _find_edges_for_room(room, building):
-                floor = int(e_row["floor"])
-                for nid in (int(e_row["from"]), int(e_row["to"])):
-                    candidates.append((nid, e_row))
-        elif edge_id:
-            gid = int(float(edge_id)) if building == 0 else building * ID_OFFSET + int(float(edge_id))
-            hits = edges_df[(edges_df["id"].astype(int) == gid)
-                            & (edges_df["building"].astype(int) == building)]
-            for _, e_row in hits.iterrows():
-                floor = int(e_row["floor"])
-                for nid in (int(e_row["from"]), int(e_row["to"])):
-                    candidates.append((nid, e_row))
-        elif node_id:
-            nid = int(float(node_id))
-            gid = nid + GLOBAL_NODE_OFFSET if building == 0 else building * ID_OFFSET + nid
-            if gid in node_floor:
-                floor = node_floor[gid]
-                candidates.append((gid, None))
+### `programs/3D_Graph/ikunavi/routes/navigation.py`
 
+```python
+"""出発地→目的地の経路探索（ナビUIが使う本命のAPI）"""
+from flask import Blueprint, jsonify, request
+
+from .. import cache
+from ..errors import ApiError
+from ..search import (
+    best_route,
+    candidates_from_edges,
+    candidates_from_event,
+    extend_to_far_endpoint,
+)
+from ..serialize import apply_dest_info, edge_to_dict, path_result
+from ._common import FromSpec, edges_for_room_or_404, use_elevator_param
+
+bp = Blueprint("navigation", __name__)
+
+
+def _dest_candidates(G, to_room, to_building, to_node_id, to_event):
+    """目的地指定（to_event / to_room / to_node の優先順）を候補ノードに解決する"""
+    if to_event:
+        candidates = candidates_from_event(G, cache.find_event_candidates(to_event))
         if not candidates:
-            print(f"[event.csv] 位置を解決できない行をスキップ: title={title}")
-            continue
+            raise ApiError(f"イベント '{to_event}' が見つかりません", 404)
+        return candidates
 
-        index.setdefault(title, []).extend(candidates)
-        if title not in seen_titles:
-            seen_titles.add(title)
-            events_list.append({
-                "title":    title,
-                "building": building,
-                "floor":    floor if floor is not None else 1,
-            })
-    return index, events_list
+    if to_room:
+        if to_building is None:
+            raise ApiError("to_building を指定してください")
+        return candidates_from_edges(G, edges_for_room_or_404(to_room, to_building))
 
-
-def get_cached_event_index():
-    global _cached_event_index, _cached_events_list
-    if _cached_event_index is None:
-        _cached_event_index, _cached_events_list = _build_event_index()
-    return _cached_event_index, _cached_events_list
+    if to_node_id not in G.nodes:
+        raise ApiError(f"ノード {to_node_id} が存在しません", 404)
+    return [(to_node_id, None)]
 
 
-def _find_event_candidates(title):
-    """イベント名→ [(node_id, edge行|None), ...]（未登録なら空リスト）"""
-    index, _ = get_cached_event_index()
-    return index.get(title, [])
-
-
-def get_cached_node_xyz():
-    global _cached_node_xyz
-    if _cached_node_xyz is None:
-        nodes_df, _ = get_cached_data()
-        _cached_node_xyz = {
-            int(r["id"]): (float(r["x"]), float(r["y"]), float(r["z"]))
-            for _, r in nodes_df.iterrows()
-        }
-    return _cached_node_xyz
-
-
-def get_cached_nodes_list():
-    global _cached_nodes_list
-    if _cached_nodes_list is None:
-        nodes_df, _ = get_cached_data()
-        nodes = []
-        for _, row in nodes_df.iterrows():
-            if any(pd.isna(row[c]) for c in ["id", "building", "floor", "type"]):
-                continue
-            nd = {
-                "id":       int(row["id"]),
-                "building": int(row["building"]),
-                "floor":    int(row["floor"]),
-                "type":     int(row["type"]),
-            }
-            if "lat" in row and pd.notna(row["lat"]):
-                nd["lat"] = float(row["lat"])
-            if "lng" in row and pd.notna(row["lng"]):
-                nd["lng"] = float(row["lng"])
-            nodes.append(nd)
-        nodes.sort(key=lambda n: n["id"])
-        _cached_nodes_list = nodes
-    return _cached_nodes_list
-
-
-def get_cached_graph(use_elevator=True):
-    global _cached_graph_with_ev, _cached_graph_without_ev
-    nodes_df, edges_df = get_cached_data()
-    if use_elevator:
-        if _cached_graph_with_ev is None:
-            _cached_graph_with_ev = build_graph(nodes_df, edges_df, use_elevator=True)
-        return _cached_graph_with_ev
-    else:
-        if _cached_graph_without_ev is None:
-            _cached_graph_without_ev = build_graph(nodes_df, edges_df, use_elevator=False)
-        return _cached_graph_without_ev
-
-
-def get_cached_graph_payload():
-    """/api/graph 用のノード・エッジ・変換設定を一度だけ構築して使い回す"""
-    global _cached_graph_payload
-    if _cached_graph_payload is None:
-        nodes_df, edges_df = get_cached_data()
-
-        nodes = []
-        for _, row in nodes_df.iterrows():
-            if any(pd.isna(row[c]) for c in ["id", "x", "y", "z", "building", "floor"]):
-                continue
-            bldg = int(row["building"])
-            if bldg == 0:
-                color = OUTDOOR_COLOR
-            else:
-                color = BUILDING_COLORS[(bldg - 1) % len(BUILDING_COLORS)]
-            node_dict = {
-                "id":       int(row["id"]),
-                "x":        float(row["x"]),
-                "y":        float(row["y"]),
-                "z":        float(row["z"]),
-                "building": bldg,
-                "floor":    int(row["floor"]),
-                "type":     int(row["type"]),
-                "color":    color,
-                "label":    f"Node {int(row['id'])}<br>{'屋外' if bldg == 0 else f'Building {bldg}'} / Floor {int(row['floor'])}",
-            }
-            if "lat" in row and pd.notna(row["lat"]):
-                node_dict["lat"] = float(row["lat"])
-            if "lng" in row and pd.notna(row["lng"]):
-                node_dict["lng"] = float(row["lng"])
-            nodes.append(node_dict)
-
-        valid_edges = edges_df.dropna(subset=["id", "from", "to", "building", "floor", "weight", "length"])
-        edges = [_edge_to_dict(row) for _, row in valid_edges.iterrows()]
-
-        config = _load_transform_config()
-        config.update(_calc_transforms_from_anchors())
-
-        _cached_graph_payload = {
-            "nodes": nodes,
-            "edges": edges,
-            "building_colors": BUILDING_COLORS,
-            "config": config,
-        }
-    return _cached_graph_payload
-
-
-def clear_cache():
-    global _cached_nodes_df, _cached_edges_df, _cached_graph_with_ev, _cached_graph_without_ev
-    global _cached_room_index, _cached_rooms_list, _cached_nodes_list, _cached_node_xyz
-    global _cached_graph_payload, _cached_name_map, _cached_event_index, _cached_events_list
-    _cached_nodes_df = None
-    _cached_edges_df = None
-    _cached_graph_with_ev = None
-    _cached_graph_without_ev = None
-    _cached_room_index = None
-    _cached_rooms_list = None
-    _cached_nodes_list = None
-    _cached_node_xyz = None
-    _cached_graph_payload = None
-    _cached_name_map = None
-    _cached_event_index = None
-    _cached_events_list = None
-
-
-def _edge_to_dict(row):
-    """edgeの行を座標付きdictに変換するヘルパー"""
-    node_xyz = get_cached_node_xyz()
-    x0, y0, z0 = node_xyz[int(row["from"])]
-    x1, y1, z1 = node_xyz[int(row["to"])]
-    return {
-        "id":       int(row["id"]),
-        "name":     str(row["name"]),
-        "from":     int(row["from"]),
-        "to":       int(row["to"]),
-        "building": int(row["building"]),
-        "floor":    int(row["floor"]),
-        "weight":   float(row["weight"]),
-        "length":   float(row["length"]),
-        "type":     str(row["type"]),
-        "x0": x0, "y0": y0, "z0": z0,
-        "x1": x1, "y1": y1, "z1": z1,
-    }
-
-
-def _extend_to_far_endpoint(G, path, length, dest_edge_row):
+@bp.route("/api/route")
+def api_route():
     """
-    目的地がエッジ（教室・トイレ・食堂）の場合、最寄り端点で止めず、
-    そのエッジのもう一方の端点まで経路を延長する。
-    教室はエッジ区間に面しているため、区間そのものを歩かせることで
-    必ずドアの前を通る案内になる。
-    直前ノードが反対側端点（＝既に目的エッジを歩いて到着）の場合は延長しない。
+    出発点と目的地を指定して最短経路をJSONで返す。
+
+    出発点（いずれか）:
+      from_room=101A&from_building=10  ← 教室名
+      from_node=100001                 ← ノードID
+      from_event=たこ焼き屋台          ← イベント名（event.csv）
+
+    目的地（いずれか）:
+      to_room=202B&to_building=10      ← 教室名
+      to_node=100050                   ← ノードID
+      to_event=たこ焼き屋台            ← イベント名（event.csv）
+
+    条件:
+      use_elevator=0/1  （省略時 1）
     """
-    if dest_edge_row is None or not path:
-        return path, length
-    u, v = int(dest_edge_row["from"]), int(dest_edge_row["to"])
-    last = path[-1]
-    far = v if last == u else u if last == v else None
-    if far is None:
-        return path, length
-    if len(path) >= 2 and path[-2] == far:
-        return path, length
-    if not G.has_edge(last, far):
-        return path, length
-    return path + [far], length + G.edges[last, far].get("weight", 0.0)
+    from_spec = FromSpec.from_request()
+
+    to_room     = request.args.get("to_room",     "").strip()
+    to_building = request.args.get("to_building", type=int)
+    to_node_id  = request.args.get("to_node",     type=int)
+    to_event    = request.args.get("to_event",    "").strip()
+
+    from_spec.require()
+    if not to_room and not to_event and to_node_id is None:
+        raise ApiError("to_room（＋to_building）・to_event・to_node のいずれかを指定してください")
+
+    G = cache.get_graph(use_elevator=use_elevator_param())
+    start_candidates = from_spec.candidates(G)
+    dest_candidates  = _dest_candidates(G, to_room, to_building, to_node_id, to_event)
+
+    best_path, best_length, best_start_edge, best_dest_edge = best_route(
+        G, start_candidates, dest_candidates)
+
+    if best_path is None:
+        raise ApiError("指定された出発点から目的地への経路が見つかりません", 404)
+
+    best_path, best_length = extend_to_far_endpoint(G, best_path, best_length, best_dest_edge)
+    result = path_result(G, best_path, best_length)
+    if to_event:
+        result["to_event"] = to_event
+    from_spec.annotate(result, best_start_edge)
+    if best_dest_edge is not None:
+        if to_room:
+            result["to_room"] = to_room
+        result["to_edge"] = edge_to_dict(best_dest_edge)
+        apply_dest_info(result, to_room)
+    return jsonify(result)
 
 
-def _path_result(G, path, length):
-    """Dijkstraの結果をJSON用dictに整形するヘルパー"""
-    path_coords = []
-    for node_id in path:
-        n = G.nodes[node_id]
-        coord_dict = {"id": node_id, "x": n["x"], "y": n["y"], "z": n["z"],
-                      "building": n["building"], "floor": n["floor"]}
-        if "lat" in n:
-            coord_dict["lat"] = n["lat"]
-        if "lng" in n:
-            coord_dict["lng"] = n["lng"]
-        if "svg_x" in n and n["svg_x"] == n["svg_x"]:  # NaN check
-            coord_dict["svg_x"] = n["svg_x"]
-            coord_dict["svg_y"] = n["svg_y"]
-        path_coords.append(coord_dict)
+@bp.route("/api/shortest_path")
+def api_shortest_path():
+    """ノードIDからノードIDへの最短経路（従来通り）"""
+    start = request.args.get("start", type=int)
+    goal  = request.args.get("goal",  type=int)
 
-    path_edges = []
-    for i in range(len(path) - 1):
-        u, v = path[i], path[i + 1]
-        edata = G.edges[u, v]
-        n0, n1 = G.nodes[u], G.nodes[v]
-        path_edges.append({
-            "from": u, "to": v,
-            "name":   edata.get("name", ""),
-            "length": edata.get("length", 0),
-            "x0": n0["x"], "y0": n0["y"], "z0": n0["z"],
-            "x1": n1["x"], "y1": n1["y"], "z1": n1["z"],
-        })
-    return {"path": path, "total_weight": length,
-            "path_coords": path_coords, "path_edges": path_edges}
+    if start is None or goal is None:
+        raise ApiError("start と goal のノードIDを指定してください")
 
+    G = cache.get_graph(use_elevator=use_elevator_param())
 
-# ------------------------------------------------------------------ #
-#  Routes
-# ------------------------------------------------------------------ #
+    if start not in G.nodes:
+        raise ApiError(f"ノード {start} が存在しません", 404)
+    if goal not in G.nodes:
+        raise ApiError(f"ノード {goal} が存在しません", 404)
 
-@app.route("/3d/")
-@app.route("/3d")
-def index():
-    nodes_df, edges_df = get_cached_data()
-    node_ids  = sorted(nodes_df["id"].tolist())
-    # building=0 (屋外) はフィルタの「すべての建物」(value=0) と衝突するため除外
-    buildings = sorted(int(b) for b in nodes_df["building"].unique() if int(b) != 0)
-    return render_template("index.html", node_ids=node_ids, buildings=buildings)
+    best_path, best_length, _, _ = best_route(G, [(start, None)], [(goal, None)])
+    if best_path is None:
+        raise ApiError(f"ノード {start} から {goal} への経路が見つかりません", 404)
+    return jsonify(path_result(G, best_path, best_length))
+```
+
+### `programs/3D_Graph/ikunavi/routes/rooms.py`
+
+```python
+"""教室の一覧・検索と、教室から教室へのナビゲーション"""
+from flask import Blueprint, jsonify, request
+
+from .. import cache
+from ..errors import ApiError
+from ..naming import building_display_name
+from ..search import best_route, candidates_from_edges, extend_to_far_endpoint
+from ..serialize import apply_dest_info, edge_to_dict, path_result
+from ._common import edges_for_room_or_404, use_elevator_param
+
+bp = Blueprint("rooms", __name__)
 
 
-@app.route("/api/graph")
-def api_graph():
-    return jsonify(get_cached_graph_payload())
-
-
-# ------------------------------------------------------------------ #
-#  教室検索 API
-# ------------------------------------------------------------------ #
-
-@app.route("/api/rooms")
+@bp.route("/api/rooms")
 def api_rooms():
     """
     教室名の一覧を返す。
@@ -1366,7 +2380,7 @@ def api_rooms():
     building_filter = request.args.get("building", type=int)
     query           = request.args.get("q", "").strip().lower()
 
-    _, rooms_list = get_cached_room_index()
+    _, rooms_list = cache.get_room_index()
     rooms = [
         r for r in rooms_list
         if (building_filter is None or r["building"] == building_filter)
@@ -1375,7 +2389,7 @@ def api_rooms():
     return jsonify(rooms)
 
 
-@app.route("/api/all")
+@bp.route("/api/all")
 def api_all():
     """
     全教室・全ノード・建物一覧をまとめて返す。パラメータなし。
@@ -1387,22 +2401,16 @@ def api_all():
       }
     display_name は data/building_name.csv で設定した表示名（未設定なら "{id}号館" / building=0 は "屋外"）。
     """
-    nodes_df, _ = get_cached_data()
-    _, rooms = get_cached_room_index()
-    nodes    = get_cached_nodes_list()
+    nodes_df, _ = cache.get_data()
+    _, rooms = cache.get_room_index()
+    nodes    = cache.get_nodes_list()
     building_ids = sorted(nodes_df["building"].dropna().astype(int).unique().tolist())
-    buildings = [{"id": b, "display_name": _building_display_name(b)} for b in building_ids]
+    buildings = [{"id": b, "display_name": building_display_name(b)} for b in building_ids]
 
     return jsonify({"rooms": rooms, "nodes": nodes, "buildings": buildings})
 
 
-def _find_edges_for_room(room_name, building):
-    """教室名が含まれるエッジ行のリストを返す（起動時に構築した索引から引く）"""
-    index, _ = get_cached_room_index()
-    return index.get((room_name, int(building)), [])
-
-
-@app.route("/api/navigate_to_room")
+@bp.route("/api/navigate_to_room")
 def api_navigate_to_room():
     """
     教室名から教室名への最短経路を返す。
@@ -1425,516 +2433,67 @@ def api_navigate_to_room():
     start_node     = request.args.get("start",          type=int)  # 後方互換
 
     if not room_name or building is None:
-        return jsonify({"error": "room と building を指定してください"}), 400
+        raise ApiError("room と building を指定してください")
     if not start_room and start_node is None:
-        return jsonify({"error": "start_room（＋start_building）または start を指定してください"}), 400
+        raise ApiError("start_room（＋start_building）または start を指定してください")
 
-    use_elevator = request.args.get("use_elevator", "1") != "0"
-    G = get_cached_graph(use_elevator=use_elevator)
+    G = cache.get_graph(use_elevator=use_elevator_param())
 
-    # --- 目的教室のエッジを検索 ---
-    dest_edges = _find_edges_for_room(room_name, building)
-    if not dest_edges:
-        return jsonify({"error": f"建物 {building} に教室 '{room_name}' が見つかりません"}), 404
-
-    # --- 出発点の候補ノードを決定 ---
-    start_candidates = []  # (node_id, start_edge_row or None)
-    start_edge_row = None
+    dest_edges = edges_for_room_or_404(room_name, building)
+    dest_candidates = candidates_from_edges(G, dest_edges)
 
     if start_room and start_building is not None:
-        s_edges = _find_edges_for_room(start_room, start_building)
-        if not s_edges:
-            return jsonify({"error": f"建物 {start_building} に出発教室 '{start_room}' が見つかりません"}), 404
-        for row in s_edges:
-            for nid in (int(row["from"]), int(row["to"])):
-                if nid in G.nodes:
-                    start_candidates.append((nid, row))
+        s_edges = edges_for_room_or_404(start_room, start_building, label="出発教室")
+        start_candidates = candidates_from_edges(G, s_edges)
     else:
         # ノードID指定（後方互換）
         if start_node not in G.nodes:
-            return jsonify({"error": f"ノード {start_node} が存在しません"}), 404
+            raise ApiError(f"ノード {start_node} が存在しません", 404)
         start_candidates = [(start_node, None)]
 
-    # --- 全組み合わせでDijkstra、最短を採用 ---
-    best_path   = None
-    best_length = float("inf")
-    best_dest_edge   = None
-    best_start_edge  = None
-
-    for (s_node, s_edge_row) in start_candidates:
-        for d_row in dest_edges:
-            for g_node in (int(d_row["from"]), int(d_row["to"])):
-                if g_node not in G.nodes:
-                    continue
-                try:
-                    l, p = nx.bidirectional_dijkstra(G, s_node, g_node, weight="weight")
-                    if l < best_length:
-                        best_length     = l
-                        best_path       = p
-                        best_dest_edge  = d_row
-                        best_start_edge = s_edge_row
-                except (nx.NetworkXNoPath, nx.NodeNotFound):
-                    continue
+    best_path, best_length, best_start_edge, best_dest_edge = best_route(
+        G, start_candidates, dest_candidates)
 
     if best_path is None:
         label = f"'{start_room}'" if start_room else f"ノード {start_node}"
-        return jsonify({"error": f"{label} から教室 '{room_name}' への経路が見つかりません"}), 404
+        raise ApiError(f"{label} から教室 '{room_name}' への経路が見つかりません", 404)
 
-    best_path, best_length = _extend_to_far_endpoint(G, best_path, best_length, best_dest_edge)
-    result = _path_result(G, best_path, best_length)
+    best_path, best_length = extend_to_far_endpoint(G, best_path, best_length, best_dest_edge)
+    result = path_result(G, best_path, best_length)
     result["destination_room"] = room_name
-    result["destination_edge"] = _edge_to_dict(best_dest_edge)
+    result["destination_edge"] = edge_to_dict(best_dest_edge)
+    apply_dest_info(result, room_name)
     if best_start_edge is not None:
         result["start_room"] = start_room
-        result["start_edge"] = _edge_to_dict(best_start_edge)
+        result["start_edge"] = edge_to_dict(best_start_edge)
     return jsonify(result)
+```
 
+### `programs/3D_Graph/ikunavi/routes/viewer.py`
 
-# ------------------------------------------------------------------ #
-#  イベント API
-# ------------------------------------------------------------------ #
+```python
+"""3Dグラフビューア（開発・データ確認用の画面とそのデータ）"""
+from flask import Blueprint, jsonify, render_template
 
-@app.route("/api/events")
-def api_events():
-    """
-    event.csv に登録されたイベント（屋台など）の一覧を返す。
-    返却形式: [ { "title": "たこ焼き屋台", "building": 10, "floor": 1 }, ... ]
-    """
-    _, events_list = get_cached_event_index()
-    return jsonify(events_list)
+from .. import cache
+from ..payloads import get_graph_payload
 
+bp = Blueprint("viewer", __name__)
 
-def _resolve_start_candidates(G, from_room, from_building, from_node_id, from_event):
-    """
-    出発点指定（from_event / from_room / from_node の優先順）を
-    候補ノードのリスト [(node_id, edge行|None), ...] に解決する。
-    戻り値: (start_candidates, エラーメッセージ|None, HTTPステータス|None)
-    """
-    if from_event:
-        seen, result = set(), []
-        for nid, row in _find_event_candidates(from_event):
-            if nid in G.nodes and nid not in seen:
-                seen.add(nid)
-                result.append((nid, row))
-        if not result:
-            return None, f"イベント '{from_event}' が見つかりません", 404
-        return result, None, None
 
-    if from_room:
-        if from_building is None:
-            return None, "from_building を指定してください", 400
-        s_edges = _find_edges_for_room(from_room, from_building)
-        if not s_edges:
-            return None, f"建物 {from_building} に教室 '{from_room}' が見つかりません", 404
-        seen, result = set(), []
-        for r in s_edges:
-            for nid in (int(r["from"]), int(r["to"])):
-                if nid in G.nodes and nid not in seen:
-                    seen.add(nid)
-                    result.append((nid, r))
-        return result, None, None
+@bp.route("/3d/")
+@bp.route("/3d")
+def index():
+    nodes_df, _ = cache.get_data()
+    node_ids  = sorted(nodes_df["id"].tolist())
+    # building=0 (屋外) はフィルタの「すべての建物」(value=0) と衝突するため除外
+    buildings = sorted(int(b) for b in nodes_df["building"].unique() if int(b) != 0)
+    return render_template("index.html", node_ids=node_ids, buildings=buildings)
 
-    if from_node_id not in G.nodes:
-        return None, f"ノード {from_node_id} が存在しません", 404
-    return [(from_node_id, None)], None, None
 
-
-def _require_from_spec(from_room, from_event, from_node_id):
-    """from_room・from_event・from_node のいずれも指定されていない場合はエラーレスポンスを返す（未指定エラー無しなら None）"""
-    if not from_room and not from_event and from_node_id is None:
-        return jsonify({"error": "from_room（＋from_building）・from_event・from_node のいずれかを指定してください"}), 400
-    return None
-
-
-# ------------------------------------------------------------------ #
-#  統合ルーティング API
-# ------------------------------------------------------------------ #
-
-@app.route("/api/route")
-def api_route():
-    """
-    出発点と目的地を指定して最短経路をJSONで返す。
-
-    出発点（いずれか）:
-      from_room=101A&from_building=10  ← 教室名
-      from_node=100001                 ← ノードID
-      from_event=たこ焼き屋台          ← イベント名（event.csv）
-
-    目的地（いずれか）:
-      to_room=202B&to_building=10      ← 教室名
-      to_node=100050                   ← ノードID
-      to_event=たこ焼き屋台            ← イベント名（event.csv）
-
-    条件:
-      use_elevator=0/1  （省略時 1）
-    """
-    use_elevator = request.args.get("use_elevator", "1") != "0"
-
-    from_room     = request.args.get("from_room",     "").strip()
-    from_building = request.args.get("from_building", type=int)
-    from_node_id  = request.args.get("from_node",     type=int)
-    from_event    = request.args.get("from_event",    "").strip()
-
-    to_room       = request.args.get("to_room",       "").strip()
-    to_building   = request.args.get("to_building",   type=int)
-    to_node_id    = request.args.get("to_node",       type=int)
-    to_event      = request.args.get("to_event",      "").strip()
-
-    err = _require_from_spec(from_room, from_event, from_node_id)
-    if err:
-        return err
-    if not to_room and not to_event and to_node_id is None:
-        return jsonify({"error": "to_room（＋to_building）・to_event・to_node のいずれかを指定してください"}), 400
-
-    G = get_cached_graph(use_elevator=use_elevator)
-
-    # --- 出発候補ノード ---
-    start_candidates, err, status = _resolve_start_candidates(
-        G, from_room, from_building, from_node_id, from_event)
-    if err:
-        return jsonify({"error": err}), status
-
-    # --- 目的候補ノード ---
-    if to_event:
-        seen_d = set()
-        dest_candidates = []
-        for nid, row in _find_event_candidates(to_event):
-            if nid in G.nodes and nid not in seen_d:
-                seen_d.add(nid)
-                dest_candidates.append((nid, row))
-        if not dest_candidates:
-            return jsonify({"error": f"イベント '{to_event}' が見つかりません"}), 404
-    elif to_room:
-        if to_building is None:
-            return jsonify({"error": "to_building を指定してください"}), 400
-        d_edges = _find_edges_for_room(to_room, to_building)
-        if not d_edges:
-            return jsonify({"error": f"建物 {to_building} に教室 '{to_room}' が見つかりません"}), 404
-        dest_candidates = [(nid, r) for r in d_edges
-                           for nid in (int(r["from"]), int(r["to"]))
-                           if nid in G.nodes]
-    else:
-        if to_node_id not in G.nodes:
-            return jsonify({"error": f"ノード {to_node_id} が存在しません"}), 404
-        dest_candidates = [(to_node_id, None)]
-
-    # --- 全組み合わせでDijkstra、最短を採用 ---
-    best_path, best_length = None, float("inf")
-    best_start_edge = best_dest_edge = None
-
-    for (s_node, s_row) in start_candidates:
-        for (d_node, d_row) in dest_candidates:
-            if s_node == d_node:
-                # 出発と目的が同一ノードを共有する場合は距離0の自明な経路
-                l, p = 0.0, [s_node]
-            else:
-                try:
-                    l, p = nx.bidirectional_dijkstra(G, s_node, d_node, weight="weight")
-                except (nx.NetworkXNoPath, nx.NodeNotFound):
-                    continue
-            if l < best_length:
-                best_length, best_path = l, p
-                best_start_edge, best_dest_edge = s_row, d_row
-
-    if best_path is None:
-        return jsonify({"error": "指定された出発点から目的地への経路が見つかりません"}), 404
-
-    best_path, best_length = _extend_to_far_endpoint(G, best_path, best_length, best_dest_edge)
-    result = _path_result(G, best_path, best_length)
-    if from_event:
-        result["from_event"] = from_event
-    if to_event:
-        result["to_event"]   = to_event
-    if best_start_edge is not None:
-        if from_room:
-            result["from_room"] = from_room
-        result["from_edge"]  = _edge_to_dict(best_start_edge)
-    if best_dest_edge is not None:
-        if to_room:
-            result["to_room"] = to_room
-        result["to_edge"]    = _edge_to_dict(best_dest_edge)
-    return jsonify(result)
-
-
-# ------------------------------------------------------------------ #
-#  最寄りトイレ検索 API
-# ------------------------------------------------------------------ #
-
-_TOILET_TYPE_MAP = {
-    "M":   ["M_Toilet"],
-    "F":   ["F_Toilet"],
-    "C":   ["C_Toilet"],
-    "ALL": ["M_Toilet", "F_Toilet", "C_Toilet"],
-}
-_TOILET_LABEL = {"M_Toilet": "男子トイレ", "F_Toilet": "女子トイレ", "C_Toilet": "多目的トイレ"}
-
-
-def _load_cafeteria_list():
-    if not os.path.exists(CAFETERIA_CSV):
-        return []
-    df = pd.read_csv(CAFETERIA_CSV, dtype=str).fillna("")
-    result = []
-    for _, row in df.iterrows():
-        name = row.get("name", "").strip()
-        if not name:
-            continue
-        result.append({
-            "name":         name,
-            "building":     row.get("building", "").strip(),
-            "display_name": row.get("display_name", name).strip(),
-        })
-    return result
-
-_CAFETERIA_LIST  = _load_cafeteria_list()
-_CAFETERIA_NAMES = [c["name"] for c in _CAFETERIA_LIST]
-
-
-@app.route("/api/cafeterias")
-def api_cafeterias():
-    return jsonify(_CAFETERIA_LIST)
-
-
-def _edges_by_names(names):
-    """room_index から name が names に含まれるエッジ行を収集する（複数種別併記のエッジはIDで重複排除）"""
-    room_index, _ = get_cached_room_index()
-    edges, seen_ids = [], set()
-    for (name, _bldg), rows in room_index.items():
-        if name not in names:
-            continue
-        for row in rows:
-            eid = int(row["id"])
-            if eid in seen_ids:
-                continue
-            seen_ids.add(eid)
-            edges.append(row)
-    return edges
-
-
-def _best_route_to_candidates(G, start_candidates, dest_candidates):
-    """
-    出発候補×目的候補の全組み合わせでDijkstraを実行し、最短経路を採用する。
-    出発と目的が同一ノードの組み合わせはスキップする（最寄りトイレ・食堂検索では、
-    出発点自体が目的地そのものである場合を経路として扱わないため）。
-    戻り値: (best_path, best_length, best_start_row, best_dest_row)
-    """
-    best_path, best_length = None, float("inf")
-    best_start_row = best_dest_row = None
-    for (s_node, s_row) in start_candidates:
-        for (d_node, d_row) in dest_candidates:
-            if s_node == d_node:
-                continue
-            try:
-                l, p = nx.bidirectional_dijkstra(G, s_node, d_node, weight="weight")
-                if l < best_length:
-                    best_length, best_path = l, p
-                    best_start_row, best_dest_row = s_row, d_row
-            except (nx.NetworkXNoPath, nx.NodeNotFound):
-                continue
-    return best_path, best_length, best_start_row, best_dest_row
-
-
-@app.route("/api/nearest_toilet")
-def api_nearest_toilet():
-    """
-    最寄りのトイレへの最短経路を返す。
-
-    出発点（いずれか）:
-      from_room=101A&from_building=10
-      from_node=100001
-      from_event=たこ焼き屋台
-
-    種別:
-      type=M / F / C / all (省略時 all)
-
-    条件:
-      use_elevator=0/1 (省略時 1)
-    """
-    toilet_type  = request.args.get("type", "all").strip().upper()
-    use_elevator = request.args.get("use_elevator", "1") != "0"
-    from_room     = request.args.get("from_room",     "").strip()
-    from_building = request.args.get("from_building", type=int)
-    from_node_id  = request.args.get("from_node",     type=int)
-    from_event    = request.args.get("from_event",    "").strip()
-
-    err = _require_from_spec(from_room, from_event, from_node_id)
-    if err:
-        return err
-
-    targets = _TOILET_TYPE_MAP.get(toilet_type, _TOILET_TYPE_MAP["ALL"])
-
-    G = get_cached_graph(use_elevator=use_elevator)
-
-    # 出発候補
-    start_candidates, err, status = _resolve_start_candidates(
-        G, from_room, from_building, from_node_id, from_event)
-    if err:
-        return jsonify({"error": err}), status
-
-    # トイレエッジを全建物から収集（教室名索引から引く。複数種別併記のエッジはIDで重複排除）
-    toilet_edges = _edges_by_names(targets)
-    if not toilet_edges:
-        return jsonify({"error": "該当するトイレがデータ内に見つかりません"}), 404
-
-    dest_candidates = [
-        (nid, row) for row in toilet_edges
-        for nid in (int(row["from"]), int(row["to"]))
-        if nid in G.nodes
-    ]
-
-    # 全組み合わせでDijkstra、最短を採用
-    best_path, best_length, best_start_row, best_toilet_row = _best_route_to_candidates(
-        G, start_candidates, dest_candidates)
-
-    if best_path is None:
-        return jsonify({"error": "指定された出発点から該当するトイレへの経路が見つかりません"}), 404
-
-    t_names = [n.strip() for n in str(best_toilet_row["name"]).split(";")]
-    found_key = next((t for t in ["M_Toilet", "F_Toilet", "C_Toilet"] if t in t_names), "")
-
-    best_path, best_length = _extend_to_far_endpoint(G, best_path, best_length, best_toilet_row)
-    result = _path_result(G, best_path, best_length)
-    result["toilet_type"]     = found_key.split("_")[0] if found_key else ""
-    result["toilet_name"]     = found_key
-    result["toilet_label"]    = _TOILET_LABEL.get(found_key, "トイレ")
-    result["toilet_building"] = int(best_toilet_row["building"])
-    result["toilet_floor"]    = int(best_toilet_row["floor"])
-    result["toilet_edge"]     = _edge_to_dict(best_toilet_row)
-    if from_event:
-        result["from_event"]  = from_event
-    if best_start_row is not None:
-        if from_room:
-            result["from_room"] = from_room
-        result["from_edge"]   = _edge_to_dict(best_start_row)
-    return jsonify(result)
-
-
-# ------------------------------------------------------------------ #
-#  最寄り食堂検索 API
-# ------------------------------------------------------------------ #
-
-@app.route("/api/nearest_cafeteria")
-def api_nearest_cafeteria():
-    """
-    最寄りの食堂への最短経路を返す。
-
-    出発点（いずれか）:
-      from_room=101A&from_building=10
-      from_node=100001
-      from_event=たこ焼き屋台
-
-    条件:
-      use_elevator=0/1 (省略時 1)
-    """
-    use_elevator  = request.args.get("use_elevator", "1") != "0"
-    from_room     = request.args.get("from_room",     "").strip()
-    from_building = request.args.get("from_building", type=int)
-    from_node_id  = request.args.get("from_node",     type=int)
-    from_event    = request.args.get("from_event",    "").strip()
-
-    err = _require_from_spec(from_room, from_event, from_node_id)
-    if err:
-        return err
-
-    if not _CAFETERIA_NAMES:
-        return jsonify({"error": "cafeteria_edge.csv が見つかりません"}), 500
-
-    caf_name = request.args.get("name", "all").strip()
-    targets  = [caf_name] if caf_name != "all" else _CAFETERIA_NAMES
-
-    G = get_cached_graph(use_elevator=use_elevator)
-
-    # 出発候補
-    start_candidates, err, status = _resolve_start_candidates(
-        G, from_room, from_building, from_node_id, from_event)
-    if err:
-        return jsonify({"error": err}), status
-
-    # 食堂エッジを room_index から収集
-    caf_edges = _edges_by_names(targets)
-    if not caf_edges:
-        return jsonify({"error": "食堂エッジがデータ内に見つかりません"}), 404
-
-    dest_candidates = [
-        (nid, row) for row in caf_edges
-        for nid in (int(row["from"]), int(row["to"]))
-        if nid in G.nodes
-    ]
-
-    best_path, best_length, best_start_row, best_caf_row = _best_route_to_candidates(
-        G, start_candidates, dest_candidates)
-
-    if best_path is None:
-        return jsonify({"error": "食堂への経路が見つかりません"}), 404
-
-    best_path, best_length = _extend_to_far_endpoint(G, best_path, best_length, best_caf_row)
-    result = _path_result(G, best_path, best_length)
-    result["cafeteria_building"] = int(best_caf_row["building"])
-    result["cafeteria_floor"]    = int(best_caf_row["floor"])
-    result["cafeteria_edge"]     = _edge_to_dict(best_caf_row)
-    if from_event:
-        result["from_event"] = from_event
-    if best_start_row is not None:
-        if from_room:
-            result["from_room"] = from_room
-        result["from_edge"] = _edge_to_dict(best_start_row)
-    return jsonify(result)
-
-
-# ------------------------------------------------------------------ #
-#  ノード間最短経路 API（従来通り）
-# ------------------------------------------------------------------ #
-
-@app.route("/api/shortest_path")
-def api_shortest_path():
-    start = request.args.get("start", type=int)
-    goal  = request.args.get("goal",  type=int)
-
-    if start is None or goal is None:
-        return jsonify({"error": "start と goal のノードIDを指定してください"}), 400
-
-    use_elevator = request.args.get("use_elevator", "1") != "0"
-    G = get_cached_graph(use_elevator=use_elevator)
-
-    if start not in G.nodes:
-        return jsonify({"error": f"ノード {start} が存在しません"}), 404
-    if goal not in G.nodes:
-        return jsonify({"error": f"ノード {goal} が存在しません"}), 404
-
-    try:
-        length, path = nx.bidirectional_dijkstra(G, start, goal, weight="weight")
-        return jsonify(_path_result(G, path, length))
-    except nx.NetworkXNoPath:
-        return jsonify({"error": f"ノード {start} から {goal} への経路が見つかりません"}), 404
-    except nx.NodeNotFound as e:
-        return jsonify({"error": str(e)}), 404
-
-
-@app.route("/api/edge_images")
-def api_edge_images():
-    """
-    エッジ画像マップを返す。
-    返却形式: { "1000001_1000002": "https://cdn.iku-navi.net/1000001_to_1000002.jpg", ... }
-    """
-    if not os.path.exists(EDGE_IMAGE_CSV):
-        return jsonify({})
-    df = pd.read_csv(EDGE_IMAGE_CSV)
-    df.columns = df.columns.str.strip()
-    df = df.dropna(subset=["from", "to"])
-    result = {}
-    for _, row in df.iterrows():
-        f, t = int(row["from"]), int(row["to"])
-        if f == 0 and t == 0:
-            continue
-        name = str(row["image_name"]).strip()
-        if not name or name == "nan":
-            continue
-        result[f"{f}_{t}"] = f"{CDN_BASE}/{name}"
-    return jsonify(result)
-
-
-if __name__ == "__main__":
-    app.run(debug=False, host="0.0.0.0" , port=5001)
-
+@bp.route("/api/graph")
+def api_graph():
+    return jsonify(get_graph_payload())
 ```
 
 ### `programs/3D_Graph/templates/index.html`
@@ -2887,7 +3446,7 @@ if __name__ == "__main__":
 
     <div id="boot-error">
       <div class="be-title">グラフデータを読み込めませんでした</div>
-      <div class="be-desc">app.py が起動しているか、/api/graph が応答するか確認してください。</div>
+      <div class="be-desc">Flask が起動しているか、/api/graph が応答するか確認してください。</div>
       <button onclick="location.reload()">再読み込み</button>
     </div>
 
@@ -4804,613 +5363,7 @@ Sitemap: https://iku-navi.net/sitemap.xml
   <meta property="og:image" content="https://iku-navi.net/images/logo.png">
   <meta property="og:locale" content="ja_JP">
   <link rel="icon" href="../images/favicon.ico">
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    :root {
-      --accent:             #3B82F6;
-      --accent-dark:        #1D4ED8;
-      --accent-darker:      #1E40AF;
-      --accent-light:       #EFF6FF;
-      --accent-border-light: #BFDBFE;
-    }
-    /* イベントモード (?event=1): アクセントカラーを暖色系に切り替える */
-    body.event-mode {
-      --accent:             #EA580C;
-      --accent-dark:        #9A3412;
-      --accent-darker:      #7C2D12;
-      --accent-light:       #FFF7ED;
-      --accent-border-light: #FDBA74;
-    }
-    html { height: 100%; overscroll-behavior: none; }
-    body {
-      height: 100%; overflow: hidden;
-      overscroll-behavior: none;
-      font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', sans-serif;
-      display: flex;
-      flex-direction: column; /* mobile: stacked */
-    }
-    button, a, select, input, label {
-      touch-action: manipulation; /* ダブルタップズームを無効化 */
-    }
-
-    /* ================================================================
-       Mobile layout — sidebar dissolves via display:contents;
-       children participate directly in body's flex flow via order.
-    ================================================================ */
-    #sidebar { display: contents; }
-
-    #app-header  { display: none; } /* mobile: hidden */
-
-    #search-panel {
-      order: 1;
-      background: white;
-      padding: 0;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.12);
-      flex-shrink: 0;
-      z-index: 100;
-    }
-    #search-header {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 8px 10px;
-    }
-    #btn-home {
-      flex-shrink: 0;
-      width: 28px; height: 28px;
-      border: 1.5px solid #E2E8F0; border-radius: 50%;
-      background: white;
-      display: flex; align-items: center; justify-content: center;
-      color: #64748B; font-size: 15px; line-height: 1;
-      text-decoration: none;
-      -webkit-tap-highlight-color: transparent;
-    }
-    #btn-home:active { background: #F1F5F9; }
-    #search-toggle {
-      flex-shrink: 0;
-      width: 28px; height: 28px;
-      border: 1.5px solid #E2E8F0; border-radius: 50%;
-      background: white;
-      display: flex; align-items: center; justify-content: center;
-      cursor: pointer; color: #64748B; font-size: 13px;
-      -webkit-tap-highlight-color: transparent;
-    }
-    #search-chevron {
-      display: inline-block;
-      transition: transform 0.3s ease;
-      line-height: 1;
-    }
-    #search-chevron.open { transform: rotate(180deg); }
-    #search-content {
-      display: grid;
-      grid-template-rows: 0fr;
-      transition: grid-template-rows 0.3s ease;
-    }
-    #search-content.open { grid-template-rows: 1fr; }
-    .search-content-inner {
-      overflow: hidden;
-      padding: 0 10px 8px;
-    }
-    #map-area {
-      order: 2;
-      flex: 1;
-      position: relative;
-      overflow: hidden;
-      min-height: 0;
-    }
-    #ar-area {
-      order: 4;
-      flex: 1;
-      background: #E8ECF0;
-      position: relative;
-      overflow: hidden;
-      min-height: 0;
-    }
-
-    /* ================================================================
-       Desktop layout (>= 768px) — sidebar + map side by side
-    ================================================================ */
-    @media (min-width: 768px) {
-      body { flex-direction: row; }
-
-      #sidebar {
-        display: flex;
-        flex-direction: column;
-        width: 340px;
-        flex-shrink: 0;
-        height: 100%;
-        background: #fff;
-        border-right: 1px solid #E2E8F0;
-        /* no overflow:hidden — needed so suggestions can overflow */
-      }
-
-      #app-header {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        height: 52px;
-        padding: 0 18px;
-        border-bottom: 1px solid #F1F5F9;
-        flex-shrink: 0;
-        background: #fff;
-      }
-      #app-header .hdr-title {
-        font-size: 15px;
-        font-weight: 700;
-        color: #1E293B;
-        letter-spacing: 0.03em;
-        text-decoration: none;
-      }
-      #app-header .hdr-title:hover { color: var(--accent); }
-      #app-header .hdr-badge {
-        font-size: 11px;
-        color: var(--accent);
-        background: var(--accent-light);
-        padding: 2px 9px;
-        border-radius: 10px;
-        font-weight: 600;
-      }
-
-      #search-panel {
-        order: 0;
-        box-shadow: none;
-        border-bottom: 1px solid #F1F5F9;
-        padding: 0;
-        flex-shrink: 0;
-      }
-      #search-header { padding: 14px 16px 8px; }
-      #search-toggle { display: none; }
-      #btn-home      { display: none; } /* desktop: app-header にリンクがあるため不要 */
-      #search-content { display: block; }
-      .search-content-inner { overflow: visible; padding: 0 16px 14px; }
-
-      #ar-area {
-        order: 0;
-        flex: 1;
-        min-height: 0;
-      }
-
-      #map-area {
-        flex: 1;
-        min-width: 0;
-      }
-    }
-
-    /* ================================================================
-       Search Panel internals
-    ================================================================ */
-    .search-tabs { display: flex; gap: 6px; flex: 1; }
-    .search-tab {
-      flex: 1; height: 34px;
-      border: 1.5px solid #CBD5E1; border-radius: 17px;
-      background: white; font-size: 13px; font-weight: 600;
-      color: #64748B; cursor: pointer; transition: all 0.2s;
-    }
-    .search-tab.active { background: var(--accent); border-color: var(--accent); color: white; }
-
-    .route-row {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      margin-bottom: 6px;
-    }
-    .route-label {
-      font-size: 12px;
-      font-weight: 700;
-      color: #64748B;
-      width: 28px;
-      flex-shrink: 0;
-      text-align: center;
-    }
-    .building-select {
-      height: 38px;
-      padding: 0 3px;
-      border: 1.5px solid #E2E8F0;
-      border-radius: 8px;
-      font-size: 12px;
-      color: #1E293B;
-      background: white;
-      width: 76px;
-      flex-shrink: 0;
-      cursor: pointer;
-    }
-    .building-select:focus { outline: none; border-color: var(--accent); }
-
-    .ac-wrap { flex: 1; position: relative; }
-    .ac-wrap input {
-      width: 100%;
-      height: 38px;
-      padding: 0 12px;
-      border: 1.5px solid #E2E8F0;
-      border-radius: 8px;
-      font-size: 15px;
-      color: #1E293B;
-      outline: none;
-      -webkit-appearance: none;
-    }
-    .ac-wrap input:focus { border-color: var(--accent); }
-
-    .suggestions {
-      display: none;
-      position: absolute;
-      top: calc(100% + 3px);
-      left: 0; right: 0;
-      background: white;
-      border: 1.5px solid #E2E8F0;
-      border-radius: 8px;
-      max-height: 180px;
-      overflow-y: auto;
-      z-index: 200;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.12);
-    }
-    .suggestions .item {
-      padding: 9px 12px;
-      font-size: 14px;
-      color: #1E293B;
-      cursor: pointer;
-      border-bottom: 1px solid #F1F5F9;
-    }
-    .suggestions .item:last-child { border-bottom: none; }
-    .suggestions .item:active,
-    .suggestions .item:hover { background: var(--accent-light); color: var(--accent-dark); }
-
-    .bottom-row {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-    .ev-label {
-      display: flex;
-      align-items: center;
-      gap: 5px;
-      font-size: 13px;
-      color: #475569;
-      white-space: nowrap;
-      cursor: pointer;
-      flex-shrink: 0;
-    }
-    .ev-label input[type="checkbox"] {
-      width: 16px;
-      height: 16px;
-      accent-color: var(--accent);
-      cursor: pointer;
-    }
-    #btn-search {
-      flex: 1;
-      height: 40px;
-      border: none;
-      border-radius: 10px;
-      background: linear-gradient(135deg, var(--accent), var(--accent-dark));
-      color: white;
-      font-size: 15px;
-      font-weight: 700;
-      cursor: pointer;
-      transition: opacity 0.15s;
-    }
-    #btn-search:hover { opacity: 0.9; }
-
-    .category-tabs { display: flex; gap: 6px; flex: 1; }
-    .category-tab {
-      flex: 1; height: 34px;
-      border: 1.5px solid #CBD5E1; border-radius: 17px;
-      background: white; font-size: 13px; font-weight: 600;
-      color: #64748B; cursor: pointer; transition: all 0.2s;
-    }
-    .category-tab.active { background: var(--accent); border-color: var(--accent); color: white; }
-
-    /* イベントモード (?event=1) のときだけ表示されるバッジ */
-    #event-badge {
-      display: none;
-      align-items: center;
-      font-size: 11px; font-weight: 700;
-      color: #B45309; background: #FEF3C7;
-      border: 1px solid #FCD34D;
-      padding: 3px 8px; border-radius: 10px;
-      white-space: nowrap; flex-shrink: 0;
-    }
-    #btn-fac-search {
-      flex: 1; height: 40px; border: none; border-radius: 10px;
-      background: linear-gradient(135deg, var(--accent), var(--accent-dark));
-      color: white; font-size: 15px; font-weight: 700;
-      cursor: pointer; transition: opacity 0.15s;
-    }
-    #btn-fac-search:hover { opacity: 0.9; }
-
-    .gps-wrapper {
-      border: 1.5px solid var(--accent-border-light); border-radius: 8px;
-      margin-bottom: 6px; overflow: hidden;
-    }
-    .gps-row {
-      display: flex; gap: 8px; align-items: center;
-      padding: 8px 12px; background: var(--accent-light);
-    }
-    .gps-row span { flex: 1; font-size: 13px; color: var(--accent-darker); word-break: break-all; }
-    .btn-gps {
-      height: 32px; padding: 0 14px; border: none; border-radius: 6px;
-      background: var(--accent); color: white; font-size: 13px;
-      font-weight: 600; cursor: pointer; white-space: nowrap; flex-shrink: 0;
-    }
-    .btn-swap {
-      display: block; width: 28px; height: 28px;
-      margin: 0 0 4px 0;
-      background: white; border: 1.5px solid #E2E8F0; border-radius: 50%;
-      font-size: 16px; line-height: 1; cursor: pointer; color: var(--accent);
-      transition: background 0.15s, color 0.15s, border-color 0.15s;
-    }
-    .btn-swap:hover { background: var(--accent-light); color: var(--accent); border-color: var(--accent); }
-
-    #accuracy-warn,
-    #fac-accuracy-warn {
-      display: none;
-      padding: 6px 12px; font-size: 12px; line-height: 1.6;
-    }
-    #accuracy-warn.warn-low,  #fac-accuracy-warn.warn-low  { background: #FFFBEB; color: #78350F; }
-    #accuracy-warn.warn-high, #fac-accuracy-warn.warn-high { background: #FEF2F2; color: #7F1D1D; }
-
-    /* ================================================================
-       Map / SVG
-    ================================================================ */
-    #map { width: 100%; height: 100%; }
-
-    #svg-area {
-      display: none; width: 100%; height: 100%;
-      position: absolute; inset: 0; background: #F8FAFC; overflow: hidden;
-    }
-    #svg-container {
-      width: 100%; height: 100%;
-      touch-action: none;        /* ブラウザスクロール抑制（ドラッグ用） */
-      user-select: none;
-      cursor: grab;
-    }
-    #svg-container:active { cursor: grabbing; }
-    #svg-container svg { width: 100%; height: 100%; overflow: visible; }
-
-    .err-box {
-      width: 100%; height: 100%; min-height: 180px;
-      display: flex; flex-direction: column;
-      align-items: center; justify-content: center;
-      gap: 10px; padding: 24px; text-align: center;
-      color: #94A3B8;
-    }
-    .err-box .err-title { font-size: 15px; font-weight: 700; color: #64748B; }
-    .err-box .err-desc  { font-size: 13px; line-height: 1.7; }
-    .err-box .err-hint  {
-      font-size: 12px; color: #64748B;
-      background: #F1F5F9; padding: 8px 16px; border-radius: 8px; margin-top: 4px;
-    }
-
-    #floor-badge {
-      position: absolute; top: 10px; left: 10px; z-index: 10;
-      background: white; border-radius: 20px; padding: 6px 14px;
-      font-size: 13px; font-weight: 700; color: #1E293B;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.18);
-    }
-
-    /* ================================================================
-       Step navigation — AR画像上のオーバーレイ
-    ================================================================ */
-    .nav-arrow {
-      position: absolute; top: 50%; transform: translateY(-50%);
-      width: 46px; height: 46px; border-radius: 50%;
-      border: none; background: rgba(255,255,255,0.92);
-      font-size: 18px; cursor: pointer;
-      display: flex; align-items: center; justify-content: center;
-      color: #475569; z-index: 20;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.35);
-      -webkit-tap-highlight-color: transparent;
-      transition: background 0.12s, opacity 0.12s;
-    }
-    #prev-btn { left: 10px; }
-    #next-btn { right: 10px; }
-    .nav-arrow:not(:disabled):hover  { background: white; }
-    .nav-arrow:not(:disabled):active { transform: translateY(-50%) scale(0.92); }
-    .nav-arrow:disabled { opacity: 0.35; cursor: not-allowed; }
-
-    #step-info {
-      position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
-      max-width: calc(100% - 20px);
-      z-index: 20; text-align: center;
-      background: rgba(0,0,0,0.55); color: rgba(255,255,255,0.95);
-      padding: 5px 16px; border-radius: 16px;
-      backdrop-filter: blur(4px);
-      pointer-events: none;
-    }
-    #step-label {
-      font-size: 13px; font-weight: 700;
-      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-    }
-    #step-count { font-size: 11px; color: rgba(255,255,255,0.75); margin-top: 1px; }
-
-    @media (min-width: 768px) {
-      #step-label { font-size: 14px; }
-      .nav-arrow  { width: 50px; height: 50px; }
-    }
-
-    /* ================================================================
-       AR Area
-    ================================================================ */
-    .ar-cached-img {
-      display: none;
-      position: absolute;
-      inset: 0;
-      width: 100%; height: 100%;
-      object-fit: cover;
-    }
-    .ar-cached-img.active { display: block; }
-    #ar-placeholder {
-      width: 100%; height: 100%;
-      display: flex; flex-direction: column;
-      align-items: center; justify-content: center;
-      gap: 8px;
-    }
-    #ar-placeholder .ph-text {
-      font-size: 12px;
-      color: #94A3B8;
-      letter-spacing: 0.1em;
-    }
-    #ar-placeholder.arrival {
-      background: linear-gradient(160deg, var(--accent-light) 0%, #F0FDF4 100%);
-      gap: 12px;
-    }
-    #ar-placeholder.arrival .arrival-icon {
-      font-size: 48px;
-      line-height: 1;
-    }
-    #ar-placeholder.arrival .arrival-title {
-      font-size: 18px; font-weight: 700; color: var(--accent-darker);
-    }
-    #ar-placeholder.arrival .arrival-desc {
-      font-size: 13px; color: #475569; text-align: center; line-height: 1.6;
-    }
-    #ar-label {
-      display: none;
-      position: absolute; bottom: 10px; left: 10px;
-      background: rgba(0,0,0,0.55);
-      color: rgba(255,255,255,0.9);
-      font-size: 12px; font-weight: 600;
-      padding: 4px 12px; border-radius: 14px;
-      backdrop-filter: blur(4px);
-      pointer-events: none;
-    }
-    #direction-arrow {
-      display: none;
-      position: absolute;
-      left: 50%;
-      /* ↓ 矢印の縦位置: 値を大きくすると画面下（手前）に移動 / 小さくすると奥に移動 */
-      top: 80%;
-      transform: translate(-50%, -50%);
-      /* ↓ 矢印のサイズ: clamp(最小, 基準, 最大) — 基準値を変えると全体的なサイズが変わる */
-      width: clamp(130px, 50vmin, 220px);
-      height: auto;
-      opacity: 0.90;
-      pointer-events: none;
-      z-index: 10;
-      filter: drop-shadow(0 3px 10px rgba(0,0,0,0.65));
-    }
-    /* 最終区間（目的地エッジ上）で矢印の代わりに出すバッジ */
-    #near-goal-badge {
-      display: none;
-      position: absolute;
-      left: 50%;
-      top: 80%;
-      transform: translate(-50%, -50%);
-      background: rgba(30, 64, 175, 0.92);
-      color: #fff;
-      font-size: 16px; font-weight: 700;
-      padding: 10px 22px; border-radius: 999px;
-      white-space: nowrap;
-      pointer-events: none;
-      z-index: 10;
-      box-shadow: 0 3px 10px rgba(0,0,0,0.45);
-    }
-
-    /* ================================================================
-       Completion modal
-    ================================================================ */
-    #completion-modal {
-      display: none;
-      position: fixed; inset: 0; z-index: 600;
-      align-items: center; justify-content: center;
-      padding: 20px;
-      background: rgba(15, 23, 42, 0.5);
-      backdrop-filter: blur(6px);
-      -webkit-backdrop-filter: blur(6px);
-      animation: modalFadeIn 0.25s ease both;
-    }
-    #completion-modal.show { display: flex; }
-
-    #completion-box {
-      background: white;
-      border-radius: 24px;
-      padding: 36px 32px 28px;
-      max-width: 360px;
-      width: 100%;
-      box-shadow: 0 24px 64px rgba(0,0,0,0.22);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 8px;
-      text-align: center;
-      animation: modalSlideUp 0.3s cubic-bezier(0.22,1,0.36,1) both;
-    }
-
-    .modal-icon {
-      width: 60px; height: 60px;
-      border-radius: 50%;
-      background: var(--accent-light);
-      display: flex; align-items: center; justify-content: center;
-      font-size: 26px;
-      margin-bottom: 4px;
-    }
-    .modal-title {
-      font-size: 20px; font-weight: 800;
-      color: #0F172A; letter-spacing: -0.02em;
-      margin-bottom: 2px;
-    }
-    .modal-desc {
-      font-size: 14px; color: #64748B;
-      line-height: 1.65; margin-bottom: 12px;
-    }
-    .modal-btn-survey {
-      width: 100%; height: 48px;
-      border: none; border-radius: 12px;
-      background: linear-gradient(135deg, var(--accent), var(--accent-dark));
-      color: white; font-size: 15px; font-weight: 700;
-      cursor: pointer; transition: opacity 0.15s;
-      text-decoration: none;
-      display: flex; align-items: center; justify-content: center;
-      gap: 6px;
-    }
-    .modal-btn-survey:hover { opacity: 0.88; }
-    .modal-btn-continue {
-      width: 100%; height: 44px;
-      border: 1.5px solid #E2E8F0; border-radius: 12px;
-      background: white; color: #475569;
-      font-size: 14px; font-weight: 600;
-      cursor: pointer; transition: background 0.15s;
-      margin-top: 4px;
-    }
-    .modal-btn-continue:hover { background: #F8FAFC; }
-
-    @keyframes modalFadeIn {
-      from { opacity: 0; } to { opacity: 1; }
-    }
-    @keyframes modalSlideUp {
-      from { opacity: 0; transform: translateY(24px) scale(0.97); }
-      to   { opacity: 1; transform: translateY(0)    scale(1); }
-    }
-
-    /* ================================================================
-       Loading overlay
-    ================================================================ */
-    #loading {
-      display: none; position: fixed; inset: 0; z-index: 500;
-      background: rgba(15,23,42,0.45);
-      align-items: center; justify-content: center;
-    }
-    #loading.show { display: flex; }
-    #loading-box {
-      background: white; border-radius: 16px; padding: 22px 36px;
-      font-size: 16px; font-weight: 600; color: #1E293B;
-      box-shadow: 0 10px 40px rgba(0,0,0,0.2);
-    }
-
-    /* ================================================================
-       AR Outdoor Elements
-    ================================================================ */
-    #ar-bg-video {
-      display: none;
-      position: absolute; inset: 0;
-      width: 100%; height: 100%;
-      object-fit: cover; z-index: 1;
-    }
-    #ar-gl-canvas {
-      display: none;
-      position: absolute; inset: 0;
-      width: 100%; height: 100%;
-      z-index: 2; pointer-events: none;
-    }
-  </style>
+  <link rel="stylesheet" href="style.css">
   <script src="script/config.js"></script>
 </head>
 <body>
@@ -5578,7 +5531,7 @@ Sitemap: https://iku-navi.net/sitemap.xml
     </div>
     <div id="ar-label">進行方向</div>
     <img id="direction-arrow" src="" alt="方向矢印">
-    <div id="near-goal-badge">&#127937; この通路沿いが目的地周辺です</div>
+    <div id="near-goal-badge">この通路沿いが目的地周辺です</div>
     <!-- ステップ操作: 画像上のオーバーレイ -->
     <div id="step-info">
       <div id="step-label">ルートを検索してください</div>
@@ -5586,6 +5539,7 @@ Sitemap: https://iku-navi.net/sitemap.xml
     </div>
     <button class="nav-arrow" id="prev-btn" onclick="prevStep()" disabled>&#9664;</button>
     <button class="nav-arrow" id="next-btn" onclick="nextStep()" disabled>&#9654;</button>
+    <button id="voice-toggle-btn" onclick="toggleVoiceGuide()" title="音声案内のON/OFF" aria-pressed="false">&#128264;</button>
   </div>
 
 </div><!-- /#sidebar -->
@@ -5617,7 +5571,678 @@ Sitemap: https://iku-navi.net/sitemap.xml
 
 <div id="loading"><div id="loading-box">検索中...</div></div>
 
-<script>
+<script src="script/state.js"></script>
+<script src="script/data.js"></script>
+<script src="script/search-form.js"></script>
+<script src="script/gps.js"></script>
+<script src="script/route.js"></script>
+<script src="script/voice.js"></script>
+<script src="script/photo.js"></script>
+<script src="script/map.js"></script>
+<script src="script/floormap.js"></script>
+<script src="script/page.js"></script>
+
+<script src="script/ar.js"></script>
+
+<script src="script/maps-loader.js"></script>
+</body>
+</html>
+```
+
+### `programs/html/navi/style.css`
+
+```css
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      /* 「駅の案内サイン」をモチーフにした配色。地図・AR映像が主役なので、周りのUIは
+         紙色(--paper)とインク(--ink)、罫線(--line)だけで構成し、色は要所の signal(バーミリオン)
+         だけに絞る。カード風の丸み・ドロップシャドウの多用はやめ、線で区切る。 */
+      --ink:           #14181F;
+      --ink-soft:       #4B5563;
+      --paper:          #F6F6F2;
+      --line:           #DBDCD4;
+      --line-strong:    #C3C5BB;
+      --accent:             #E8501E; /* signal: 主要アクション・選択状態にのみ使う */
+      --accent-dark:        #B93C14;
+      --accent-darker:      #7A2A0D;
+      --accent-light:       #FCEEE7;
+      --accent-border-light: #F0C3AE;
+      --transit-blue:   #1B3A6B; /* 地図・現在地まわりの構造色 */
+      --go:             #1E7145; /* 到着・成功状態 */
+    }
+    /* イベントモード (?event=1): アクセントを祭りの金へ切り替える（案内サインの通常色と混同しないため） */
+    body.event-mode {
+      --accent:             #A8720A;
+      --accent-dark:        #7C5407;
+      --accent-darker:      #543905;
+      --accent-light:       #FBF1D9;
+      --accent-border-light: #E6CB8C;
+    }
+    html { height: 100%; overscroll-behavior: none; }
+    body {
+      height: 100%; overflow: hidden;
+      overscroll-behavior: none;
+      background: var(--paper);
+      color: var(--ink);
+      font-family: 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', 'Yu Gothic', 'Helvetica Neue', Arial, sans-serif;
+      display: flex;
+      flex-direction: column; /* mobile: stacked */
+    }
+    button, a, select, input, label {
+      touch-action: manipulation; /* ダブルタップズームを無効化 */
+    }
+
+    /* ================================================================
+       Mobile layout — sidebar dissolves via display:contents;
+       children participate directly in body's flex flow via order.
+    ================================================================ */
+    #sidebar { display: contents; }
+
+    #app-header  { display: none; } /* mobile: hidden */
+
+    #search-panel {
+      order: 1;
+      background: var(--paper);
+      padding: 0;
+      border-bottom: 1px solid var(--line);
+      flex-shrink: 0;
+      z-index: 100;
+    }
+    #search-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 10px;
+    }
+    #btn-home {
+      flex-shrink: 0;
+      width: 28px; height: 28px;
+      border: 1px solid var(--line-strong); border-radius: 6px;
+      background: #fff;
+      display: flex; align-items: center; justify-content: center;
+      color: var(--ink-soft); font-size: 15px; line-height: 1;
+      text-decoration: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+    #btn-home:active { background: var(--line); }
+    #search-toggle {
+      flex-shrink: 0;
+      width: 28px; height: 28px;
+      border: 1px solid var(--line-strong); border-radius: 6px;
+      background: #fff;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; color: var(--ink-soft); font-size: 13px;
+      -webkit-tap-highlight-color: transparent;
+    }
+    #search-chevron {
+      display: inline-block;
+      transition: transform 0.3s ease;
+      line-height: 1;
+    }
+    #search-chevron.open { transform: rotate(180deg); }
+    #search-content {
+      display: grid;
+      grid-template-rows: 0fr;
+      transition: grid-template-rows 0.3s ease;
+    }
+    #search-content.open { grid-template-rows: 1fr; }
+    .search-content-inner {
+      overflow: hidden;
+      padding: 0 10px 8px;
+    }
+    #map-area {
+      order: 2;
+      flex: 1;
+      position: relative;
+      overflow: hidden;
+      min-height: 0;
+    }
+    #ar-area {
+      order: 4;
+      flex: 1;
+      background: #1B1F24;
+      position: relative;
+      overflow: hidden;
+      min-height: 0;
+    }
+
+    /* ================================================================
+       Desktop layout (>= 768px) — sidebar + map side by side
+    ================================================================ */
+    @media (min-width: 768px) {
+      body { flex-direction: row; }
+
+      #sidebar {
+        display: flex;
+        flex-direction: column;
+        width: 340px;
+        flex-shrink: 0;
+        height: 100%;
+        background: var(--paper);
+        border-right: 1px solid var(--line);
+        /* no overflow:hidden — needed so suggestions can overflow */
+      }
+
+      #app-header {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        height: 52px;
+        padding: 0 18px;
+        border-bottom: 1px solid var(--line);
+        flex-shrink: 0;
+        background: var(--paper);
+      }
+      #app-header .hdr-title {
+        font-size: 15px;
+        font-weight: 800;
+        color: var(--ink);
+        letter-spacing: 0.01em;
+        text-decoration: none;
+      }
+      #app-header .hdr-title:hover { color: var(--transit-blue); }
+      #app-header .hdr-badge {
+        font-size: 11px;
+        color: var(--accent-dark);
+        background: var(--accent-light);
+        padding: 2px 9px;
+        border-radius: 4px;
+        font-weight: 700;
+      }
+
+      #search-panel {
+        order: 0;
+        border-bottom: 1px solid var(--line);
+        padding: 0;
+        flex-shrink: 0;
+      }
+      #search-header { padding: 14px 16px 8px; }
+      #search-toggle { display: none; }
+      #btn-home      { display: none; } /* desktop: app-header にリンクがあるため不要 */
+      #search-content { display: block; }
+      .search-content-inner { overflow: visible; padding: 0 16px 14px; }
+
+      #ar-area {
+        order: 0;
+        flex: 1;
+        min-height: 0;
+      }
+
+      #map-area {
+        flex: 1;
+        min-width: 0;
+      }
+    }
+
+    /* ================================================================
+       Search Panel internals
+    ================================================================ */
+    .search-tabs { display: flex; gap: 4px; flex: 1; border-bottom: 1px solid var(--line); }
+    .search-tab {
+      flex: 1; height: 34px;
+      border: none; border-bottom: 2px solid transparent;
+      background: none; font-size: 13px; font-weight: 600;
+      color: var(--ink-soft); cursor: pointer; transition: color 0.15s, border-color 0.15s;
+    }
+    .search-tab.active { color: var(--ink); border-bottom-color: var(--accent); }
+
+    .route-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 6px;
+    }
+    .route-label {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--ink-soft);
+      width: 28px;
+      flex-shrink: 0;
+      text-align: center;
+    }
+    .building-select {
+      height: 38px;
+      padding: 0 3px;
+      border: 1px solid var(--line-strong);
+      border-radius: 4px;
+      font-size: 12px;
+      color: var(--ink);
+      background: #fff;
+      width: 76px;
+      flex-shrink: 0;
+      cursor: pointer;
+    }
+    .building-select:focus { outline: none; border-color: var(--transit-blue); }
+
+    .ac-wrap { flex: 1; position: relative; }
+    .ac-wrap input {
+      width: 100%;
+      height: 38px;
+      padding: 0 12px;
+      border: 1px solid var(--line-strong);
+      border-radius: 4px;
+      font-size: 15px;
+      color: var(--ink);
+      outline: none;
+      -webkit-appearance: none;
+      background: #fff;
+    }
+    .ac-wrap input:focus { border-color: var(--transit-blue); }
+
+    .suggestions {
+      display: none;
+      position: absolute;
+      top: calc(100% + 3px);
+      left: 0; right: 0;
+      background: #fff;
+      border: 1px solid var(--line-strong);
+      border-radius: 4px;
+      max-height: 180px;
+      overflow-y: auto;
+      z-index: 200;
+      box-shadow: 0 4px 14px rgba(20,24,31,0.14);
+    }
+    .suggestions .item {
+      padding: 9px 12px;
+      font-size: 14px;
+      color: var(--ink);
+      cursor: pointer;
+      border-bottom: 1px solid var(--line);
+    }
+    .suggestions .item:last-child { border-bottom: none; }
+    .suggestions .item:active,
+    .suggestions .item:hover { background: var(--accent-light); color: var(--accent-dark); }
+
+    .bottom-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .ev-label {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 13px;
+      color: var(--ink-soft);
+      white-space: nowrap;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+    .ev-label input[type="checkbox"] {
+      width: 16px;
+      height: 16px;
+      accent-color: var(--accent);
+      cursor: pointer;
+    }
+    #btn-search {
+      flex: 1;
+      height: 40px;
+      border: none;
+      border-radius: 4px;
+      background: var(--accent);
+      color: white;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    #btn-search:hover { background: var(--accent-dark); }
+
+    .category-tabs { display: flex; gap: 4px; flex: 1; border-bottom: 1px solid var(--line); }
+    .category-tab {
+      flex: 1; height: 34px;
+      border: none; border-bottom: 2px solid transparent;
+      background: none; font-size: 13px; font-weight: 600;
+      color: var(--ink-soft); cursor: pointer; transition: color 0.15s, border-color 0.15s;
+    }
+    .category-tab.active { color: var(--ink); border-bottom-color: var(--accent); }
+
+    /* イベントモード (?event=1) のときだけ表示されるバッジ */
+    #event-badge {
+      display: none;
+      align-items: center;
+      font-size: 11px; font-weight: 700;
+      color: var(--accent-dark); background: var(--accent-light);
+      border: 1px solid var(--accent-border-light);
+      padding: 3px 8px; border-radius: 4px;
+      white-space: nowrap; flex-shrink: 0;
+    }
+    #btn-fac-search {
+      flex: 1; height: 40px; border: none; border-radius: 4px;
+      background: var(--accent);
+      color: white; font-size: 15px; font-weight: 700;
+      cursor: pointer; transition: background 0.15s;
+    }
+    #btn-fac-search:hover { background: var(--accent-dark); }
+
+    .gps-wrapper {
+      border: 1px solid var(--line-strong); border-radius: 4px;
+      margin-bottom: 6px; overflow: hidden;
+    }
+    .gps-row {
+      display: flex; gap: 8px; align-items: center;
+      padding: 8px 12px; background: var(--paper);
+    }
+    .gps-row span { flex: 1; font-size: 13px; color: var(--ink-soft); word-break: break-all; }
+    .btn-gps {
+      height: 32px; padding: 0 14px; border: none; border-radius: 4px;
+      background: var(--transit-blue); color: white; font-size: 13px;
+      font-weight: 600; cursor: pointer; white-space: nowrap; flex-shrink: 0;
+    }
+    .btn-swap {
+      display: block; width: 28px; height: 28px;
+      margin: 0 0 4px 0;
+      background: #fff; border: 1px solid var(--line-strong); border-radius: 6px;
+      font-size: 16px; line-height: 1; cursor: pointer; color: var(--ink-soft);
+      transition: background 0.15s, color 0.15s, border-color 0.15s;
+    }
+    .btn-swap:hover { background: var(--accent-light); color: var(--accent-dark); border-color: var(--accent-border-light); }
+
+    #accuracy-warn,
+    #fac-accuracy-warn {
+      display: none;
+      padding: 6px 12px; font-size: 12px; line-height: 1.6;
+    }
+    #accuracy-warn.warn-low,  #fac-accuracy-warn.warn-low  { background: #FBF1D9; color: #543905; }
+    #accuracy-warn.warn-high, #fac-accuracy-warn.warn-high { background: #FBEAE6; color: #7A2A0D; }
+
+    /* ================================================================
+       Map / SVG
+    ================================================================ */
+    #map { width: 100%; height: 100%; }
+
+    #svg-area {
+      display: none; width: 100%; height: 100%;
+      position: absolute; inset: 0; background: var(--paper); overflow: hidden;
+    }
+    #svg-container {
+      width: 100%; height: 100%;
+      touch-action: none;        /* ブラウザスクロール抑制（ドラッグ用） */
+      user-select: none;
+      cursor: grab;
+    }
+    #svg-container:active { cursor: grabbing; }
+    #svg-container svg { width: 100%; height: 100%; overflow: visible; }
+
+    .err-box {
+      width: 100%; height: 100%; min-height: 180px;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 10px; padding: 24px; text-align: center;
+      color: var(--ink-soft);
+    }
+    .err-box .err-title { font-size: 15px; font-weight: 700; color: var(--ink); }
+    .err-box .err-desc  { font-size: 13px; line-height: 1.7; }
+    .err-box .err-hint  {
+      font-size: 12px; color: var(--ink-soft);
+      background: #fff; border: 1px solid var(--line); padding: 8px 16px; border-radius: 4px; margin-top: 4px;
+    }
+
+    #floor-badge {
+      position: absolute; top: 10px; left: 10px; z-index: 10;
+      background: var(--ink); border-radius: 4px; padding: 6px 14px;
+      font-size: 13px; font-weight: 700; color: #fff;
+      font-variant-numeric: tabular-nums;
+      box-shadow: 0 2px 8px rgba(20,24,31,0.28);
+    }
+
+    /* ================================================================
+       Step navigation — AR画像上のオーバーレイ
+    ================================================================ */
+    .nav-arrow {
+      position: absolute; top: 50%; transform: translateY(-50%);
+      width: 46px; height: 46px; border-radius: 50%;
+      border: none; background: rgba(255,255,255,0.92);
+      font-size: 18px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      color: var(--ink-soft); z-index: 20;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.35);
+      -webkit-tap-highlight-color: transparent;
+      transition: background 0.12s, opacity 0.12s;
+    }
+    #prev-btn { left: 10px; }
+    #next-btn { right: 10px; }
+    .nav-arrow:not(:disabled):hover  { background: white; }
+    .nav-arrow:not(:disabled):active { transform: translateY(-50%) scale(0.92); }
+    .nav-arrow:disabled { opacity: 0.35; cursor: not-allowed; }
+
+    #voice-toggle-btn {
+      position: absolute; bottom: 10px; right: 10px;
+      width: 38px; height: 38px; border-radius: 50%;
+      border: none; background: rgba(255,255,255,0.92);
+      font-size: 16px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      color: var(--ink-soft); z-index: 20;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.35);
+      -webkit-tap-highlight-color: transparent;
+      transition: background 0.12s, color 0.12s;
+    }
+    #voice-toggle-btn.active { background: var(--accent); color: #fff; }
+    #voice-toggle-btn:hover { background: white; }
+    #voice-toggle-btn.active:hover { background: var(--accent-dark); }
+
+    #step-info {
+      position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
+      max-width: calc(100% - 20px);
+      z-index: 20; text-align: center;
+      background: rgba(20,24,31,0.72); color: rgba(255,255,255,0.96);
+      padding: 5px 16px; border-radius: 4px;
+      backdrop-filter: blur(4px);
+      pointer-events: none;
+    }
+    #step-label {
+      font-size: 13px; font-weight: 700;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    #step-count { font-size: 11px; color: rgba(255,255,255,0.75); margin-top: 1px; font-variant-numeric: tabular-nums; }
+
+    @media (min-width: 768px) {
+      #step-label { font-size: 14px; }
+      .nav-arrow  { width: 50px; height: 50px; }
+    }
+
+    /* ================================================================
+       AR Area
+    ================================================================ */
+    .ar-cached-img {
+      display: none;
+      position: absolute;
+      inset: 0;
+      width: 100%; height: 100%;
+      object-fit: cover;
+    }
+    .ar-cached-img.active { display: block; }
+    #ar-placeholder {
+      width: 100%; height: 100%;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 8px;
+      color: #fff;
+    }
+    #ar-placeholder .ph-text {
+      font-size: 12px;
+      color: rgba(255,255,255,0.55);
+      letter-spacing: 0.1em;
+    }
+    #ar-placeholder.arrival {
+      background: linear-gradient(160deg, var(--go) 0%, #133F27 100%);
+      gap: 12px;
+    }
+    #ar-placeholder.arrival .arrival-icon {
+      font-size: 48px;
+      line-height: 1;
+    }
+    #ar-placeholder.arrival .arrival-title {
+      font-size: 18px; font-weight: 800; color: #fff;
+    }
+    #ar-placeholder.arrival .arrival-desc {
+      font-size: 13px; color: rgba(255,255,255,0.85); text-align: center; line-height: 1.6;
+    }
+    #ar-label {
+      display: none;
+      position: absolute; bottom: 10px; left: 10px;
+      background: rgba(20,24,31,0.72);
+      color: rgba(255,255,255,0.9);
+      font-size: 12px; font-weight: 600;
+      padding: 4px 12px; border-radius: 4px;
+      backdrop-filter: blur(4px);
+      pointer-events: none;
+    }
+    #direction-arrow {
+      display: none;
+      position: absolute;
+      left: 50%;
+      /* ↓ 矢印の縦位置: 値を大きくすると画面下（手前）に移動 / 小さくすると奥に移動 */
+      top: 80%;
+      transform: translate(-50%, -50%);
+      /* ↓ 矢印のサイズ: clamp(最小, 基準, 最大) — 基準値を変えると全体的なサイズが変わる */
+      width: clamp(130px, 50vmin, 220px);
+      height: auto;
+      opacity: 0.90;
+      pointer-events: none;
+      z-index: 10;
+      filter: drop-shadow(0 3px 10px rgba(0,0,0,0.65));
+    }
+    /* 最終区間（目的地エッジ上）で矢印の代わりに出すバッジ */
+    #near-goal-badge {
+      display: none;
+      position: absolute;
+      left: 50%;
+      top: 80%;
+      transform: translate(-50%, -50%);
+      background: rgba(30, 113, 69, 0.94);
+      color: #fff;
+      font-size: 16px; font-weight: 700;
+      padding: 10px 22px; border-radius: 4px;
+      /* 「<教室>は右手、<手前>から数えてN番目です」等で文言が長くなることがあるため、
+         横一行固定(nowrap)ではなくAR領域内で折り返す */
+      white-space: normal;
+      max-width: calc(100% - 32px);
+      text-align: center;
+      line-height: 1.4;
+      pointer-events: none;
+      z-index: 10;
+      box-shadow: 0 3px 10px rgba(0,0,0,0.45);
+    }
+
+    /* ================================================================
+       Completion modal
+    ================================================================ */
+    #completion-modal {
+      display: none;
+      position: fixed; inset: 0; z-index: 600;
+      align-items: center; justify-content: center;
+      padding: 20px;
+      background: rgba(20, 24, 31, 0.55);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      animation: modalFadeIn 0.25s ease both;
+    }
+    #completion-modal.show { display: flex; }
+
+    #completion-box {
+      background: #fff;
+      border-radius: 6px;
+      padding: 36px 32px 28px;
+      max-width: 360px;
+      width: 100%;
+      box-shadow: 0 24px 64px rgba(20,24,31,0.28);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      text-align: center;
+      animation: modalSlideUp 0.3s cubic-bezier(0.22,1,0.36,1) both;
+    }
+
+    .modal-icon {
+      width: 60px; height: 60px;
+      border-radius: 50%;
+      background: #E9F4EE;
+      color: var(--go);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 26px;
+      margin-bottom: 4px;
+    }
+    .modal-title {
+      font-size: 20px; font-weight: 800;
+      color: var(--ink); letter-spacing: -0.01em;
+      margin-bottom: 2px;
+    }
+    .modal-desc {
+      font-size: 14px; color: var(--ink-soft);
+      line-height: 1.65; margin-bottom: 12px;
+    }
+    .modal-btn-survey {
+      width: 100%; height: 48px;
+      border: none; border-radius: 4px;
+      background: var(--accent);
+      color: white; font-size: 15px; font-weight: 700;
+      cursor: pointer; transition: background 0.15s;
+      text-decoration: none;
+      display: flex; align-items: center; justify-content: center;
+      gap: 6px;
+    }
+    .modal-btn-survey:hover { background: var(--accent-dark); }
+    .modal-btn-continue {
+      width: 100%; height: 44px;
+      border: 1px solid var(--line-strong); border-radius: 4px;
+      background: #fff; color: var(--ink-soft);
+      font-size: 14px; font-weight: 600;
+      cursor: pointer; transition: background 0.15s;
+      margin-top: 4px;
+    }
+    .modal-btn-continue:hover { background: var(--paper); }
+
+    @keyframes modalFadeIn {
+      from { opacity: 0; } to { opacity: 1; }
+    }
+    @keyframes modalSlideUp {
+      from { opacity: 0; transform: translateY(24px) scale(0.97); }
+      to   { opacity: 1; transform: translateY(0)    scale(1); }
+    }
+
+    /* ================================================================
+       Loading overlay
+    ================================================================ */
+    #loading {
+      display: none; position: fixed; inset: 0; z-index: 500;
+      background: rgba(20,24,31,0.5);
+      align-items: center; justify-content: center;
+    }
+    #loading.show { display: flex; }
+    #loading-box {
+      background: #fff; border-radius: 6px; padding: 22px 36px;
+      font-size: 16px; font-weight: 600; color: var(--ink);
+      box-shadow: 0 10px 40px rgba(20,24,31,0.24);
+    }
+
+    /* ================================================================
+       AR Outdoor Elements
+    ================================================================ */
+    #ar-bg-video {
+      display: none;
+      position: absolute; inset: 0;
+      width: 100%; height: 100%;
+      object-fit: cover; z-index: 1;
+    }
+    #ar-gl-canvas {
+      display: none;
+      position: absolute; inset: 0;
+      width: 100%; height: 100%;
+      z-index: 2; pointer-events: none;
+    }
+```
+
+### `programs/html/navi/script/state.js`
+
+```javascript
+// ================================================================
+// state.js
+// 設定値・全スクリプト共有の状態・矢印画像のプリフェッチ。
+// 他のスクリプトより先に読み込むこと（ここで宣言した定数・変数を全員が参照する）。
+// ================================================================
+
 // ================================================================
 // State
 // ================================================================
@@ -5639,6 +6264,20 @@ if (EVENT_MODE) {
 }
 
 let map;
+let mapReady = false;
+let _pendingMapCallback = null;
+
+// Google Maps 読み込み完了(initMap)前に地図操作が必要な処理が来た場合は、
+// 読み込み完了まで保留してから実行する（教室一覧の表示自体はMapsを待たず即座に行うため）。
+function runWhenMapReady(fn) {
+  if (mapReady) fn();
+  else _pendingMapCallback = fn;
+}
+
+function waitForMapReady() {
+  return new Promise(resolve => runWhenMapReady(resolve));
+}
+
 let searchMode    = "room";
 let facSearchMode = "room";
 let gpsCoords     = null;
@@ -5649,6 +6288,12 @@ let roomsByBuilding = {};   // {"10": ["101A", ...], ...}
 let buildingNames = {};     // {10: "10号館", ...} data/building_name.csv 由来（未登録は "{id}号館"）
 
 let pathCoords  = [];
+let pathEdges   = [];  // path_coords[i]→[i+1] に対応する区間情報（type/length/name）。音声案内に使う
+let destSide    = "";  // APIが指定した目的地そのものの左右("right"/"left"/"")。dest_side未対応のレスポンスでは""
+let destPosition = null;        // その側の教室のうち、手前から数えて何番目か(1始まり)
+let destCount     = null;       // その側にある教室の総数
+let destDisplay   = "";         // 目的地そのものの表示名
+let destNearestDisplay = "";    // 一番手前(先頭)の教室の表示名
 let currentStep = 0;
 
 let outdoorPolylines = [];
@@ -5695,21 +6340,15 @@ async function prefetchArrowImages() {
     })
   );
 }
+```
 
+### `programs/html/navi/script/data.js`
+
+```javascript
 // ================================================================
-// Google Maps init
+// data.js
+// 起動時のデータ取得（教室・ノード・画像・食堂・イベント）とURLパラメータによる検索プリセット。
 // ================================================================
-function initMap() {
-  map = new google.maps.Map(document.getElementById("map"), {
-    zoom: 17,
-    center: { lat: 35.61035, lng: 139.55466 },
-    mapTypeControl: false,
-    streetViewControl: false,
-    fullscreenControl: false,
-    rotateControl: true,
-  });
-  loadAllData();
-}
 
 // ================================================================
 // Data loading
@@ -5754,6 +6393,10 @@ async function loadAllData() {
   }
   applyUrlParams();
 }
+
+// Google Maps の読み込み完了（initMap）を待たず、ページ読み込み直後に教室一覧を取得する。
+// loadAllData は google.maps を一切参照しないため、Mapsの初期化と切り離して問題ない。
+loadAllData();
 
 // ================================================================
 // URL パラメータからの検索プリセット（イベント誘導・QRコード用）
@@ -5869,6 +6512,15 @@ function initRoomData(rooms) {
     });
   });
 }
+```
+
+### `programs/html/navi/script/search-form.js`
+
+```javascript
+// ================================================================
+// search-form.js
+// 検索フォーム（オートコンプリート・教室/設備の切り替え・検索パネルの開閉）。
+// ================================================================
 
 // ================================================================
 // Custom autocomplete
@@ -6027,14 +6679,19 @@ function resolveFacFromParams(params) {
 }
 
 // 検索APIを叩いてルート表示まで行う共通処理（doSearch / doToiletSearch / doCafeteriaSearch で共用）
+// 経路描画は屋外区間があると google.maps.Polyline/Marker を使うため、地図の初期化を待つ。
 async function fetchRouteAndNavigate(url) {
+  await waitForMapReady();
   setLoading(true);
   try {
     const res = await fetch(url);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
     if (data.error) { alert("エラー: " + data.error); return; }
-    await initRoute(data.path_coords);
+    await initRoute(data.path_coords, data.path_edges, {
+      side: data.dest_side, position: data.dest_position, count: data.dest_count,
+      display: data.dest_display, nearestDisplay: data.dest_nearest_display,
+    });
   } catch {
     document.getElementById("step-label").textContent = "サーバーに接続できません";
     document.getElementById("step-count").textContent = "app.py が起動しているか確認してください";
@@ -6110,6 +6767,15 @@ function collapseSearchPanel() {
   chevron.classList.remove("open");
   searchPanelOpen = false;
 }
+```
+
+### `programs/html/navi/script/gps.js`
+
+```javascript
+// ================================================================
+// gps.js
+// 現在地の取得と、現在地からの最寄りノード・方位の計算。
+// ================================================================
 
 // ================================================================
 // GPS
@@ -6246,6 +6912,15 @@ function bearingDeg(lat1, lng1, lat2, lng2) {
   const x = Math.cos(phi1) * Math.sin(phi2) - Math.sin(phi1) * Math.cos(phi2) * Math.cos(dl);
   return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
 }
+```
+
+### `programs/html/navi/script/route.js`
+
+```javascript
+// ================================================================
+// route.js
+// ルート検索の実行と、ステップ送り（ナビゲーションの中心）。
+// ================================================================
 
 // ================================================================
 // Search
@@ -6298,6 +6973,280 @@ function setLoading(on) {
 }
 
 // ================================================================
+// SVG prefetch — ルート上の全フロアのSVGをまとめて取得してメモリキャッシュ。
+// オフライン時でも loadSvg がキャッシュから即座に返せるようにする。
+// ================================================================
+async function prefetchSvgs(coords) {
+  const keys = new Set();
+  coords.forEach(n => {
+    if (n.building !== 0) keys.add(`${n.building}_${n.floor}`);
+  });
+
+  await Promise.allSettled([...keys].map(async key => {
+    if (svgCache[key] !== undefined) return; // すでにキャッシュ済み
+    const [building, floor] = key.split('_');
+    try {
+      const res = await fetch(`/svg/${building}_${floor}F.svg`);
+      svgCache[key] = res.ok ? await res.text() : null;
+    } catch {
+      svgCache[key] = null;
+    }
+  }));
+}
+
+// ================================================================
+// Route init
+// ================================================================
+async function initRoute(coords, edges, destInfo = {}) {
+  pathCoords  = coords;
+  pathEdges   = edges || [];
+  destSide          = destInfo.side || "";
+  destPosition       = destInfo.position ?? null;
+  destCount          = destInfo.count ?? null;
+  destDisplay        = destInfo.display || "";
+  destNearestDisplay = destInfo.nearestDisplay || "";
+  currentStep = 0;
+  svgBuilding = null;
+  svgFloor    = null;
+  svgOverlay  = null;
+  arMarkersBuilt = false;
+  arHideView();
+  arPrefetchCameraIfNeeded();  // 屋外AR区間がある場合のみカメラを先取り
+  clearMapOverlays();
+  drawFullOutdoorRoute();
+  prefetchRouteImages(coords);               // 写真: 並行ダウンロード開始（fire-and-forget）
+  await prefetchSvgs(coords);               // SVG:  全フロア一括取得を待機してからナビ開始
+  collapseSearchPanel();  // ルート確定後にパネルを収納
+  goToStep(0, { announce: true });
+}
+
+// ================================================================
+// Step navigation
+// ================================================================
+// announce: trueの時だけ音声案内を読み上げる。前進(nextStep/ルート開始直後)のときのみ
+// trueにする。戻る操作では「右に曲がってください」等が実際の進行方向と逆で誤りになるため読み上げない。
+async function goToStep(step, { announce = false } = {}) {
+  currentStep = step;
+  const node  = pathCoords[step];
+  updateNavBar(node, step, pathCoords.length);
+  updateRouteImage(step);
+  if (announce) speak(buildStepAnnouncement(step));
+  if (!node) return;
+
+  // 現在以降にARを使う屋外区間が残っていなければカメラ・GPSを解放する
+  releaseArIfUnneeded(step);
+
+  if (node.building === 0 && node.lat != null) {
+    switchView("map");
+    moveMapTo(node, step);
+  } else if (node.building !== 0) {
+    switchView("svg");
+    if (node.building !== svgBuilding || node.floor !== svgFloor) {
+      svgBuilding = node.building;
+      svgFloor    = node.floor;
+      await loadSvg(node.building, node.floor);
+      drawSvgBaseRoute(node.building, node.floor);
+    }
+    renderSvgStep(step);
+  }
+
+  // Three.js AR のルートカラーを更新
+  if (arMarkersBuilt) arUpdateRouteColors(step);
+
+  // 最終ステップ（目的地エッジ上・「この辺です」表示区間）に到達したら
+  // 一定時間後に完了モーダルを表示
+  if (step === pathCoords.length - 2) {
+    clearTimeout(window._completionTimer);
+    window._completionTimer = setTimeout(showCompletionModal, 3000); // ← 秒数はここで調整（ミリ秒）
+  } else {
+    clearTimeout(window._completionTimer);
+  }
+}
+
+// 最終ノード（画像のない到着ステップ）へは進まない。
+// 目的地エッジを歩く「この辺です」区間（length-2）がナビの最終ステップ。
+function prevStep() { if (currentStep > 0) goToStep(currentStep - 1); }
+function nextStep() { if (currentStep < pathCoords.length - 2) goToStep(currentStep + 1, { announce: true }); }
+
+// ================================================================
+// AR ハードウェア解放判定
+// 屋外→屋内→屋外と続くルートの途中ではストリームを保持して
+// シームレスに切り替え、屋外区間を使い切ったら解放する。
+// （最終ステップは到着画面なので AR 不要とみなす）
+// ================================================================
+function releaseArIfUnneeded(step) {
+  for (let i = step; i < pathCoords.length - 1; i++) {
+    const n = pathCoords[i];
+    if (n && n.building === 0 && n.lat != null) return; // まだARを使う
+  }
+  arReleaseHardware();
+}
+```
+
+### `programs/html/navi/script/voice.js`
+
+```javascript
+// ================================================================
+// voice.js
+// 音声案内（読み上げのON/OFFと、各ステップの読み上げ文の組み立て）。
+// ================================================================
+
+// ================================================================
+// 音声案内
+//
+// Web Speech API (SpeechSynthesis) をそのまま使う。バックエンドの変更は不要。
+// 読み上げ文は「グライスの協調の原理」の4公理に沿うよう、以下の方針で組み立てる：
+//   量:   そのステップで実際に必要な情報（曲がる方向・距離・エレベータ等の行き先階）だけを言う。
+//         距離がANNOUNCE_DISTANCE_THRESHOLD_M未満など無意味なほど短い直進は何も言わない（言っても情報にならない）。
+//   質:   実際のデータ（計算済みの距離・曲がる方向・ノードのfloor）にない内容は言わない。
+//         教室名も、値がある場合のみ言う（無ければ言わない。それらしい名前を作らない）。
+//   関係: 今のステップの行動に関係ない情報は省く。入口（type 7・距離0）の連結エッジは無音。
+//         エレベータ/階段/エスカレータが複数の区間に分かれていても、同じ移動の途中は繰り返さない。
+//   様態: 曖昧さを避け（「右」「左」を明言）、簡潔で、毎回同じ語順（方向→距離）で話す。
+// ================================================================
+let voiceGuideEnabled = localStorage.getItem("navi_voice_guide") === "1";
+
+const VERTICAL_LABELS = { "2": "階段", "3": "エスカレーター", "4": "エレベーター", "5": "エスカレーター", "6": "エスカレーター" };
+const ANNOUNCE_DISTANCE_THRESHOLD_M = 10; // これ未満の直進距離は案内しない（曲がる場合は距離を省いて方向だけ言う）
+
+function updateVoiceToggleUI() {
+  const btn = document.getElementById("voice-toggle-btn");
+  if (!btn) return;
+  btn.textContent = voiceGuideEnabled ? "\u{1F50A}" : "\u{1F507}"; // 🔊 / 🔇
+  btn.classList.toggle("active", voiceGuideEnabled);
+  btn.setAttribute("aria-pressed", String(voiceGuideEnabled));
+}
+updateVoiceToggleUI();
+
+function toggleVoiceGuide() {
+  voiceGuideEnabled = !voiceGuideEnabled;
+  localStorage.setItem("navi_voice_guide", voiceGuideEnabled ? "1" : "0");
+  updateVoiceToggleUI();
+  if (!voiceGuideEnabled && "speechSynthesis" in window) window.speechSynthesis.cancel();
+}
+
+function speak(text) {
+  if (!voiceGuideEnabled || !text) return;
+  if (!("speechSynthesis" in window)) return;
+  window.speechSynthesis.cancel(); // 前の発話が残っていたら打ち切ってから話す（読み上げの重複防止）
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = "ja-JP";
+  window.speechSynthesis.speak(u);
+}
+
+/**
+ * edge.right_display / edge.left_display（進行方向に対して右手・左手にある教室の読み上げ用表示名。
+ * サーバー側で name.csv・トイレ種別に応じて解決済み、生のroom codeではない）から
+ * 「右手に101教室、左手に102教室があります」のような一言を組み立てる。
+ * どちらも無ければ空文字（呼び出し側は従来通りの案内文にフォールバックする）。
+ */
+function buildSidePhrase(edge) {
+  // *_display はサーバー側でname.csv・トイレ表記に解決済みの表示名（"M_Toilet"ではなく"男子トイレ"等）。
+  // 未提供の古いレスポンス形式向けに、生のright/leftの先頭要素へフォールバックする。
+  const r = edge.right_display || (edge.right || "").split(";")[0].trim();
+  const l = edge.left_display  || (edge.left  || "").split(";")[0].trim();
+  if (r && l) return `右手に${r}、左手に${l}があります`;
+  if (r) return `右手に${r}があります`;
+  if (l) return `左手に${l}があります`;
+  return "";
+}
+
+/**
+ * 目的地バッジ・到着時の音声案内で共通して使う文言を決める。
+ * まずAPIが返す destSide（サーバー側で、検索時に指定した実際の目的地名を最終区間の
+ * right/left列と厳密照合して判定済み）を見る。"right"/"left" が取れていれば、
+ * destDisplay（目的地自体の表示名）・destPosition/destCount（right/leftは手前から奥への
+ * 物理的な並び順を持つ列なので、そのままそこでの目的地の順位が「手前から数えてN番目」になる）・
+ * destNearestDisplay（一番手前の教室の表示名）を使って具体的な文を組み立てる。
+ * ただし、目的地がその側で一番手前（＝destPosition===1）の場合や、その側に他に教室が無い
+ * （destCount<=1）場合は「〜から数えて1番目です」という自明な言い回しを避け、単に
+ * 「<目的地>は右手です」のように言う。
+ * destSideが無い（"" ＝ ノード指定・イベント指定など目的教室名が無い、または
+ * このエッジのright/leftどちらにも一致しなかった）場合のみ、最終区間のright_display/
+ * left_displayを見て「片方だけ設定されていればその側とみなす」簡易フォールバックを使う
+ * （このエッジに複数の部屋が面していてどちらが目的地か特定できない場合は汎用文言のまま）。
+ */
+function buildNearGoalText(edge) {
+  const FALLBACK = "この通路沿いが目的地周辺です";
+  if (destSide === "right" || destSide === "left") {
+    const sideText = destSide === "right" ? "右手" : "左手";
+    const name = destDisplay || "目的地";
+    if (destCount > 1 && destPosition > 1) {
+      return `${name}は${sideText}、${destNearestDisplay}から数えて${destPosition}番目です`;
+    }
+    return `${name}は${sideText}です`;
+  }
+  if (!edge) return FALLBACK;
+  const r = edge.right_display || (edge.right || "").split(";")[0].trim();
+  const l = edge.left_display  || (edge.left  || "").split(";")[0].trim();
+  if (r && !l) return "右手に目的地です";
+  if (l && !r) return "左手に目的地です";
+  return FALLBACK;
+}
+
+/**
+ * pathCoords[step] → pathCoords[step+1] の区間（pathEdges[step]）についての案内文を組み立てる。
+ * 階段/エレベータ/エスカレータは複数の区間にまたがることがあるため、同種の区間が連続する
+ * 最初のステップでのみ「○階まで」を案内し、続きのステップでは何も言わない。
+ */
+function buildStepAnnouncement(step) {
+  const edge = pathEdges[step];
+  if (!edge) return "";
+  const type = String(edge.type ?? "1");
+  if (type === "7") return ""; // 屋内外の連結エッジ（距離0）は案内する内容が無い
+
+  if (VERTICAL_LABELS[type]) {
+    const prevType = step > 0 ? String(pathEdges[step - 1]?.type ?? "") : null;
+    if (prevType === type) return ""; // 同じ階段/EV/ESCの続き番目のステップ：繰り返さない
+
+    let end = step;
+    while (end + 1 < pathEdges.length && String(pathEdges[end + 1]?.type ?? "") === type) end += 1;
+    const fromFloor = pathCoords[step]?.floor;
+    const toFloor   = pathCoords[end + 1]?.floor;
+    const label = VERTICAL_LABELS[type];
+    if (fromFloor == null || toFloor == null || fromFloor === toFloor) return `${label}で移動します`;
+    return toFloor > fromFloor
+      ? `${label}で${toFloor}階まで上がってください`
+      : `${label}で${toFloor}階まで下りてください`;
+  }
+
+  // 最終区間（目的地エッジ上を歩く「この辺です」区間）
+  if (step === pathCoords.length - 2) {
+    // dest_sideが判定できている場合は「<目的地>は右手、<手前>から数えてN番目です」を読み上げる。
+    // 判定できない場合は従来通り「<name>の付近です」にフォールバックする。
+    if (destSide === "right" || destSide === "left") {
+      return `まもなく到着します。${buildNearGoalText(edge)}`;
+    }
+    const name = edge.name_display || (edge.name || "").split(";")[0].trim();
+    return name ? `まもなく到着します。${name}の付近です` : "まもなく目的地に到着します";
+  }
+
+  const dir  = calcTurnDirection(step);
+  const dist = Math.round(edge.length || 0);
+  const side = buildSidePhrase(edge); // right/leftが無ければ""（従来の運用のまま）
+
+  if (dir === "right" || dir === "left") {
+    const dirText = dir === "right" ? "右に曲がって" : "左に曲がって";
+    const base = dist >= ANNOUNCE_DISTANCE_THRESHOLD_M ? `${dirText}${dist}メートル先です` : `${dirText}ください`;
+    return side ? `${base}。${side}` : base;
+  }
+  if (dist >= ANNOUNCE_DISTANCE_THRESHOLD_M) {
+    return side ? `${dist}メートル直進です。${side}` : `${dist}メートル直進です`;
+  }
+  // 距離が短い直進は従来省略していたが、右左に目印があるなら短くてもそれだけ案内する
+  return side;
+}
+```
+
+### `programs/html/navi/script/photo.js`
+
+```javascript
+// ================================================================
+// photo.js
+// AR領域の経路写真と、進行方向の矢印。
+// ================================================================
+
+// ================================================================
 // Route image (AR area) — active クラスの付け替えで表示切り替え
 // 屋外ステップは AR カメラビューを表示、屋内は写真 or プレースホルダー
 // ================================================================
@@ -6305,8 +7254,13 @@ function updateRouteImage(step) {
   const label  = document.getElementById("ar-label");
   const phEl   = document.getElementById("ar-placeholder");
   const node   = pathCoords[step];
+  const next   = pathCoords[step + 1];
   const isLast = step >= pathCoords.length - 1;
-  const isOutdoor = node && node.building === 0 && node.lat != null && !isLast;
+  // 建物内最終ノード（次が屋外ノード＝出口エッジ）も屋外扱いにして、
+  // 出口専用の連結写真を用意しなくてもそのままカメラARへ移行する。
+  const entersOutdoor = !!next && next.building === 0 && next.lat != null;
+  const isOutdoor = node && !isLast &&
+    ((node.building === 0 && node.lat != null) || entersOutdoor);
 
   if (isOutdoor) {
     Object.values(imgByStep).forEach(img => img.classList.remove("active"));
@@ -6413,7 +7367,10 @@ function updateDirectionArrow(step) {
   // 最終区間（目的地エッジを歩く区間）は矢印だと「まだ先へ進む」と誤解されるため、
   // 矢印の代わりに「目的地周辺です」バッジを表示する
   const isFinalSegment = step === pathCoords.length - 2;
-  if (nearEl) nearEl.style.display = isFinalSegment ? "block" : "none";
+  if (nearEl) {
+    nearEl.style.display = isFinalSegment ? "block" : "none";
+    if (isFinalSegment) nearEl.textContent = buildNearGoalText(pathEdges[step]);
+  }
   if (isFinalSegment) {
     arrowEl.style.display = "none";
     return;
@@ -6455,47 +7412,34 @@ function prefetchRouteImages(coords) {
     imgByStep[i] = img;
   }
 }
+```
+
+### `programs/html/navi/script/map.js`
+
+```javascript
+// ================================================================
+// map.js
+// 屋外の Google Maps 表示（初期化・経路ポリライン・現在ステップのマーカー）。
+// ================================================================
 
 // ================================================================
-// SVG prefetch — ルート上の全フロアのSVGをまとめて取得してメモリキャッシュ。
-// オフライン時でも loadSvg がキャッシュから即座に返せるようにする。
+// Google Maps init
 // ================================================================
-async function prefetchSvgs(coords) {
-  const keys = new Set();
-  coords.forEach(n => {
-    if (n.building !== 0) keys.add(`${n.building}_${n.floor}`);
+function initMap() {
+  map = new google.maps.Map(document.getElementById("map"), {
+    zoom: 17,
+    center: { lat: 35.61035, lng: 139.55466 },
+    mapTypeControl: false,
+    streetViewControl: false,
+    fullscreenControl: false,
+    rotateControl: true,
   });
-
-  await Promise.allSettled([...keys].map(async key => {
-    if (svgCache[key] !== undefined) return; // すでにキャッシュ済み
-    const [building, floor] = key.split('_');
-    try {
-      const res = await fetch(`/svg/${building}_${floor}F.svg`);
-      svgCache[key] = res.ok ? await res.text() : null;
-    } catch {
-      svgCache[key] = null;
-    }
-  }));
-}
-
-// ================================================================
-// Route init
-// ================================================================
-async function initRoute(coords) {
-  pathCoords  = coords;
-  currentStep = 0;
-  svgBuilding = null;
-  svgFloor    = null;
-  svgOverlay  = null;
-  arMarkersBuilt = false;
-  arHideView();
-  arPrefetchCameraIfNeeded();  // 屋外AR区間がある場合のみカメラを先取り
-  clearMapOverlays();
-  drawFullOutdoorRoute();
-  prefetchRouteImages(coords);               // 写真: 並行ダウンロード開始（fire-and-forget）
-  await prefetchSvgs(coords);               // SVG:  全フロア一括取得を待機してからナビ開始
-  collapseSearchPanel();  // ルート確定後にパネルを収納
-  goToStep(0);
+  mapReady = true;
+  if (_pendingMapCallback) {
+    const fn = _pendingMapCallback;
+    _pendingMapCallback = null;
+    fn();
+  }
 }
 
 function clearMapOverlays() {
@@ -6550,98 +7494,6 @@ function updateOutdoorPolylines(step) {
 }
 
 // ================================================================
-// Step navigation
-// ================================================================
-async function goToStep(step) {
-  currentStep = step;
-  const node  = pathCoords[step];
-  updateNavBar(node, step, pathCoords.length);
-  updateRouteImage(step);
-  if (!node) return;
-
-  // 現在以降にARを使う屋外区間が残っていなければカメラ・GPSを解放する
-  releaseArIfUnneeded(step);
-
-  if (node.building === 0 && node.lat != null) {
-    switchView("map");
-    moveMapTo(node, step);
-  } else if (node.building !== 0) {
-    switchView("svg");
-    if (node.building !== svgBuilding || node.floor !== svgFloor) {
-      svgBuilding = node.building;
-      svgFloor    = node.floor;
-      await loadSvg(node.building, node.floor);
-      drawSvgBaseRoute(node.building, node.floor);
-    }
-    renderSvgStep(step);
-  }
-
-  // Three.js AR のルートカラーを更新
-  if (arMarkersBuilt) arUpdateRouteColors(step);
-
-  // 最終ステップ（目的地エッジ上・「この辺です」表示区間）に到達したら
-  // 一定時間後に完了モーダルを表示
-  if (step === pathCoords.length - 2) {
-    clearTimeout(window._completionTimer);
-    window._completionTimer = setTimeout(showCompletionModal, 3000); // ← 秒数はここで調整（ミリ秒）
-  } else {
-    clearTimeout(window._completionTimer);
-  }
-}
-
-// 最終ノード（画像のない到着ステップ）へは進まない。
-// 目的地エッジを歩く「この辺です」区間（length-2）がナビの最終ステップ。
-function prevStep() { if (currentStep > 0) goToStep(currentStep - 1); }
-function nextStep() { if (currentStep < pathCoords.length - 2) goToStep(currentStep + 1); }
-
-// ================================================================
-// AR ハードウェア解放判定
-// 屋外→屋内→屋外と続くルートの途中ではストリームを保持して
-// シームレスに切り替え、屋外区間を使い切ったら解放する。
-// （最終ステップは到着画面なので AR 不要とみなす）
-// ================================================================
-function releaseArIfUnneeded(step) {
-  for (let i = step; i < pathCoords.length - 1; i++) {
-    const n = pathCoords[i];
-    if (n && n.building === 0 && n.lat != null) return; // まだARを使う
-  }
-  arReleaseHardware();
-}
-
-// ================================================================
-// Completion modal
-// ================================================================
-function showCompletionModal() {
-  document.getElementById("completion-modal").classList.add("show");
-}
-function closeCompletionModal() {
-  document.getElementById("completion-modal").classList.remove("show");
-}
-
-// 背景クリックで閉じる
-document.getElementById("completion-modal").addEventListener("click", e => {
-  if (e.target === e.currentTarget) closeCompletionModal();
-});
-
-function updateNavBar(node, step, total) {
-  let label = "—";
-  if (node) label = node.building === 0 ? "屋外を移動中" : `${bldgLabel(node.building)} ${node.floor}階`;
-  document.getElementById("step-label").textContent = label;
-  document.getElementById("step-count").textContent = total ? `${step + 1} / ${total - 1}` : "";
-  document.getElementById("prev-btn").disabled = step <= 0;
-  document.getElementById("next-btn").disabled = step >= total - 2;
-}
-
-// ================================================================
-// View switching
-// ================================================================
-function switchView(view) {
-  document.getElementById("map").style.display      = view === "map" ? "block" : "none";
-  document.getElementById("svg-area").style.display = view === "svg" ? "block" : "none";
-  if (view === "map" && map) google.maps.event.trigger(map, "resize");
-}
-
-// ================================================================
 // Google Maps — step marker + route-direction heading
 // ================================================================
 function moveMapTo(node, step) {
@@ -6665,6 +7517,15 @@ function moveMapTo(node, step) {
   map.setCenter(pos);
   map.setZoom(17);
 }
+```
+
+### `programs/html/navi/script/floormap.js`
+
+```javascript
+// ================================================================
+// floormap.js
+// 屋内のSVGフロアマップ表示と、パン/ピンチズーム操作。
+// ================================================================
 
 // ================================================================
 // SVG — load floor plan
@@ -7013,15 +7874,60 @@ function initSvgPan() {
 
 // 初期化
 initSvgPan();
+```
+
+### `programs/html/navi/script/page.js`
+
+```javascript
+// ================================================================
+// page.js
+// 画面共通の小物（完了モーダル・ナビバー・表示切り替え・プルトゥリフレッシュ防止）。
+// ================================================================
+
+// ================================================================
+// Completion modal
+// ================================================================
+function showCompletionModal() {
+  document.getElementById("completion-modal").classList.add("show");
+  speak("到着しました");
+}
+function closeCompletionModal() {
+  document.getElementById("completion-modal").classList.remove("show");
+}
+
+// 背景クリックで閉じる
+document.getElementById("completion-modal").addEventListener("click", e => {
+  if (e.target === e.currentTarget) closeCompletionModal();
+});
+
+function updateNavBar(node, step, total) {
+  let label = "—";
+  if (node) label = node.building === 0 ? "屋外を移動中" : `${bldgLabel(node.building)} ${node.floor}階`;
+  document.getElementById("step-label").textContent = label;
+  document.getElementById("step-count").textContent = total ? `${step + 1} / ${total - 1}` : "";
+  document.getElementById("prev-btn").disabled = step <= 0;
+  document.getElementById("next-btn").disabled = step >= total - 2;
+}
+
+// ================================================================
+// View switching
+// ================================================================
+function switchView(view) {
+  document.getElementById("map").style.display      = view === "map" ? "block" : "none";
+  document.getElementById("svg-area").style.display = view === "svg" ? "block" : "none";
+  if (view === "map" && map) google.maps.event.trigger(map, "resize");
+}
 
 // プルトゥリフレッシュ防止（overscroll-behavior非対応ブラウザ向けフォールバック）
 document.addEventListener("touchstart", e => {
   if (e.touches.length > 1) return; // ピンチ操作は許可
   if (e.touches[0].clientY <= 20) e.preventDefault(); // 画面最上部からのスワイプのみ阻止
 }, { passive: false });
-</script>
+```
 
-<script>
+### `programs/html/navi/script/ar.js`
+
+```javascript
 // ================================================================
 // AR Outdoor Integration
 // Three.js + カメラ + ジャイロ を #ar-area 内で動かす。
@@ -7372,18 +8278,16 @@ function arReleaseHardware() {
     arGpsWatchId = null;
   }
 }
-</script>
+```
 
-<script>
+### `programs/html/navi/script/maps-loader.js`
+
+```javascript
   const _ms = document.createElement("script");
   _ms.src   = `https://maps.googleapis.com/maps/api/js?key=${CONFIG.GOOGLE_MAPS_API_KEY}&callback=initMap`;
   _ms.async = true;
   _ms.defer = true;
   document.body.appendChild(_ms);
-</script>
-</body>
-</html>
-
 ```
 
 ### `programs/Website/index.html`
@@ -9043,6 +9947,190 @@ a:hover {
 
 #### Map_Editor
 
+### `programs/gui_common/__init__.py`
+
+```python
+"""IKU NAVI のデスクトップツール（PyQt6）が共有するモジュール。
+
+各ツールは自分のディレクトリから `python main.py` のように起動されるため、
+このパッケージを import する前に親ディレクトリ（programs/）を sys.path に足す:
+
+    import sys
+    from pathlib import Path
+    sys.path.append(str(Path(__file__).resolve().parents[1]))
+
+    from gui_common.theme import ACCENT, base_stylesheet
+"""
+```
+
+### `programs/gui_common/paths.py`
+
+```python
+"""リポジトリ内のデータ・素材ディレクトリの位置。
+
+ツールごとに `Path(__file__).resolve().parents[2]` を書いていると、ファイルを
+サブディレクトリへ移した時に静かに壊れるため、ここ一箇所で解決する。
+"""
+from pathlib import Path
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
+
+DATA_DIR  = REPO_ROOT / "data"
+SVG_DIR   = REPO_ROOT / "programs" / "html" / "svg"
+PHOTO_DIR = REPO_ROOT / "captured_photos"
+
+BUILDING_NAME_CSV = DATA_DIR / "building_name.csv"
+EVENT_CSV         = DATA_DIR / "event.csv"
+GLOBAL_NODE_CSV   = DATA_DIR / "global_node.csv"
+GLOBAL_EDGE_CSV   = DATA_DIR / "global_edge.csv"
+EDGE_IMAGE_CSV    = DATA_DIR / "edge_image.csv"
+
+
+def building_dir(building) -> Path:
+    """data/{building}_bldg/"""
+    return DATA_DIR / f"{building}_bldg"
+```
+
+### `programs/gui_common/api.py`
+
+```python
+"""経路探索API（programs/3D_Graph）へのアクセス。
+
+チェッカー系ツールは何百リクエストも並列に投げるため、リトライ付きの
+Session を使う。ツールによって必要なヘッダとリトライ回数が違うので引数で渡す。
+"""
+import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
+
+DEFAULT_API = "http://localhost:5001"
+
+JSON_HEADERS = {"Accept": "application/json"}
+
+# CDN(Cloudflare)への画像取得はブラウザからのアクセスに見せる必要がある。
+# Accept-Encoding に "br" を入れると Cloudflare が Brotli で返し、
+# brotli パッケージ未インストール環境では解凍できず空になるため除外。
+# requests のデフォルト (gzip, deflate) に任せる。
+BROWSER_HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/125.0.0.0 Safari/537.36"
+    ),
+    "Accept-Language": "ja,en-US;q=0.9,en;q=0.8",
+    "Connection":      "keep-alive",
+}
+
+
+def make_session(headers=None, total=2, backoff_factor=0.3,
+                 status_forcelist=(500, 502, 503, 504)) -> requests.Session:
+    """リトライを設定した requests.Session を返す"""
+    session = requests.Session()
+    if headers:
+        session.headers.update(headers)
+    adapter = HTTPAdapter(max_retries=Retry(
+        total=total, backoff_factor=backoff_factor,
+        status_forcelist=list(status_forcelist)))
+    session.mount("https://", adapter)
+    session.mount("http://", adapter)
+    return session
+```
+
+### `programs/gui_common/labels.py`
+
+```python
+"""建物・階・トイレなど、ツール間で表記を揃えたい表示名。"""
+
+TOILET_ROOMS = {"M_Toilet", "F_Toilet", "C_Toilet"}
+
+
+def building_label(building: int) -> str:
+    """0 は屋外、それ以外は「N号館」"""
+    return "屋外" if int(building) == 0 else f"{int(building)}号館"
+
+
+def floor_label(floor: int) -> str:
+    """0 は屋外、それ以外は「NF」"""
+    return "屋外" if int(floor) == 0 else f"{int(floor)}F"
+```
+
+### `programs/gui_common/theme.py`
+
+```python
+"""チェッカー系ツール（Route_Checker / Image_Checker）共通のダークテーマ。
+
+色を変えるときはここを直せば両方のツールに反映される。
+ツール固有の色（カードの背景など）は各ツール側で定義すること。
+"""
+
+BG_WIN      = "#111827"   # ウィンドウ地色
+BG_BAR      = "#1F2937"   # ツールバー・スクロールバー
+BORDER      = "#2D3748"
+
+TXT_PRIMARY = "#F1F5F9"
+TXT_SUB     = "#94A3B8"
+TXT_KEY     = "#CBD5E1"
+
+ACCENT      = "#00B8E6"
+BTN_ACTIVE  = "#0E7490"
+BTN_IDLE    = "#374151"
+
+INPUT_BG     = "#374151"
+INPUT_BORDER = "#4B5563"
+
+COL_OK   = "#4ADE80"
+COL_WARN = "#FBBF24"
+COL_ERR  = "#F87171"
+
+
+def base_stylesheet() -> str:
+    """ウィンドウ・スクロールバー・入力欄・進捗バーの共通スタイル。
+
+    各ツールは自分固有のスタイル（テーブルやカードなど）を後ろに連結して使う。
+    """
+    return f"""
+            QMainWindow, QWidget  {{ background: {BG_WIN}; color: {TXT_PRIMARY}; }}
+            QScrollArea           {{ background: {BG_WIN}; border: none; }}
+            QScrollBar:vertical   {{ background: {BG_BAR}; width: 8px; border-radius: 4px; }}
+            QScrollBar::handle:vertical {{
+                background: {INPUT_BORDER}; border-radius: 4px; min-height: 20px;
+            }}
+            QScrollBar:horizontal {{ background: {BG_BAR}; height: 8px; border-radius: 4px; }}
+            QScrollBar::handle:horizontal {{
+                background: {INPUT_BORDER}; border-radius: 4px; min-width: 20px;
+            }}
+            QLineEdit {{
+                background: {INPUT_BG}; color: {TXT_PRIMARY};
+                border: 1px solid {INPUT_BORDER}; border-radius: 6px;
+                padding: 5px 10px; font-size: 15px;
+            }}
+            QLineEdit:focus {{ border-color: {ACCENT}; }}
+            QProgressBar {{
+                background: {INPUT_BG}; border: none; border-radius: 4px;
+                color: transparent;
+            }}
+            QProgressBar::chunk {{ background: {ACCENT}; border-radius: 4px; }}
+    """
+```
+
+### `programs/gui_common/qt_app.py`
+
+```python
+"""PyQt6ツールの起動処理（どのツールも中身が同じなのでまとめている）。"""
+import sys
+
+from PyQt6.QtWidgets import QApplication
+
+
+def run(window_factory):
+    """QApplication を作り、window_factory() のウィンドウを表示して実行する"""
+    app = QApplication(sys.argv)
+    app.setStyle("Fusion")
+    window = window_factory()
+    window.show()
+    sys.exit(app.exec())
+```
+
 ### `programs/Map_Editor/main.py`
 
 ```python
@@ -9061,23 +10149,20 @@ Usage:
 """
 
 import sys
+from pathlib import Path
 
-from PyQt6.QtWidgets import QApplication
+sys.path.append(str(Path(__file__).resolve().parents[1]))
+from gui_common import qt_app
 
 from app_window import MainWindow
 
 
 def main():
-    app = QApplication(sys.argv)
-    app.setStyle("Fusion")
-    win = MainWindow()
-    win.show()
-    sys.exit(app.exec())
+    qt_app.run(MainWindow)
 
 
 if __name__ == "__main__":
     main()
-
 ```
 
 ### `programs/Map_Editor/app_window.py`
@@ -9835,14 +10920,13 @@ data/{building}_bldg/node.csv・edge.csv・data/edge_image.csv の読み書き�
 
 import csv
 import re
+import sys
 from pathlib import Path
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
-DATA_DIR  = REPO_ROOT / "data"
-SVG_DIR   = REPO_ROOT / "programs" / "html" / "svg"
-PHOTO_DIR = REPO_ROOT / "captured_photos"
+sys.path.append(str(Path(__file__).resolve().parents[1]))
+from gui_common.paths import DATA_DIR, PHOTO_DIR, REPO_ROOT, SVG_DIR  # noqa: F401  (他モジュールが data_store 経由で参照する)
 
-ID_OFFSET = 100_000  # programs/3D_Graph/app.py の ID_OFFSET と一致させること
+ID_OFFSET = 100_000  # programs/3D_Graph/ikunavi/config.py の ID_OFFSET と一致させること
 
 NODE_TYPE_LABELS = {1: "通常ノード", 2: "出入り口"}
 EDGE_TYPE_LABELS = {
@@ -10106,7 +11190,6 @@ class EdgeImageStore:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         _write_csv(self.path, self.COLS, self.rows)
         self.dirty = False
-
 ```
 
 ### `programs/Map_Editor/dialogs.py`
@@ -10629,6 +11712,9 @@ numpy>=1.24.0
   ok           … CSV 登録済み + CDN に実在
   missing      … CSV 登録済み + CDN に存在しない
   unregistered … グラフ上にエッジがあるが edge_image.csv に未登録
+  not_required … 建物出入口エッジ（type=7, anchors.csv由来）。
+                 navi側はこの区間で写真の代わりにカメラARを起動するため、
+                 edge_image.csv 未登録でも欠損・未登録として扱わない。
 """
 
 import sys
@@ -10636,10 +11722,9 @@ import threading
 import unicodedata
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
+from pathlib import Path
 
 import requests
-from requests.adapters import HTTPAdapter
-from urllib3.util.retry import Retry
 
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QWidget,
@@ -10651,58 +11736,48 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt, QThread, pyqtSignal, QTimer
 from PyQt6.QtGui import QFont, QColor, QPixmap, QPainter, QPen
 
+sys.path.append(str(Path(__file__).resolve().parents[1]))
+from gui_common import qt_app
+from gui_common.api import BROWSER_HEADERS, DEFAULT_API, make_session
+from gui_common.labels import building_label as _bldg_label
+from gui_common.theme import (
+    ACCENT,
+    BG_BAR,
+    BG_WIN,
+    BORDER,
+    BTN_ACTIVE,
+    BTN_IDLE,
+    COL_ERR,
+    COL_OK,
+    COL_WARN,
+    INPUT_BG,
+    TXT_KEY,
+    TXT_PRIMARY,
+    TXT_SUB,
+    base_stylesheet,
+)
+
 
 # ── 設定 ──────────────────────────────────────────────────────────────────────
-DEFAULT_API = "http://localhost:5001"
 CARD_W      = 230
 CARD_H      = 215
 THUMB_H     = 135
 MAX_WORKERS = 6     # Cloudflare レート制限対策で抑え気味
 
-# Accept-Encoding に "br" を入れると Cloudflare が Brotli で返し、
-# brotli パッケージ未インストール環境では解凍できず空になるため除外。
-# requests のデフォルト (gzip, deflate) に任せる。
-BROWSER_HEADERS = {
-    "User-Agent": (
-        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
-        "AppleWebKit/537.36 (KHTML, like Gecko) "
-        "Chrome/125.0.0.0 Safari/537.36"
-    ),
-    "Accept-Language": "ja,en-US;q=0.9,en;q=0.8",
-    "Connection":      "keep-alive",
-}
-
-
 def _make_session() -> requests.Session:
-    s = requests.Session()
-    s.headers.update(BROWSER_HEADERS)
-    retry = Retry(total=3, backoff_factor=0.5,
-                  status_forcelist=[429, 500, 502, 503, 504])
-    adapter = HTTPAdapter(max_retries=retry)
-    s.mount("https://", adapter)
-    s.mount("http://",  adapter)
-    return s
+    return make_session(headers=BROWSER_HEADERS, total=3, backoff_factor=0.5,
+                        status_forcelist=(429, 500, 502, 503, 504))
 
 
-# ── パレット ──────────────────────────────────────────────────────────────────
-BG_WIN        = "#111827"
-BG_BAR        = "#1F2937"
-BG_CARD_OK    = "#0C2318"
-BG_CARD_NG    = "#2B0F0F"
-BG_CARD_UNREG = "#1A1A2A"
-BG_CARD_LOAD  = "#1A2233"
-BG_THUMB      = "#0D1626"
-TXT_PRIMARY   = "#F1F5F9"
-TXT_SECONDARY = "#94A3B8"
-TXT_KEY       = "#CBD5E1"
-ACCENT        = "#00B8E6"
-COL_OK        = "#4ADE80"
-COL_NG        = "#F87171"
-COL_UNREG     = "#6B7280"
-COL_WARN      = "#FBBF24"
-BTN_ACTIVE    = "#0E7490"
-BTN_IDLE      = "#374151"
-BORDER        = "#2D3748"
+# ── パレット（共通色は gui_common.theme、ここはこのツール固有の色だけ）──────────
+BG_CARD_OK     = "#0C2318"
+BG_CARD_NG     = "#2B0F0F"
+BG_CARD_UNREG  = "#1A1A2A"
+BG_CARD_LOAD   = "#1A2233"
+BG_CARD_NOTREQ = "#12283A"
+BG_THUMB       = "#0D1626"
+COL_UNREG      = "#6B7280"
+COL_NOTREQ     = "#38BDF8"
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -10719,12 +11794,13 @@ def _edge_sort_key(card):
     return (card.building, card.floor, int(card.key.split("_")[0]))
 
 
-def _count_states(cards) -> tuple[int, int, int]:
-    """カード集合から (ok, missing, unregistered) の件数を返す"""
-    ok      = sum(1 for c in cards if c.state == "ok")
-    missing = sum(1 for c in cards if c.state == "missing")
-    unreg   = sum(1 for c in cards if c.state == "unregistered")
-    return ok, missing, unreg
+def _count_states(cards) -> tuple[int, int, int, int]:
+    """カード集合から (ok, missing, unregistered, not_required) の件数を返す"""
+    ok           = sum(1 for c in cards if c.state == "ok")
+    missing      = sum(1 for c in cards if c.state == "missing")
+    unreg        = sum(1 for c in cards if c.state == "unregistered")
+    not_required = sum(1 for c in cards if c.state == "not_required")
+    return ok, missing, unreg, not_required
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -10819,6 +11895,7 @@ class ImageCard(QFrame):
         "ok":           BG_CARD_OK,
         "missing":      BG_CARD_NG,
         "unregistered": BG_CARD_UNREG,
+        "not_required": BG_CARD_NOTREQ,
     }
 
     def __init__(self, key: str, url: str | None,
@@ -10870,7 +11947,7 @@ class ImageCard(QFrame):
             bldg_txt += f" {self.floor}階"
         bldg_lbl = QLabel(bldg_txt)
         bldg_lbl.setFont(QFont("", 11))
-        bldg_lbl.setStyleSheet(f"color: {TXT_SECONDARY}; background: transparent;")
+        bldg_lbl.setStyleSheet(f"color: {TXT_SUB}; background: transparent;")
         vb.addWidget(bldg_lbl)
 
         root.addWidget(info)
@@ -10896,10 +11973,11 @@ class ImageCard(QFrame):
         conf = {
             "loading":      ("読み込み中...",      COL_WARN),
             "ok":           ("✔  OK",              COL_OK),
-            "missing":      ("✕  CDN に存在しない", COL_NG),
+            "missing":      ("✕  CDN に存在しない", COL_ERR),
             "unregistered": ("—  CSV 未登録",       COL_UNREG),
+            "not_required": ("◎  AR起動区間（不要）", COL_NOTREQ),
         }
-        text, color = conf.get(self._state, ("", TXT_SECONDARY))
+        text, color = conf.get(self._state, ("", TXT_SUB))
         self._status.setText(text)
         self._status.setStyleSheet(
             f"color: {color}; background: transparent; padding-bottom: 2px;"
@@ -10909,11 +11987,13 @@ class ImageCard(QFrame):
 
     def _draw_thumb_for_state(self):
         if self._state == "loading":
-            self._draw_text_thumb("取得中...", TXT_SECONDARY, BG_THUMB)
+            self._draw_text_thumb("取得中...", TXT_SUB, BG_THUMB)
         elif self._state == "missing":
-            self._draw_text_thumb("✕  画像なし", COL_NG, "#180808")
+            self._draw_text_thumb("✕  画像なし", COL_ERR, "#180808")
         elif self._state == "unregistered":
             self._draw_text_thumb("—  未登録", COL_UNREG, "#111120")
+        elif self._state == "not_required":
+            self._draw_text_thumb("◎  AR起動区間", COL_NOTREQ, "#0B1C2A")
         # ok はセット時に上書き
 
     def _draw_text_thumb(self, text: str, color: str, bg: str):
@@ -10947,7 +12027,7 @@ class ImageCard(QFrame):
                 return
 
         self._state = "missing"
-        self._draw_text_thumb("✕  画像なし", COL_NG, "#180808")
+        self._draw_text_thumb("✕  画像なし", COL_ERR, "#180808")
         self._update_status_label()
         self._apply_style()
 
@@ -11005,7 +12085,7 @@ class ExportDialog(QDialog):
 
         row = QHBoxLayout()
         lbl = QLabel("対象号館:")
-        lbl.setStyleSheet(f"color: {TXT_SECONDARY}; font-size: 15px;")
+        lbl.setStyleSheet(f"color: {TXT_SUB}; font-size: 15px;")
         row.addWidget(lbl)
 
         self._combo = QComboBox()
@@ -11124,10 +12204,11 @@ class ExportDialog(QDialog):
 # ─────────────────────────────────────────────────────────────────────────────
 
 # フィルタ定数
-FILTER_ALL   = "all"
-FILTER_NG    = "missing"       # CDN 欠損
-FILTER_UNREG = "unregistered"  # CSV 未登録
-FILTER_ATTN  = "attention"     # 欠損 + 未登録まとめて
+FILTER_ALL     = "all"
+FILTER_NG      = "missing"        # CDN 欠損
+FILTER_UNREG   = "unregistered"   # CSV 未登録
+FILTER_ATTN    = "attention"      # 欠損 + 未登録まとめて
+FILTER_NOTREQ  = "not_required"   # 建物出入口エッジ（AR起動のため写真不要）
 
 
 class MainWindow(QMainWindow):
@@ -11156,29 +12237,7 @@ class MainWindow(QMainWindow):
     # ── テーマ ────────────────────────────────────────────────────────────────
 
     def _apply_theme(self):
-        self.setStyleSheet(f"""
-            QMainWindow, QWidget  {{ background: {BG_WIN}; color: {TXT_PRIMARY}; }}
-            QScrollArea           {{ background: {BG_WIN}; border: none; }}
-            QScrollBar:vertical   {{ background: {BG_BAR}; width: 8px; border-radius: 4px; }}
-            QScrollBar::handle:vertical {{
-                background: #4B5563; border-radius: 4px; min-height: 20px;
-            }}
-            QScrollBar:horizontal {{ background: {BG_BAR}; height: 8px; border-radius: 4px; }}
-            QScrollBar::handle:horizontal {{
-                background: #4B5563; border-radius: 4px; min-width: 20px;
-            }}
-            QLineEdit {{
-                background: #374151; color: {TXT_PRIMARY};
-                border: 1px solid #4B5563; border-radius: 6px;
-                padding: 5px 10px; font-size: 15px;
-            }}
-            QLineEdit:focus {{ border-color: {ACCENT}; }}
-            QProgressBar {{
-                background: #374151; border: none; border-radius: 4px;
-                color: transparent;
-            }}
-            QProgressBar::chunk {{ background: {ACCENT}; border-radius: 4px; }}
-        """)
+        self.setStyleSheet(base_stylesheet())
 
     # ── UI 構築 ───────────────────────────────────────────────────────────────
 
@@ -11207,7 +12266,7 @@ class MainWindow(QMainWindow):
 
         row.addSpacing(12)
         lbl = QLabel("API URL:")
-        lbl.setStyleSheet(f"color: {TXT_SECONDARY}; font-size: 16px;")
+        lbl.setStyleSheet(f"color: {TXT_SUB}; font-size: 16px;")
         row.addWidget(lbl)
 
         self._api_edit = QLineEdit(DEFAULT_API)
@@ -11224,7 +12283,7 @@ class MainWindow(QMainWindow):
             }}
             QPushButton:hover    {{ background: #22D4FF; }}
             QPushButton:pressed  {{ background: #0099BB; }}
-            QPushButton:disabled {{ background: #374151; color: {TXT_SECONDARY}; }}
+            QPushButton:disabled {{ background: {INPUT_BG}; color: {TXT_SUB}; }}
         """)
         self._fetch_btn.clicked.connect(self._start_fetch)
         row.addWidget(self._fetch_btn)
@@ -11258,7 +12317,7 @@ class MainWindow(QMainWindow):
         row.addStretch()
 
         self._status_lbl = QLabel("API URL を入力して「取得開始」")
-        self._status_lbl.setStyleSheet(f"color: {TXT_SECONDARY}; font-size: 16px;")
+        self._status_lbl.setStyleSheet(f"color: {TXT_SUB}; font-size: 16px;")
         row.addWidget(self._status_lbl)
 
         return bar
@@ -11285,7 +12344,7 @@ class MainWindow(QMainWindow):
 
         # ── 号館フィルタ ─────────────────────────────────────────────────────
         lbl1 = QLabel("号館:")
-        lbl1.setStyleSheet(f"color: {TXT_SECONDARY}; font-size: 16px;")
+        lbl1.setStyleSheet(f"color: {TXT_SUB}; font-size: 16px;")
         self._filterbar_row.addWidget(lbl1)
 
         all_bldg = self._make_pill("全て", True)
@@ -11310,15 +12369,16 @@ class MainWindow(QMainWindow):
 
         # ── 状態フィルタ ──────────────────────────────────────────────────────
         lbl2 = QLabel("表示:")
-        lbl2.setStyleSheet(f"color: {TXT_SECONDARY}; font-size: 16px;")
+        lbl2.setStyleSheet(f"color: {TXT_SUB}; font-size: 16px;")
         self._filterbar_row.addWidget(lbl2)
 
         self._state_btns: dict[str, QPushButton] = {}
         filters = [
-            (FILTER_ALL,   "全て"),
-            (FILTER_NG,    "欠損"),
-            (FILTER_UNREG, "未登録"),
-            (FILTER_ATTN,  "要対応"),
+            (FILTER_ALL,    "全て"),
+            (FILTER_NG,     "欠損"),
+            (FILTER_UNREG,  "未登録"),
+            (FILTER_ATTN,   "要対応"),
+            (FILTER_NOTREQ, "AR区間(不要)"),
         ]
         for fkey, flabel in filters:
             btn = self._make_pill(flabel, fkey == FILTER_ALL)
@@ -11329,7 +12389,7 @@ class MainWindow(QMainWindow):
         self._filterbar_row.addStretch()
 
         self._count_lbl = QLabel("")
-        self._count_lbl.setStyleSheet(f"color: {TXT_SECONDARY}; font-size: 16px;")
+        self._count_lbl.setStyleSheet(f"color: {TXT_SUB}; font-size: 16px;")
         self._filterbar_row.addWidget(self._count_lbl)
 
     def _make_pill(self, text: str, active: bool) -> QPushButton:
@@ -11369,7 +12429,7 @@ class MainWindow(QMainWindow):
     def _placeholder_label(self, text: str) -> QLabel:
         lbl = QLabel(text)
         lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        lbl.setStyleSheet(f"color: {TXT_SECONDARY}; font-size: 16px;")
+        lbl.setStyleSheet(f"color: {TXT_SUB}; font-size: 16px;")
         return lbl
 
     def _build_scroll(self) -> QScrollArea:
@@ -11398,7 +12458,7 @@ class MainWindow(QMainWindow):
         self._filter_state     = FILTER_ALL
 
         self._fetch_btn.setEnabled(False)
-        self._set_status("API に接続中...", TXT_SECONDARY)
+        self._set_status("API に接続中...", TXT_SUB)
         self._progress.setRange(0, 1)
         self._progress.setValue(0)
 
@@ -11409,7 +12469,7 @@ class MainWindow(QMainWindow):
 
     def _on_fetch_error(self, msg: str):
         self._fetch_btn.setEnabled(True)
-        self._set_status(f"エラー: {msg}", COL_NG)
+        self._set_status(f"エラー: {msg}", COL_ERR)
         QMessageBox.critical(
             self, "取得エラー",
             f"API への接続に失敗しました:\n\n{msg}\n\n"
@@ -11419,7 +12479,7 @@ class MainWindow(QMainWindow):
     def _on_graph_data(self, nodes_map: dict, edges_list: list, edge_images: dict):
         """グラフ上の全エッジ（両方向）を網羅してカードを生成する"""
 
-        self._set_status("グラフを解析中...", TXT_SECONDARY)
+        self._set_status("グラフを解析中...", TXT_SUB)
 
         buildings_set: set[int] = set()
         tasks: list[tuple[str, str]] = []   # 登録済みエッジの (key, url) リスト
@@ -11429,6 +12489,9 @@ class MainWindow(QMainWindow):
         for edge in edges_list:
             from_id  = int(edge["from"])
             to_id    = int(edge["to"])
+            # type=7 は anchors.csv から自動生成される建物出入口エッジ。
+            # navi側はこの区間で写真を使わずカメラARを起動するため写真登録は不要。
+            is_entrance_edge = str(edge.get("type", "1")) == "7"
             # エッジのノードが nodes_map になければ from_id を参照
             nf       = nodes_map.get(from_id, {})
             building = nf.get("building", edge.get("building", -1))
@@ -11448,12 +12511,15 @@ class MainWindow(QMainWindow):
                     floor    = nt.get("floor",    edge.get("floor",    1))
                     buildings_set.add(building)
 
-                url = edge_images.get(key)
-                if url:
-                    card = ImageCard(key, url, building, floor, "loading")
-                    tasks.append((key, url))
+                if is_entrance_edge:
+                    card = ImageCard(key, None, building, floor, "not_required")
                 else:
-                    card = ImageCard(key, None, building, floor, "unregistered")
+                    url = edge_images.get(key)
+                    if url:
+                        card = ImageCard(key, url, building, floor, "loading")
+                        tasks.append((key, url))
+                    else:
+                        card = ImageCard(key, None, building, floor, "unregistered")
 
                 self._cards[key] = card
 
@@ -11464,10 +12530,11 @@ class MainWindow(QMainWindow):
 
         total_edges = len(self._cards)
         registered  = len(tasks)
-        unreg       = total_edges - registered
+        _, _, unreg, not_required = _count_states(self._cards.values())
         self._set_status(
-            f"全 {total_edges} エッジ  登録済 {registered}  未登録 {unreg}  — 画像取得中...",
-            TXT_SECONDARY,
+            f"全 {total_edges} エッジ  登録済 {registered}  未登録 {unreg}  "
+            f"AR起動区間(不要) {not_required}  — 画像取得中...",
+            TXT_SUB,
         )
         self._progress.setRange(0, max(1, registered))
         self._progress.setValue(0)
@@ -11493,17 +12560,17 @@ class MainWindow(QMainWindow):
 
     def _on_progress(self, done: int, total: int):
         self._progress.setValue(done)
-        self._set_status(f"画像取得中... {done} / {total}", TXT_SECONDARY)
+        self._set_status(f"画像取得中... {done} / {total}", TXT_SUB)
 
     def _on_images_done(self):
         self._fetch_btn.setEnabled(True)
-        ok, missing, unreg = _count_states(self._cards.values())
+        ok, missing, unreg, _ = _count_states(self._cards.values())
         total = len(self._cards)
 
         if missing or unreg:
             self._set_status(
                 f"完了: 全 {total} エッジ  ✔ {ok}  ✕ 欠損 {missing}  — 未登録 {unreg}",
-                COL_NG,
+                COL_ERR,
             )
         else:
             self._set_status(f"完了: 全 {total} エッジ  ✔ 全て OK", COL_OK)
@@ -11517,9 +12584,10 @@ class MainWindow(QMainWindow):
     def _visible_cards(self) -> list[ImageCard]:
         def match_state(c: ImageCard) -> bool:
             if self._filter_state == FILTER_ALL:   return True
-            if self._filter_state == FILTER_NG:    return c.state == "missing"
-            if self._filter_state == FILTER_UNREG: return c.state == "unregistered"
-            if self._filter_state == FILTER_ATTN:  return c.state in ("missing", "unregistered")
+            if self._filter_state == FILTER_NG:     return c.state == "missing"
+            if self._filter_state == FILTER_UNREG:  return c.state == "unregistered"
+            if self._filter_state == FILTER_ATTN:   return c.state in ("missing", "unregistered")
+            if self._filter_state == FILTER_NOTREQ: return c.state == "not_required"
             return True
 
         cards = [
@@ -11585,27 +12653,28 @@ class MainWindow(QMainWindow):
             return
 
         total   = len(self._cards)
-        ok, missing, unreg = _count_states(self._cards.values())
-        loading = total - ok - missing - unreg
+        ok, missing, unreg, not_required = _count_states(self._cards.values())
+        loading = total - ok - missing - unreg - not_required
         visible = len(self._visible_cards())
 
         parts = [f"全 {total} エッジ"]
         if loading:
             parts.append(f"読込中 {loading}")
-        parts += [f"✔ {ok}", f"✕ 欠損 {missing}", f"— 未登録 {unreg}"]
+        parts += [f"✔ {ok}", f"✕ 欠損 {missing}", f"— 未登録 {unreg}", f"◎ AR区間 {not_required}"]
 
         if self._current_building != -1:
             bldg_cards = [c for c in self._cards.values() if c.building == self._current_building]
             bldg_total = len(bldg_cards)
-            bldg_ok, bldg_miss, bldg_unreg = _count_states(bldg_cards)
+            bldg_ok, bldg_miss, bldg_unreg, bldg_notreq = _count_states(bldg_cards)
             bldg_name  = _bldg_label(self._current_building)
             parts.append(
-                f"[{bldg_name}: 全 {bldg_total}  ✔ {bldg_ok}  ✕ {bldg_miss}  — {bldg_unreg}  表示 {visible}]"
+                f"[{bldg_name}: 全 {bldg_total}  ✔ {bldg_ok}  ✕ {bldg_miss}  "
+                f"— {bldg_unreg}  ◎ {bldg_notreq}  表示 {visible}]"
             )
         else:
             parts.append(f"[表示 {visible}]")
 
-        color = COL_NG if (missing or unreg) else (TXT_SECONDARY if loading else COL_OK)
+        color = COL_ERR if (missing or unreg) else (TXT_SUB if loading else COL_OK)
         self._count_lbl.setText("  ".join(parts))
         self._count_lbl.setStyleSheet(f"color: {color}; font-size: 16px;")
 
@@ -11620,16 +12689,11 @@ class MainWindow(QMainWindow):
 # ─────────────────────────────────────────────────────────────────────────────
 
 def main():
-    app = QApplication(sys.argv)
-    app.setStyle("Fusion")
-    w = MainWindow()
-    w.show()
-    sys.exit(app.exec())
+    qt_app.run(MainWindow)
 
 
 if __name__ == "__main__":
     main()
-
 ```
 
 ### `programs/Image_Checker/requirements.txt`
@@ -11660,10 +12724,9 @@ import json
 import sys
 import threading
 from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
 
 import requests
-from requests.adapters import HTTPAdapter
-from urllib3.util.retry import Retry
 
 from PyQt6.QtCore import Qt, QThread, QTimer, pyqtSignal
 from PyQt6.QtGui import QBrush, QColor, QFont
@@ -11690,42 +12753,49 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
+sys.path.append(str(Path(__file__).resolve().parents[1]))
+from gui_common import qt_app
+from gui_common.api import DEFAULT_API, JSON_HEADERS, make_session
+from gui_common.labels import TOILET_ROOMS, building_label, floor_label
+from gui_common.theme import (
+    ACCENT,
+    BG_BAR,
+    BG_WIN,
+    BORDER,
+    BTN_ACTIVE,
+    BTN_IDLE,
+    COL_ERR,
+    COL_OK,
+    COL_WARN,
+    INPUT_BG,
+    INPUT_BORDER,
+    TXT_KEY,
+    TXT_PRIMARY,
+    TXT_SUB,
+    base_stylesheet,
+)
+
 # ── 定数 ──────────────────────────────────────────────────────────────────────
-DEFAULT_API = "http://localhost:5001"
 MAX_WORKERS = 8
 
 EDGE_TYPE_LABELS = {
     "1": "通路",
     "2": "階段",
-    "3": "スロープ",
+    "3": "エスカレータ",
     "4": "エレベータ",
     "5": "上りESC",
     "6": "下りESC",
     "7": "入口",
 }
 
-TOILET_ROOMS = {"M_Toilet", "F_Toilet", "C_Toilet"}
-
-# ── パレット ──────────────────────────────────────────────────────────────────
-BG_WIN      = "#111827"
-BG_BAR      = "#1F2937"
+# ── パレット（共通色は gui_common.theme、ここはこのツール固有の色だけ）──────────
 BG_TABLE    = "#141E2E"
 BG_ROW_ALT  = "#1A2436"
 BG_SEL      = "#0E3A50"
-TXT_PRIMARY = "#F1F5F9"
-TXT_SUB     = "#94A3B8"
-TXT_KEY     = "#CBD5E1"
-ACCENT      = "#00B8E6"
-COL_OK      = "#4ADE80"
-COL_ANOM    = "#FBBF24"
 COL_NOPATH  = "#A855F7"
-COL_ERR     = "#F87171"
 COL_PEND    = "#4B5563"
-BTN_ACTIVE  = "#0E7490"
-BTN_IDLE    = "#374151"
-BORDER      = "#2D3748"
 
-STATUS_COLOR = {"ok": COL_OK, "anomaly": COL_ANOM,
+STATUS_COLOR = {"ok": COL_OK, "anomaly": COL_WARN,
                 "no_path": COL_NOPATH, "error": COL_ERR, "pending": COL_PEND}
 STATUS_LABEL = {"ok": "OK", "anomaly": "異常",
                 "no_path": "経路なし", "error": "エラー", "pending": "待機中"}
@@ -11753,22 +12823,11 @@ TABLE_HEADERS = [
 # ── ヘルパー ──────────────────────────────────────────────────────────────────
 
 def _make_session() -> requests.Session:
-    s = requests.Session()
-    s.headers.update({"User-Agent": "IKU-NAVI-RouteChecker/1.0",
-                       "Accept": "application/json"})
-    retry = Retry(total=2, backoff_factor=0.3, status_forcelist=[500, 502, 503, 504])
-    adp = HTTPAdapter(max_retries=retry)
-    s.mount("https://", adp)
-    s.mount("http://", adp)
-    return s
+    return make_session(headers={"User-Agent": "IKU-NAVI-RouteChecker/1.0", **JSON_HEADERS})
 
 
-def _fl(floor: int) -> str:
-    return "屋外" if floor == 0 else f"{floor}F"
-
-
-def _bl(building: int) -> str:
-    return "屋外" if building == 0 else f"{building}号館"
+_fl = floor_label
+_bl = building_label
 
 
 def floor_sequence_str(path_coords: list) -> str:
@@ -12102,14 +13161,14 @@ class PathDetailDialog(QDialog):
         if anomalies:
             box = QFrame()
             box.setStyleSheet(
-                f"QFrame {{ background: #2B1A0A; border: 1px solid {COL_ANOM}; border-radius: 6px; }}"
+                f"QFrame {{ background: #2B1A0A; border: 1px solid {COL_WARN}; border-radius: 6px; }}"
             )
             bvbox = QVBoxLayout(box)
             bvbox.setContentsMargins(12, 8, 12, 8)
             bvbox.setSpacing(8)
             warn = QLabel(f"⚠  {len(anomalies)} 件の異常が検出されました")
             warn.setFont(QFont("", 12, QFont.Weight.Bold))
-            warn.setStyleSheet(f"color: {COL_ANOM}; background: transparent;")
+            warn.setStyleSheet(f"color: {COL_WARN}; background: transparent;")
             bvbox.addWidget(warn)
             for atype, adesc in anomalies:
                 lbl = QLabel(f"【{ANOMALY_LABEL.get(atype, atype)}】\n{adesc}")
@@ -12299,29 +13358,14 @@ class MainWindow(QMainWindow):
     # ── テーマ ────────────────────────────────────────────────────────────────
 
     def _apply_theme(self):
-        self.setStyleSheet(f"""
-            QMainWindow, QWidget {{ background: {BG_WIN}; color: {TXT_PRIMARY}; }}
-            QScrollBar:vertical   {{ background: {BG_BAR}; width: 8px; border-radius: 4px; }}
-            QScrollBar::handle:vertical {{ background: #4B5563; border-radius: 4px; min-height: 20px; }}
-            QScrollBar:horizontal {{ background: {BG_BAR}; height: 8px; border-radius: 4px; }}
-            QScrollBar::handle:horizontal {{ background: #4B5563; border-radius: 4px; min-width: 20px; }}
-            QLineEdit {{
-                background: #374151; color: {TXT_PRIMARY};
-                border: 1px solid #4B5563; border-radius: 6px;
-                padding: 5px 10px; font-size: 15px;
-            }}
-            QLineEdit:focus {{ border-color: {ACCENT}; }}
-            QProgressBar {{
-                background: #374151; border: none; border-radius: 4px; color: transparent;
-            }}
-            QProgressBar::chunk {{ background: {ACCENT}; border-radius: 4px; }}
+        self.setStyleSheet(base_stylesheet() + f"""
             QComboBox {{
-                background: #374151; color: {TXT_PRIMARY};
-                border: 1px solid #4B5563; border-radius: 6px;
+                background: {INPUT_BG}; color: {TXT_PRIMARY};
+                border: 1px solid {INPUT_BORDER}; border-radius: 6px;
                 padding: 3px 8px; font-size: 13px; min-width: 80px;
             }}
             QComboBox QAbstractItemView {{
-                background: #374151; color: {TXT_PRIMARY};
+                background: {INPUT_BG}; color: {TXT_PRIMARY};
                 selection-background-color: {BTN_ACTIVE};
             }}
             QCheckBox {{ color: {TXT_SUB}; font-size: 13px; spacing: 6px; }}
@@ -12334,11 +13378,11 @@ class MainWindow(QMainWindow):
             QTableWidget::item {{ padding: 3px 8px; }}
             QTableWidget::item:selected {{ background: {BG_SEL}; }}
             QHeaderView::section {{
-                background: #1F2937; color: {TXT_KEY};
+                background: {BG_BAR}; color: {TXT_KEY};
                 border: none; border-right: 1px solid {BORDER};
                 padding: 5px 8px; font-size: 13px; font-weight: bold;
             }}
-            QHeaderView::section:hover {{ background: #2D3748; }}
+            QHeaderView::section:hover {{ background: {BORDER}; }}
         """)
 
     # ── UI構築 ────────────────────────────────────────────────────────────────
@@ -12617,7 +13661,7 @@ class MainWindow(QMainWindow):
         self._flush_timer.stop()
         self._flush_pending()
         self._stop_btn.setEnabled(False)
-        self._set_status("停止中...", COL_ANOM)
+        self._set_status("停止中...", COL_WARN)
 
     def _on_route_ready(self, result: dict):
         # メインスレッドのブロックを避けるためバッファに積むだけ
@@ -12658,7 +13702,7 @@ class MainWindow(QMainWindow):
         np_ = sum(1 for r in self._all_results if r["status"] == "no_path")
         er  = sum(1 for r in self._all_results if r["status"] == "error")
         tot = len(self._all_results)
-        col = COL_ANOM if (an or er) else COL_OK
+        col = COL_WARN if (an or er) else COL_OK
         self._set_status(
             f"完了: 全{tot}ペア  ✔OK:{ok}  ⚠異常:{an}  ✕経路なし:{np_}  ✕エラー:{er}",
             col,
@@ -12697,7 +13741,7 @@ class MainWindow(QMainWindow):
                 if status == "anomaly":
                     item.setFont(QFont("", 12, QFont.Weight.Bold))
             elif ci == C_ANOM and anom_str:
-                item.setForeground(QBrush(QColor(COL_ANOM)))
+                item.setForeground(QBrush(QColor(COL_WARN)))
 
             # 結果dictを col 0 アイテムに格納（ダブルクリック時に取得）
             if ci == 0:
@@ -12785,16 +13829,11 @@ class MainWindow(QMainWindow):
 # ── エントリーポイント ────────────────────────────────────────────────────────
 
 def main():
-    app = QApplication(sys.argv)
-    app.setStyle("Fusion")
-    w = MainWindow()
-    w.show()
-    sys.exit(app.exec())
+    qt_app.run(MainWindow)
 
 
 if __name__ == "__main__":
     main()
-
 ```
 
 ### `programs/Route_Checker/requirements.txt`
@@ -12829,6 +13868,9 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QFont, QColor, QPainter, QKeySequence, QShortcut, QIntValidator
+
+sys.path.append(str(Path(__file__).resolve().parents[1]))
+from gui_common import qt_app
 
 IMAGE_EXTS = {".jpg", ".jpeg", ".png", ".gif", ".bmp",
               ".tiff", ".tif", ".webp", ".heic", ".heif"}
@@ -13281,16 +14323,11 @@ class MainWindow(QMainWindow):
 
 
 def main():
-    app = QApplication(sys.argv)
-    app.setStyle("Fusion")
-    w = MainWindow()
-    w.show()
-    sys.exit(app.exec())
+    qt_app.run(MainWindow)
 
 
 if __name__ == "__main__":
     main()
-
 ```
 
 ### `programs/Image_Renamer/requirements.txt`
@@ -16905,6 +17942,89 @@ http {
 
 #### CI/CD
 
+### `.github/workflows/test.yml`
+
+```yaml
+name: Test
+
+# push / Pull Request のたびに実行する。
+# build-push.yml からも呼ばれ、テストが通らない限り本番イメージは作られない。
+on:
+  push:
+    # main は build-push.yml がこのワークフローを呼ぶので、二重に走らせない
+    branches-ignore:
+      - main
+  pull_request:
+  workflow_call:
+
+jobs:
+  python:
+    name: 経路探索API・ナビ画面のテスト
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: |
+            deploy_env/python/requirements.txt
+            programs/3D_Graph/requirements-dev.txt
+
+      - name: 依存をインストール
+        run: pip install -r programs/3D_Graph/requirements-dev.txt
+
+      - name: pytest
+        run: pytest
+
+  timetables:
+    name: 時間割サービスのテスト
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: programs/timetables
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: programs/timetables/package-lock.json
+
+      - name: 依存をインストール
+        run: npm ci
+
+      - name: 型チェック
+        run: npm run typecheck
+
+      - name: vitest
+        run: npm run test
+
+      - name: ビルドが通るか
+        run: npm run build
+
+  navi-scripts:
+    name: ナビ画面スクリプトの構文チェック
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      # ナビ画面のJSはビルドを通さずそのまま配信されるため、
+      # 構文エラーがあると本番でページごと動かなくなる
+      - name: node --check
+        run: |
+          for f in programs/html/navi/script/*.js; do
+            echo "checking $f"
+            node --check "$f"
+          done
+```
+
 ### `.github/workflows/build-push.yml`
 
 ```yaml
@@ -16916,7 +18036,12 @@ on:
       - main
 
 jobs:
+  # テストが通らない限り本番イメージは作らない（test.yml をそのまま呼ぶ）
+  test:
+    uses: ./.github/workflows/test.yml
+
   build-and-push:
+    needs: test
     runs-on: ubuntu-latest
     
     permissions:

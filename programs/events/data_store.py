@@ -13,14 +13,18 @@ data/event.csv の読み書きと、紐付け先（教室名・ノードID・エ
 """
 
 import csv
+import sys
 from pathlib import Path
 
-REPO_ROOT         = Path(__file__).resolve().parents[2]
-DATA_DIR          = REPO_ROOT / "data"
-EVENT_CSV         = DATA_DIR / "event.csv"
-BUILDING_NAME_CSV = DATA_DIR / "building_name.csv"
-GLOBAL_NODE_CSV   = DATA_DIR / "global_node.csv"
-GLOBAL_EDGE_CSV   = DATA_DIR / "global_edge.csv"
+sys.path.append(str(Path(__file__).resolve().parents[1]))
+from gui_common.paths import (  # noqa: F401  (他モジュールが data_store 経由で参照する)
+    BUILDING_NAME_CSV,
+    DATA_DIR,
+    EVENT_CSV,
+    GLOBAL_EDGE_CSV,
+    GLOBAL_NODE_CSV,
+    REPO_ROOT,
+)
 
 EVENT_COLS = ["title", "building", "room", "node_id", "edge_id"]
 

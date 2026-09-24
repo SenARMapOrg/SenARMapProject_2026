@@ -41,7 +41,7 @@ AR 領域にはエッジ間の経路写真（CDN 配信）を表示する。
 | 言語 | Python 3 |
 | Web フレームワーク | Flask |
 | WSGI サーバー | Gunicorn (`-w 4`) — 平常時 2レプリカ × 4 = 8並列 |
-| エントリポイント | `programs/3D_Graph/app.py` |
+| エントリポイント | `programs/3D_Graph/app.py`（実装は同ディレクトリの `ikunavi/` パッケージ）|
 
 ### 主なライブラリ
 
@@ -252,7 +252,7 @@ Z_global = Z_local + tz
 | 参照方法 | バックエンドの `GET /api/edge_images` がキー `"fromId_toId"` → URL のマッピングを返す。フロントエンドはこれを受け取り、現在のステップに対応する画像を AR 領域に表示する。 |
 | アップロード管理 | `data/edge_image.csv` に `from`, `to`, `image_name` を記載して管理 |
 
-CDN の URL は `app.py` の `CDN_BASE` 定数で一元管理している。
+CDN の URL は `ikunavi/config.py` の `CDN_BASE` 定数で一元管理している。
 
 ```python
 CDN_BASE = "https://cdn.iku-navi.net"
@@ -353,7 +353,7 @@ candidates = [
 
 ### 経路探索結果（`path_edges`）
 
-`_path_result()`（`app.py`）が組み立てる経路探索系 API のレスポンスには、`path_coords`（ノード列）に加えて `path_edges`（区間列）が含まれる。フロントエンドの音声案内・矢印表示はこの `path_edges` を1歩ずつ処理して作られる。
+`path_result()`（`ikunavi/serialize.py`）が組み立てる経路探索系 API のレスポンスには、`path_coords`（ノード列）に加えて `path_edges`（区間列）が含まれる。フロントエンドの音声案内・矢印表示はこの `path_edges` を1歩ずつ処理して作られる。
 
 | フィールド | 説明 |
 |-----------|------|
@@ -423,7 +423,7 @@ imgByStep[step].classList.add("active");
 
 最終区間（目的地エッジを歩く区間）は矢印だと「まだ先へ進む」と誤解されるため、矢印の代わりに `#near-goal-badge` を表示する（`updateDirectionArrow()`）。同じ文言を音声案内の到着アナウンス（`buildStepAnnouncement()` の最終区間分岐）にも使う。文言は `buildNearGoalText()` が決める:
 
-- APIレスポンスの `dest_side`/`dest_position`/`dest_count`/`dest_display`/`dest_nearest_display`（検索時に指定した目的地そのものの位置情報。`_dest_info()`/`_apply_dest_info()` が実際に歩く向きに補正済みの最終区間 `right`/`left` と厳密照合して判定。`right`/`left` は手前から奥への物理的な並び順を持つ列なので、その並びの中の順位がそのまま「手前から数えてN番目」になる。`app.py` 側の計算なのでnode/eventの目的地指定や複数の部屋が両側にまたがるエッジでは空文字/`null`）が取れていれば、以下を組み立てる:
+- APIレスポンスの `dest_side`/`dest_position`/`dest_count`/`dest_display`/`dest_nearest_display`（検索時に指定した目的地そのものの位置情報。`ikunavi/serialize.py` の `dest_info()`/`apply_dest_info()` が実際に歩く向きに補正済みの最終区間 `right`/`left` と厳密照合して判定。`right`/`left` は手前から奥への物理的な並び順を持つ列なので、その並びの中の順位がそのまま「手前から数えてN番目」になる。サーバー側の計算なのでnode/eventの目的地指定や複数の部屋が両側にまたがるエッジでは空文字/`null`）が取れていれば、以下を組み立てる:
   - その側に他の教室が無い（`dest_count<=1`）か、目的地が一番手前（`dest_position===1`）の場合: 「`<dest_display>`は`<右手/左手>`です」
   - それ以外（他に手前の教室がある）場合: 「`<dest_display>`は`<右手/左手>`、`<dest_nearest_display>`から数えて`<dest_position>`番目です」
 - `dest_side` が無い場合のみ、最終区間の `right_display`/`left_display` を見て片方だけ設定されていればその側とみなす簡易フォールバック（「右手に目的地です」等）を使う

@@ -15,6 +15,21 @@ AR 領域にはエッジ間の経路写真（Cloudflare R2 CDN 配信）を表�
 
 ![プロジェクトロゴ](/images/logo.png)
 
+## テスト
+
+```bash
+# 経路探索API（programs/3D_Graph）とナビ画面のHTML/JSの噛み合わせ
+pip install -r programs/3D_Graph/requirements-dev.txt
+pytest
+
+# 時間割サービス
+cd programs/timetables && npm ci && npm run typecheck && npm test
+```
+
+push / Pull Request のたびに GitHub Actions（`.github/workflows/test.yml`）が同じものを実行し、
+`main` への push では通った場合だけ本番 Docker イメージがビルドされる。
+詳しくは `docs/PROJECT_BIBLE.md` の 8.4 節を参照。
+
 ## 技術スタック
 
 - **バックエンド:** Python 3 / Flask / Gunicorn / NetworkX / pandas
@@ -27,9 +42,10 @@ AR 領域にはエッジ間の経路写真（Cloudflare R2 CDN 配信）を表�
 ```
 SenARMapProject_2026/
 ├── programs/
-│   ├── 3D_Graph/          # Flask バックエンド (app.py) + 3D 経路ビューア（経路探索APIの実体）
+│   ├── 3D_Graph/          # Flask バックエンド (app.py + ikunavi/) + 3D 経路ビューア（経路探索APIの実体）
 │   ├── html/               # Cloudflare Pages 公開ルート（ナビ UI・AR画面・blog・SVG 等。本番で実際に配信されるのはこちら）
 │   ├── Website/             # プロジェクト紹介 LP（学内発表用、Pages では非公開）
+│   ├── gui_common/          # 下記デスクトップツール群が共有するモジュール（パス・APIセッション・配色・起動処理）
 │   ├── Map_Editor/          # ノード・エッジ・経路写真をまとめて入力する統合編集GUI（PyQt6）
 │   ├── Image_Checker/       # CDN上のエッジ画像の存在確認GUI（PyQt6）
 │   ├── Route_Checker/       # 全教室ペア間ルートの異常検出GUI（PyQt6）
@@ -41,6 +57,7 @@ SenARMapProject_2026/
 │   ├── timetables/          # 時間割共有サービス（Cloudflare Pages Functions + D1、別サービス）
 │   └── syllabus_courses/    # timetables 用シラバススクレイパー
 ├── data/                    # CSV / JSON データ（ノード・エッジ・食堂・画像マッピング・名前DB・イベント等、建物別サブディレクトリあり）
+├── pytest.ini               # テスト設定（programs/3D_Graph/tests と programs/html/tests を実行）
 ├── docs/                    # 設計ドキュメント（技術概要・API仕様・座標設計・非機能要件・名前DB/イベントモード・Cloudflare移行手順・PROJECT_BIBLEほか）
 ├── deploy_env/              # 本番 Docker Swarm 構成 + Cloudflare Pages ビルド設定（+ 不採用のk8s構成）
 ├── enviroments/             # ローカル開発用 Docker 構成

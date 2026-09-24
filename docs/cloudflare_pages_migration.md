@@ -33,7 +33,7 @@
 
 サーバー（Docker Swarm・スタック名 iku）:
   python / counter / db / prometheus / grafana / cadvisor / cloudflared
-  ※ nginx は撤去。CORS ヘッダは Flask（app.py の after_request）が返す。
+  ※ nginx は撤去。CORS ヘッダは Flask（ikunavi/__init__.py の after_request）が返す。
 ```
 
 ---
@@ -45,7 +45,7 @@
 | # | 変更 | ファイル |
 |---|------|---------|
 | 1 | `API_BASE` をホスト名で自動切替（localhost → 同一オリジン、それ以外 → `https://api.iku-navi.net`） | `programs/html/navi/index.html` |
-| 2 | Flask に CORS ヘッダ追加（`iku-navi.net` / `www` / `*.pages.dev` を許可） | `programs/3D_Graph/app.py` |
+| 2 | Flask に CORS ヘッダ追加（`iku-navi.net` / `www` / `*.pages.dev` を許可） | `programs/3D_Graph/ikunavi/__init__.py` |
 | 3 | Pages 用キャッシュ制御 | `programs/html/_headers` |
 | 4 | 旧 `/redirect/`・`/3d/` URL の 301 転送（QRコード救済） | `programs/html/_redirects` |
 | 5 | Pages 用 404 ページ（nginx の 404.html を流用） | `programs/html/404.html` |
@@ -184,4 +184,4 @@ Phase 5 実施前なら数分で戻せる:
 - **`/api/graph` の CDN キャッシュ**: レスポンスはデータ更新まで不変なので、Flask で `Cache-Control` を返して Cloudflare にキャッシュさせるとイベント時のオリジン負荷をさらに下げられる。
 - **`/3d/` の保護**: 開発・検証ツールの色が濃いので、一般公開が不要なら Cloudflare Access で `api.iku-navi.net/3d/` を保護できる。
 - **ローカル開発**: 従来どおり `enviroments/` の compose（nginx 同居）で動く。`API_BASE` は `localhost` アクセス時に空文字になるため変更不要。Pages の挙動（`_headers` / `_redirects` / 404）をローカル再現したい場合は `wrangler pages dev programs/html`。
-- **CORS の許可範囲**: 現在 `*.pages.dev` 全体を許可している（公開 GET API のみなので実害なし）。絞りたい場合は `app.py` の `CORS_ORIGIN_PATTERN` を自プロジェクトのサブドメインに限定する。
+- **CORS の許可範囲**: 現在 `*.pages.dev` 全体を許可している（公開 GET API のみなので実害なし）。絞りたい場合は `ikunavi/config.py` の `CORS_ORIGIN_PATTERN` を自プロジェクトのサブドメインに限定する。
