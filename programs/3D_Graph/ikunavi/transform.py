@@ -11,13 +11,14 @@ import os
 
 import pandas as pd
 
-from .config import ANCHORS_CSV, BUILDINGS_JSON, DATA_DIR, GLOBAL_NODE_CSV
+from .config import building_dir, data_path
 
 
 def load_transform_config():
     """buildings.json に手書きされた変換パラメータを読む（無ければ空）"""
-    if os.path.exists(BUILDINGS_JSON):
-        with open(BUILDINGS_JSON) as f:
+    path = data_path("buildings.json")
+    if os.path.exists(path):
+        with open(path) as f:
             return json.load(f)
     return {}
 
@@ -29,16 +30,18 @@ def calc_transforms_from_anchors():
     1点アンカー: 平行移動のみ自動計算、rot_deg は buildings.json から取得（なければ 0）。
     tz_offset が buildings.json にあれば加算する。
     """
-    if not os.path.exists(GLOBAL_NODE_CSV) or not os.path.exists(ANCHORS_CSV):
+    global_node_csv = data_path("global_node.csv")
+    anchors_csv = data_path("anchors.csv")
+    if not os.path.exists(global_node_csv) or not os.path.exists(anchors_csv):
         return {}
 
-    gn = pd.read_csv(GLOBAL_NODE_CSV)
+    gn = pd.read_csv(global_node_csv)
     gn.columns = gn.columns.str.strip()
     if gn.empty:
         return {}
     gn = gn.set_index("id")
 
-    anchors = pd.read_csv(ANCHORS_CSV)
+    anchors = pd.read_csv(anchors_csv)
     anchors.columns = anchors.columns.str.strip()
     if anchors.empty:
         return {}
@@ -52,8 +55,7 @@ def calc_transforms_from_anchors():
         bldg_cfg = config.get(str(int(bldg_id)), {})
         r0 = group.iloc[0]
 
-        bldg_dir = os.path.join(DATA_DIR, f"{int(bldg_id)}_bldg")
-        local_nodes = pd.read_csv(os.path.join(bldg_dir, "node.csv"))
+        local_nodes = pd.read_csv(os.path.join(building_dir(bldg_id), "node.csv"))
         local_nodes.columns = local_nodes.columns.str.strip()
         local_nodes = local_nodes.set_index("id")
 

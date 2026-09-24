@@ -35,11 +35,13 @@
 - **移行のタイミング**: 現状のように「全建物データ投入中でロジックがPython1箇所に集中している方が変更が楽」というフェーズが終わり、経路ロジック（エスカレータ一方向・エレベータ除外・入口ペナルティ・目的エッジ延長など）が安定してから着手するのが合理的。1.1のデータ整備が一段落したタイミングが良い節目になる。
 - 移行後も `/3d` ビューア・検証ツール群（Route_Checker等）はローカルFlask運用のまま残せる設計にしておくとよい（既にその前提で計画されている）。
 
-### 1.3 テスト・CI の追加
+### 1.3 テスト・CI（導入済み。残っている宿題）
 
-- `.github/workflows/build-push.yml` は Docker イメージのビルド＆GHCRプッシュのみで、**自動テストが一切ない**。経路探索ロジック（`ikunavi/search.py`・`graph.py` の Dijkstra 周り：エスカレータ一方向補正・エレベータ除外・入口ペナルティ・目的エッジ延長）は仕様として文書化されているのに、コードの回帰を検知する仕組みがない。
+回帰テストと GitHub Actions は導入済み（8.4節参照）。まだ手が付いていないのは次の点。
+
 - `Route_Checker` が持つ異常検出ロジック（`SAME_FLOOR_DETOUR` / `FLOOR_OVERSHOOT` / `FLOOR_REVERSAL` / `UNEXPECTED_BUILDING`）は、GUIツールとしてだけでなく **pytest化してCIに組み込む**と、データ追加やロジック変更のたびに手動チェックしなくて済む。全教室ペアの経路検証は数百〜数千パターンあるが、CIで自動実行できれば「新しい建物を足したら知らないうちに変な迂回ルートが生まれていた」という事故を防げる。
-- `ikunavi` の関数（`transform.calc_transforms_from_anchors`・`graph.build_graph`・`search.extend_to_far_endpoint` など）はFlask依存がないので、pytestでのユニットテスト化が比較的容易。
+- ナビ画面のJS（`programs/html/navi/script/`）にはテストランナーが無く、HTMLとの噛み合わせ（必要なID・関数の有無・読み込み順）を静的に照合しているだけ。実際の操作の回帰はまだ人手で見ている。
+- Cloudflare Pages のデプロイはダッシュボード側の設定で走るため、GitHub Actions のテスト結果ではブロックできない（VPS側のDockerイメージはブロックできる）。
 
 ### 1.4 屋内ARの発展
 
@@ -73,7 +75,7 @@
 | フロントエンド | HTML / CSS / Vanilla JavaScript（フレームワークなし）/ Google Maps JavaScript API / Three.js（屋外AR）/ インラインSVG（屋内マップ）|
 | インフラ | Docker Swarm（ConoHa VPS）/ Cloudflare Pages（静的配信）/ Cloudflare Tunnel（API公開）/ Cloudflare R2（画像CDN）|
 | 監視 | Prometheus / Grafana / cAdvisor |
-| CI/CD | GitHub Actions（GHCRへのDockerイメージビルド＆プッシュ）|
+| CI/CD | GitHub Actions（テスト → GHCRへのDockerイメージビルド＆プッシュ）|
 | データ運用 | スプレッドシート → スクリプト → GitHub Push（CSV更新）|
 
 ### ディレクトリ構成（全体）
@@ -95,7 +97,7 @@ SenARMapProject_2026/
 ├── deploy_env/           # 本番Docker Swarm構成 + Cloudflare Pagesビルド + (不採用の)k8s構成
 ├── enviroments/           # ローカル開発用Docker構成
 ├── images/               # ロゴ・構成図
-└── .github/workflows/    # CI（Dockerイメージビルド）
+└── .github/workflows/    # CI（テスト + Dockerイメージビルド）
 ```
 
 ---
@@ -563,17 +565,59 @@ YOLOv8セグメンテーションモデル（`yolov8n-seg.pt` 同梱）で写真
 
 ### 8.3 CI/CD（`.github/workflows/build-push.yml`）
 
-`main` へのpushをトリガーに、`deploy_env/python/Dockerfile` からDockerイメージをビルドし `ghcr.io/senarmaporg/iki_project_2026_python`（`latest` + short SHA タグ）へプッシュする。**自動テストは無い**（1.3節の改善提案参照）。旧nginxイメージのビルドステップはPages移行に伴い削除済み（コメントとして記録が残る）。
+`main` へのpushをトリガーに、`deploy_env/python/Dockerfile` からDockerイメージをビルドし `ghcr.io/senarmaporg/iki_project_2026_python`（`latest` + short SHA タグ）へプッシュする。ビルドの前に `test.yml` を呼び出しており、テストが通らなければイメージは作られない（`needs: test`）。旧nginxイメージのビルドステップはPages移行に伴い削除済み（コメントとして記録が残る）。
 
-### 8.4 監視（Prometheus / Grafana / cAdvisor）
+### 8.4 自動テスト
+
+CIで走るテストは3系統。いずれも `.github/workflows/test.yml` が push / Pull Request と、
+`build-push.yml` からの呼び出しで実行する。
+
+| 対象 | 置き場所 | 実行 |
+|---|---|---|
+| 経路探索API（`ikunavi`）| `programs/3D_Graph/tests/` | `pytest`（リポジトリ直下の `pytest.ini` が両方のテストを拾う）|
+| ナビ画面のHTML/JSの噛み合わせ | `programs/html/tests/` | 同上 |
+| 時間割サービス | `programs/timetables/tests/` | `npm run test`（vitest）+ `npm run typecheck` + `npm run build` |
+
+**経路探索APIのテスト**は、リポジトリの `data/` ではなく `tests/conftest.py` が組み立てる
+小さな合成キャンパス（2建物＋屋外、階段・エスカレータ・エレベータ・トイレ・食堂・イベントを1つずつ）
+に対して行う。CSVを1行足すだけで件数が変わる実データに期待値を書くと、データ編集のたびに
+テストが赤くなってしまうため。読み込み先は環境変数 `IKUNAVI_DATA_DIR` で差し替える
+（`ikunavi/config.py` の `data_path()`）。
+
+ロックしている主な仕様: グローバルIDの採番、アンカーからの座標変換、入口エッジの自動生成、
+エスカレータの一方向制約、エレベータ除外、入口通過ペナルティ、目的エッジへの経路延長、
+進行方向に応じた right/left の入れ替え、表示名の解決順、各エンドポイントのレスポンス形と
+エラーメッセージ、CORSヘッダの許可範囲。
+
+実データ（`data/`）に対しては `tests/test_real_data.py` が別途「壊れていないか」だけを見る
+（ノードIDの重複、端点の無いエッジ、グラフに載らない教室、食堂名とエッジの対応、
+イベント行が全て解決できるか、主要APIが応答するか）。件数など編集で普通に変わる値は見ない。
+
+**ナビ画面のテスト**は、HTMLとJSの間の暗黙の契約を静的に照合する。スクリプトの読み込み順
+（`state.js` が先頭）、`getElementById` で探している約50個のIDが各ページに実在すること、
+`onclick` から呼ばれる関数が定義されていること、分割したファイル間で関数や共有変数が
+二重定義されていないこと。navi1〜navi9 も同じ検査にかける。
+
+ローカルでの実行:
+
+```bash
+# 経路探索API + ナビ画面（リポジトリ直下で）
+pip install -r programs/3D_Graph/requirements-dev.txt
+pytest
+
+# 時間割サービス
+cd programs/timetables && npm ci && npm run typecheck && npm test
+```
+
+### 8.5 監視（Prometheus / Grafana / cAdvisor）
 
 `prometheus.yml` は `scrape_interval:15s`、`dockerswarm_sd_configs`（`role: tasks`）でSwarmタスクを動的ディスカバリ。`relabel_configs` でcadvisorタスクのみ対象化、`metric_relabel_configs` で `container_label_com_docker_swarm_service_name` から短い `service` ラベル（例 `iku_python`）を生成（ローリング更新での系列増殖対策、Grafana集計は必ずこの `service` ラベル単位）。Grafanaダッシュボードは ID 14282 推奨。cAdvisorは `--docker_only=true`（非コンテナcgroup除外）、`--housekeeping_interval=15s`（負荷抑制）。
 
-### 8.5 ローカル開発環境（`enviroments/`）
+### 8.6 ローカル開発環境（`enviroments/`）
 
 `deploy_env/`（本番用）とは別に、開発用の軽量Docker構成。`python`コンテナ（ポート5001、`tail -f /dev/null`で待機しシェル作業、ソース全体をバインドマウント）と`nginx`コンテナ（8081→80, 4430→443、SSL証明書の有無で起動時にHTTP/HTTPSをentrypointが動的切替）の2サービスのみ。`connect.sh` が `docker compose up -d`（`renew`引数で`--build`）→`docker exec -it`で開発者をコンテナ内シェルに導く起動スクリプト。Dockerfileには開発補助として `nodejs npm` / `typescript` も追加インストールされる。
 
-### 8.6 Kubernetes（`deploy_env/k8s/`）— 過去の検証・不採用
+### 8.7 Kubernetes（`deploy_env/k8s/`）— 過去の検証・不採用
 
 **現在の本番構成ではない。** `docs/k8s.md` 冒頭に明記の通り、2GB VPS単体ではkubeadm+CNIのオーバーヘッドが大きく、ワーカートークンの有効期限運用コストも高いため、Docker Swarmへ切り替えられた経緯がある（コミットログにも「【検証】k8s検証（失敗）」の記録あり）。
 
@@ -583,7 +627,7 @@ YOLOv8セグメンテーションモデル（`yolov8n-seg.pt` 同梱）で写真
 
 マニフェスト（`kustomization.yaml`でnamespace `iki-project` に集約）はcompose環境とほぼ1:1対応（python/counter/nginxのDeployment、dbのStatefulSet、cloudflared、prometheus/grafana/cadvisor/node-exporter/kube-state-metrics）。`secrets.yaml.template` が雛形（実ファイルは`.gitignore`対象）。`auto-update-cronjob.yaml` は30分毎のrollout restart相当の仕組み。
 
-### 8.7 nginx（撤去済み・ロールバック資産）
+### 8.8 nginx（撤去済み・ロールバック資産）
 
 `deploy_env/nginx/`（Dockerfile, nginx.conf, docker-entrypoint.sh, errors/）は本番では不使用だが、意図的にロールバック用として残置。中身はPages移行前の旧ルーティング定義そのもの（`/`→静的配信、`/3d/`・`/api/`→python:8000、`/redirect/`→counter:3000）。ロールバック手順はPagesのカスタムドメイン解除＋DNSを旧トンネル向けに戻すのみで、GHCRに旧イメージが残っている限り再デプロイ可能。
 
@@ -17898,6 +17942,89 @@ http {
 
 #### CI/CD
 
+### `.github/workflows/test.yml`
+
+```yaml
+name: Test
+
+# push / Pull Request のたびに実行する。
+# build-push.yml からも呼ばれ、テストが通らない限り本番イメージは作られない。
+on:
+  push:
+    # main は build-push.yml がこのワークフローを呼ぶので、二重に走らせない
+    branches-ignore:
+      - main
+  pull_request:
+  workflow_call:
+
+jobs:
+  python:
+    name: 経路探索API・ナビ画面のテスト
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: |
+            deploy_env/python/requirements.txt
+            programs/3D_Graph/requirements-dev.txt
+
+      - name: 依存をインストール
+        run: pip install -r programs/3D_Graph/requirements-dev.txt
+
+      - name: pytest
+        run: pytest
+
+  timetables:
+    name: 時間割サービスのテスト
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: programs/timetables
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: programs/timetables/package-lock.json
+
+      - name: 依存をインストール
+        run: npm ci
+
+      - name: 型チェック
+        run: npm run typecheck
+
+      - name: vitest
+        run: npm run test
+
+      - name: ビルドが通るか
+        run: npm run build
+
+  navi-scripts:
+    name: ナビ画面スクリプトの構文チェック
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      # ナビ画面のJSはビルドを通さずそのまま配信されるため、
+      # 構文エラーがあると本番でページごと動かなくなる
+      - name: node --check
+        run: |
+          for f in programs/html/navi/script/*.js; do
+            echo "checking $f"
+            node --check "$f"
+          done
+```
+
 ### `.github/workflows/build-push.yml`
 
 ```yaml
@@ -17909,7 +18036,12 @@ on:
       - main
 
 jobs:
+  # テストが通らない限り本番イメージは作らない（test.yml をそのまま呼ぶ）
+  test:
+    uses: ./.github/workflows/test.yml
+
   build-and-push:
+    needs: test
     runs-on: ubuntu-latest
     
     permissions:

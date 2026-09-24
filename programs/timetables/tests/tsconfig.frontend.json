@@ -1,0 +1,5 @@
+{
+  "//": "ブラウザ側（src/）のテストの型チェック",
+  "extends": "../tsconfig.json",
+  "include": ["timetable-grid.test.ts", "../src"]
+}

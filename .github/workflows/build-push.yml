@@ -6,7 +6,12 @@ on:
       - main
 
 jobs:
+  # テストが通らない限り本番イメージは作らない（test.yml をそのまま呼ぶ）
+  test:
+    uses: ./.github/workflows/test.yml
+
   build-and-push:
+    needs: test
     runs-on: ubuntu-latest
     
     permissions:

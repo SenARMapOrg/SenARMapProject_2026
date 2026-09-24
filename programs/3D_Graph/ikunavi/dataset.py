@@ -11,13 +11,10 @@ import pandas as pd
 
 from .config import (
     ANCHOR_EDGE_ID_BASE,
-    ANCHORS_CSV,
-    CONNECT_EDGE_CSV,
-    DATA_DIR,
-    GLOBAL_EDGE_CSV,
-    GLOBAL_NODE_CSV,
     GLOBAL_NODE_OFFSET,
     ID_OFFSET,
+    data_dir,
+    data_path,
 )
 from .transform import apply_transform, resolved_transform_config
 
@@ -32,7 +29,7 @@ def _read_csv(path, **kwargs):
 def _load_building_frames(config):
     """data/{N}_bldg/ を全て読み、ローカルID→グローバルID変換と座標変換をかける"""
     nodes, edges = [], []
-    for bldg_dir in sorted(glob.glob(os.path.join(DATA_DIR, "*_bldg"))):
+    for bldg_dir in sorted(glob.glob(os.path.join(data_dir(), "*_bldg"))):
         m = re.match(r'(\d+)_bldg', os.path.basename(bldg_dir))
         if not m:
             continue
@@ -60,17 +57,19 @@ def _load_building_frames(config):
 
 def _load_connect_edges():
     """建物間接続CSV: グローバルIDで記述、存在する場合のみ読み込む"""
-    if not os.path.exists(CONNECT_EDGE_CSV):
+    path = data_path("connect_edge.csv")
+    if not os.path.exists(path):
         return None
-    conn_df = _read_csv(CONNECT_EDGE_CSV)
+    conn_df = _read_csv(path)
     return conn_df if not conn_df.empty else None
 
 
 def _load_global_nodes():
     """屋外ノード (global_node.csv) — building=0 として追加。戻り値: (DataFrame|None, 元のID集合)"""
-    if not os.path.exists(GLOBAL_NODE_CSV):
+    path = data_path("global_node.csv")
+    if not os.path.exists(path):
         return None, set()
-    gn_raw = _read_csv(GLOBAL_NODE_CSV).dropna(subset=["id", "x", "y", "z"])
+    gn_raw = _read_csv(path).dropna(subset=["id", "x", "y", "z"])
     if gn_raw.empty:
         return None, set()
 
@@ -86,9 +85,10 @@ def _load_global_nodes():
 
 def _load_global_edges(global_node_ids):
     """屋外エッジ (global_edge.csv) — from/to の小さいIDはグローバルノードローカルID"""
-    if not os.path.exists(GLOBAL_EDGE_CSV):
+    path = data_path("global_edge.csv")
+    if not os.path.exists(path):
         return None
-    ge_raw = _read_csv(GLOBAL_EDGE_CSV).dropna(subset=["id", "from", "to"])
+    ge_raw = _read_csv(path).dropna(subset=["id", "from", "to"])
     if ge_raw.empty:
         return None
 
@@ -108,9 +108,10 @@ def _load_global_edges(global_node_ids):
 
 def _build_anchor_edges():
     """anchors.csv から、グローバルノードとローカルノードを繋ぐエッジを生成する"""
-    if not os.path.exists(ANCHORS_CSV):
+    path = data_path("anchors.csv")
+    if not os.path.exists(path):
         return None
-    anchors_df = _read_csv(ANCHORS_CSV)
+    anchors_df = _read_csv(path)
     if anchors_df.empty:
         return None
 
@@ -141,7 +142,7 @@ def _normalize(nodes_combined, edges_combined):
     valid_ids = set(nodes_combined["id"])
     edges_combined = edges_combined[
         edges_combined["from"].isin(valid_ids) & edges_combined["to"].isin(valid_ids)
-    ]
+    ].copy()   # 以降の列の書き換えが元のDataFrameのスライスにならないようにする
 
     edges_combined["name"] = edges_combined["name"].fillna("").astype(str)
     # 空行によりfloat化したtype列を整数に正規化 ("1.0" → "1" となるよう)

@@ -1,0 +1,5 @@
+# テスト用の依存。本番イメージ（deploy_env/python/requirements.txt）に合わせた上で
+# pytest を足したもの。
+#   cd programs/3D_Graph && pip install -r requirements-dev.txt && pytest
+-r ../../deploy_env/python/requirements.txt
+pytest

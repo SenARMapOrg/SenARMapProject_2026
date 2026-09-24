@@ -6,19 +6,27 @@ data/ 配下のCSVの作り方（programs/Map_Editor）と合わせて見直す�
 import os
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DATA_DIR = os.path.join(BASE_DIR, "../../data")
+DEFAULT_DATA_DIR = os.path.join(BASE_DIR, "../../data")
 
-BUILDINGS_JSON    = os.path.join(DATA_DIR, "buildings.json")
-ANCHORS_CSV       = os.path.join(DATA_DIR, "anchors.csv")
-CONNECT_EDGE_CSV  = os.path.join(DATA_DIR, "connect_edge.csv")
-GLOBAL_NODE_CSV   = os.path.join(DATA_DIR, "global_node.csv")
-GLOBAL_EDGE_CSV   = os.path.join(DATA_DIR, "global_edge.csv")
-EDGE_IMAGE_CSV    = os.path.join(DATA_DIR, "edge_image.csv")
-CAFETERIA_CSV     = os.path.join(DATA_DIR, "cafeteria_edge.csv")
-NAME_CSV          = os.path.join(DATA_DIR, "name.csv")
-BUILDING_NAME_CSV = os.path.join(DATA_DIR, "building_name.csv")
-EVENT_CSV         = os.path.join(DATA_DIR, "event.csv")
-IGNORE_CSV        = os.path.join(DATA_DIR, "ignore.csv")
+# 環境変数 IKUNAVI_DATA_DIR を設定すると、リポジトリの data/ ではなくそちらを読む。
+# テスト（programs/3D_Graph/tests）や、別のデータセットで動きを確かめたいときに使う。
+# パスは読み込みのたびに解決するので、実行中に切り替えても次の読み込みから反映される
+# （キャッシュ済みのデータは ikunavi.clear_all_caches() で捨てること）。
+DATA_DIR_ENV = "IKUNAVI_DATA_DIR"
+
+
+def data_dir():
+    return os.environ.get(DATA_DIR_ENV) or DEFAULT_DATA_DIR
+
+
+def data_path(name):
+    """data/ 配下のファイルの絶対パス"""
+    return os.path.join(data_dir(), name)
+
+
+def building_dir(building):
+    """data/{building}_bldg/"""
+    return data_path(f"{int(building)}_bldg")
 
 CDN_BASE = "https://cdn.iku-navi.net"
 
