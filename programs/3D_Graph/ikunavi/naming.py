@@ -8,7 +8,7 @@ import os
 
 import pandas as pd
 
-from .config import BUILDING_NAME_CSV, IGNORE_CSV, NAME_CSV
+from .config import data_path
 
 # トイレは name.csv に表示名を持たず、種別ごとに固定のラベルを使う
 TOILET_LABEL = {"M_Toilet": "男子トイレ", "F_Toilet": "女子トイレ", "C_Toilet": "多目的トイレ"}
@@ -41,8 +41,9 @@ def get_name_map():
     global _name_map
     if _name_map is None:
         name_map = {}
-        if os.path.exists(NAME_CSV):
-            for _, row in _read_text_csv(NAME_CSV).iterrows():
+        path = data_path("name.csv")
+        if os.path.exists(path):
+            for _, row in _read_text_csv(path).iterrows():
                 name    = str(row.get("name", "")).strip()
                 display = str(row.get("display_name", "")).strip()
                 bldg    = str(row.get("building", "")).strip()
@@ -62,8 +63,9 @@ def get_building_name_map():
     global _building_name_map
     if _building_name_map is None:
         name_map = {}
-        if os.path.exists(BUILDING_NAME_CSV):
-            for _, row in _read_text_csv(BUILDING_NAME_CSV).iterrows():
+        path = data_path("building_name.csv")
+        if os.path.exists(path):
+            for _, row in _read_text_csv(path).iterrows():
                 bldg    = str(row.get("building", "")).strip()
                 display = str(row.get("display_name", "")).strip()
                 if not bldg or not display:
@@ -83,8 +85,9 @@ def get_ignore_set():
     global _ignore_set
     if _ignore_set is None:
         ignore_set = set()
-        if os.path.exists(IGNORE_CSV):
-            for _, row in _read_text_csv(IGNORE_CSV).iterrows():
+        path = data_path("ignore.csv")
+        if os.path.exists(path):
+            for _, row in _read_text_csv(path).iterrows():
                 name = str(row.get("id", "")).strip()
                 if name:
                     ignore_set.add(name)

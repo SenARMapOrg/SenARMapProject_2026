@@ -4,7 +4,7 @@ import os
 import pandas as pd
 from flask import Blueprint, jsonify
 
-from ..config import CDN_BASE, EDGE_IMAGE_CSV
+from ..config import CDN_BASE, data_path
 
 bp = Blueprint("images", __name__)
 
@@ -15,9 +15,10 @@ def api_edge_images():
     エッジ画像マップを返す。
     返却形式: { "1000001_1000002": "https://cdn.iku-navi.net/1000001_to_1000002.jpg", ... }
     """
-    if not os.path.exists(EDGE_IMAGE_CSV):
+    edge_image_csv = data_path("edge_image.csv")
+    if not os.path.exists(edge_image_csv):
         return jsonify({})
-    df = pd.read_csv(EDGE_IMAGE_CSV)
+    df = pd.read_csv(edge_image_csv)
     df.columns = df.columns.str.strip()
     df = df.dropna(subset=["from", "to"])
     result = {}

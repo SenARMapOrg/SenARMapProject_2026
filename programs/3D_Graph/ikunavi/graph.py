@@ -9,8 +9,9 @@ import pandas as pd
 
 from .config import ENTRANCE_PENALTY
 
-# 上りエスカレータ(5)・下りエスカレータ(6)は一方向のみ
-DIRECTED_EDGE_TYPES = {"5", "6"}
+# 一方向にしか通れないエッジ種別（下の分岐で個別に向きを決める）
+ESCALATOR_UP_EDGE_TYPE = "5"
+ESCALATOR_DOWN_EDGE_TYPE = "6"
 ELEVATOR_EDGE_TYPE = "4"
 ENTRANCE_EDGE_TYPE = "7"
 
@@ -61,18 +62,17 @@ def build_graph(nodes_df, edges_df, use_elevator=True):
         u, v = int(row["from"]), int(row["to"])
         edge_attrs = _edge_attrs(row, edge_type)
 
-        if edge_type == "5":
+        if edge_type == ESCALATOR_UP_EDGE_TYPE:
             # 上りESC: z が低い→高い方向のみ通行可
             lo, hi = (u, v) if G.nodes[u]["z"] <= G.nodes[v]["z"] else (v, u)
             G.add_edge(lo, hi, **edge_attrs)
-        elif edge_type == "6":
+        elif edge_type == ESCALATOR_DOWN_EDGE_TYPE:
             # 下りESC: z が高い→低い方向のみ通行可
             hi, lo = (u, v) if G.nodes[u]["z"] >= G.nodes[v]["z"] else (v, u)
             G.add_edge(hi, lo, **edge_attrs)
         else:
+            # それ以外は双方向。逆方向(v→u)は進行方向が反転するため、right/leftも入れ替える
             G.add_edge(u, v, **edge_attrs)
-            if edge_type not in DIRECTED_EDGE_TYPES:
-                # 逆方向(v→u)は進行方向が反転するため、right/leftも入れ替えて渡す
-                reversed_attrs = dict(edge_attrs, right=edge_attrs["left"], left=edge_attrs["right"])
-                G.add_edge(v, u, **reversed_attrs)
+            reversed_attrs = dict(edge_attrs, right=edge_attrs["left"], left=edge_attrs["right"])
+            G.add_edge(v, u, **reversed_attrs)
     return G

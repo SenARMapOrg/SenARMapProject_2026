@@ -8,7 +8,7 @@ import os
 
 import pandas as pd
 
-from .config import CAFETERIA_CSV, EVENT_CSV, GLOBAL_NODE_OFFSET, ID_OFFSET
+from .config import GLOBAL_NODE_OFFSET, ID_OFFSET, data_path
 from .dataset import load_data
 from .graph import build_graph
 from .naming import TOILET_NAMES, display_name, get_ignore_set
@@ -189,10 +189,11 @@ def _build_event_index():
     同じ title の行が複数あれば候補を統合する（複数箇所で開催する屋台など）。
     """
     index, events_list, seen_titles = {}, [], set()
-    if not os.path.exists(EVENT_CSV):
+    event_csv = data_path("event.csv")
+    if not os.path.exists(event_csv):
         return index, events_list
 
-    df = pd.read_csv(EVENT_CSV, dtype=str).fillna("")
+    df = pd.read_csv(event_csv, dtype=str).fillna("")
     df.columns = df.columns.str.strip()
     nodes_df, edges_df = get_data()
     node_floor = {int(r["id"]): int(r["floor"]) for _, r in nodes_df.iterrows()}
@@ -238,8 +239,9 @@ def get_cafeteria_list():
     global _cafeteria_list
     if _cafeteria_list is None:
         result = []
-        if os.path.exists(CAFETERIA_CSV):
-            df = pd.read_csv(CAFETERIA_CSV, dtype=str).fillna("")
+        path = data_path("cafeteria_edge.csv")
+        if os.path.exists(path):
+            df = pd.read_csv(path, dtype=str).fillna("")
             for _, row in df.iterrows():
                 name = row.get("name", "").strip()
                 if not name:

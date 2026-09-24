@@ -7,10 +7,12 @@
     "dev": "wrangler pages dev dist --compatibility-date=2026-01-01",
     "build": "vite build",
     "deploy": "vite build && wrangler pages deploy dist",
-    "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p functions/tsconfig.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p functions/tsconfig.json && tsc --noEmit -p tests/tsconfig.frontend.json && tsc --noEmit -p tests/tsconfig.functions.json",
     "db:migrate:local": "wrangler d1 migrations apply timetables-db --local",
     "db:migrate:remote": "wrangler d1 migrations apply timetables-db --remote",
-    "sync-courses": "sh scripts/sync-courses.sh"
+    "sync-courses": "sh scripts/sync-courses.sh",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "hono": "^4.6.9",
@@ -20,6 +22,7 @@
     "@cloudflare/workers-types": "^5.20260730.0",
     "typescript": "^5.6.3",
     "vite": "^5.4.11",
+    "vitest": "^2.1.9",
     "wrangler": "^4.0.0"
   }
 }

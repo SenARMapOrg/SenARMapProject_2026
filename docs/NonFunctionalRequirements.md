@@ -94,7 +94,7 @@ nginx は Cloudflare Pages 移行に伴い完全撤去済み（`deploy_env/docke
 
 | 項目 | 要件 |
 | :--- | :--- |
-| デプロイ方式（API側/VPS） | `update.sh` による自動更新（cron 30分ごと）。手動実行も可。CI（GitHub Actions）が `main` push 時に python イメージのみをビルド・GHCRへプッシュ |
+| デプロイ方式（API側/VPS） | `update.sh` による自動更新（cron 30分ごと）。手動実行も可。CI（GitHub Actions）が `main` push 時にテストを実行し、通った場合のみ python イメージをビルド・GHCRへプッシュ |
 | デプロイ方式（静的側） | `main` への push を Cloudflare Pages が検知し `deploy_env/pages/build.sh` を実行して自動デプロイ。VPS側の作業は不要。PRごとにプレビューURL（`*.pages.dev`）が発行される |
 | 設定変更 | `docker-compose.yml` 変更後 `docker stack deploy` で即時反映 |
 | ログ確認 | `docker service logs <service名> --tail 50` で確認 |
