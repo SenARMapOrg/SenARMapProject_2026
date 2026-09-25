@@ -19,6 +19,30 @@ export interface AdminUsersResponse {
   users: AdminUser[];
 }
 
+export type AuditEvent = "admin_access" | "admin_denied" | "admin_page_denied";
+
+export interface AuditLogEntry {
+  id: number;
+  event: AuditEvent;
+  user_id: number | null;
+  email: string | null;
+  path: string;
+  ip: string | null;
+  user_agent: string | null;
+  created_at: string;
+}
+
+const AUDIT_EVENT_LABELS: Record<AuditEvent, string> = {
+  admin_access: "閲覧",
+  admin_denied: "拒否（管理API）",
+  admin_page_denied: "拒否（管理画面→トップへ）",
+};
+
+/** 閲覧記録の種類の表示名。想定外の値はそのまま出す */
+export function auditEventLabel(event: string): string {
+  return AUDIT_EVENT_LABELS[event as AuditEvent] ?? event;
+}
+
 /** D1 の "YYYY-MM-DD HH:MM:SS"(UTC) を日本時間の表示にする */
 export function formatDbTime(value: string | null): string {
   if (!value) return "—";

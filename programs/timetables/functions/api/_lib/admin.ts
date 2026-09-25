@@ -56,3 +56,24 @@ export function sanitizeNextPath(next: string | null | undefined): string | null
   if (!next) return null;
   return ALLOWED_NEXT_PATHS.has(next) ? next : null;
 }
+
+/**
+ * Cookie ヘッダから指定した名前の値を取り出す（Hono の Context が無い場所＝/admin のページ用関数で使う）。
+ * 見つからない・壊れている場合は null。
+ */
+export function readCookie(header: string | null | undefined, name: string): string | null {
+  if (!header) return null;
+  for (const part of header.split(";")) {
+    const eq = part.indexOf("=");
+    if (eq < 0) continue;
+    if (part.slice(0, eq).trim() !== name) continue;
+    const raw = part.slice(eq + 1).trim();
+    if (!raw) return null;
+    try {
+      return decodeURIComponent(raw);
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
