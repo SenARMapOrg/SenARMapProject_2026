@@ -1,5 +1,9 @@
 {
   "//": "Cloudflare Pages Functions 側（functions/）のテストの型チェック",
   "extends": "../functions/tsconfig.json",
-  "include": ["validate.test.ts", "../functions"]
+  "include": [
+    "validate.test.ts",
+    "admin.test.ts",
+    "../functions"
+  ]
 }

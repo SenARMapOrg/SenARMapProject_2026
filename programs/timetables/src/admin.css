@@ -1,0 +1,49 @@
+/* 管理画面(/admin)だけで使うスタイル。色・余白の基準は style.css の変数を使う */
+
+.admin-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.admin-stat {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 12px 14px;
+  background: #fff;
+}
+.admin-stat-value { font-size: 24px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.admin-stat-label { font-size: 12px; color: var(--ink-soft); }
+
+.admin-filter {
+  width: 100%;
+  max-width: 360px;
+  padding: 8px 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  font: inherit;
+  margin-bottom: 10px;
+}
+
+.admin-table-wrap { overflow-x: auto; }
+
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  white-space: nowrap;
+}
+.admin-table th,
+.admin-table td {
+  text-align: left;
+  padding: 7px 10px;
+  border-bottom: 1px solid var(--line);
+}
+.admin-table th { font-size: 12px; color: var(--ink-soft); font-weight: 700; background: var(--paper); position: sticky; top: 0; }
+.admin-table td.num { text-align: right; font-variant-numeric: tabular-nums; }
+.admin-table tr.is-empty td { color: var(--ink-soft); }
+.admin-table .muted { color: var(--ink-soft); }
+
+/* 一覧の列が多いので、管理画面だけ本文の幅を広げる */
+.admin-page .app { max-width: 1200px; }
