@@ -12,7 +12,7 @@ on:
 
 jobs:
   python:
-    name: 経路探索API・ナビ画面のテスト
+    name: 経路探索API・ナビ画面・シラバス解析のテスト
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -23,6 +23,7 @@ jobs:
           cache: pip
           cache-dependency-path: |
             deploy_env/python/requirements.txt
+            programs/syllabus_courses/requirements.txt
             programs/3D_Graph/requirements-dev.txt
 
       - name: 依存をインストール
