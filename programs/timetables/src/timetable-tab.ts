@@ -374,7 +374,7 @@ export async function renderTimetableTab(content: HTMLElement, me: Me): Promise<
   editSection.appendChild(regTabs);
 
   const slotForm = buildSlotForm(() => currentTerm, addSlot, removeSlot);
-  const nameForm = buildNameForm(addSlot);
+  const nameForm = buildNameForm(addSlot, () => currentTerm);
   slotForm.root.hidden = true;
   editSection.append(nameForm.root, slotForm.root);
 

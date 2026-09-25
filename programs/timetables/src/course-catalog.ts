@@ -102,8 +102,8 @@ function makeKey(parts: (string | number)[]): string {
  * シラバスの一覧表記だけからは区別できないため、安全側に倒して常に曜日・時限ごとに
  * 別々の「開講」として扱う（1つの授業が複数コマなら、それぞれを個別に追加すればよい）。
  *
- * 学期でフィルタしない＝前期・後期どちらの科目も常に全件対象にする
- * （前期タブを見ながら後期の予定も組みたい、という使い方に対応するため）。
+ * ここでは学期で絞り込まない。画面に出すときに filterOfferingsByTerm() で、開いている学期タブに
+ * 合う開講（前期タブなら前期と通年、後期タブなら後期と通年）だけに絞る。
  *
  * 通年かどうかをここで推測することは絶対にしない。term はシラバスに書かれている値を
  * scrape.py がそのまま持ってきたものなので、信頼してキーに含めるだけでよい。
@@ -128,6 +128,15 @@ export function groupOfferings(catalog: CourseCatalogEntry[]): CourseOffering[] 
     }
   }
   return [...map.values()];
+}
+
+/**
+ * 開いている学期タブに合う開講だけを残す。前期タブなら前期と通年、後期タブなら後期と通年。
+ * 前期にも後期にも開講されている科目は前期・後期それぞれの開講として別に入っているので、
+ * 開いているタブの側だけが残る。
+ */
+export function filterOfferingsByTerm(offerings: CourseOffering[], term: Term): CourseOffering[] {
+  return offerings.filter((o) => o.term === term || o.term === "both");
 }
 
 export function searchOfferings(
