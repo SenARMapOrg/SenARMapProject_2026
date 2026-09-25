@@ -126,8 +126,14 @@ Cloudflareダッシュボード → **Workers & Pages → Create → Pages → C
 | シークレット（Production / Preview 両方） | `GOOGLE_CLIENT_SECRET` |
 | シークレット（**Production のみ**） | `ADMIN_EMAILS`（管理画面を見られる人。下の「3-6. 管理画面」参照） |
 
-D1バインディングは `wrangler.toml` に書いてあっても、**Git連携ビルドではダッシュボード側の設定が優先される**ため、
-ダッシュボードでも必ず設定すること（`wrangler.toml` はローカルの `wrangler pages dev`/手動デプロイ用）。
+`wrangler.toml` に `pages_build_output_dir` が書かれているため、**D1 バインディングと環境変数（`vars`）は
+`wrangler.toml` が正になり、ダッシュボードでは変更できない**（「このプロジェクトのバインディングは
+wrangler.toml を通じて管理されています」と表示される）。変更は `wrangler.toml` を編集してデプロイする。
+シークレット（`GOOGLE_CLIENT_SECRET`・`ADMIN_EMAILS`）だけはダッシュボード（または `wrangler pages secret`）で管理する。
+
+本番（main）とプレビュー（それ以外のブランチ）で別のDBを使っている。本番はファイルの一番上の設定、
+プレビューは `[env.preview]` の設定が使われる。**`d1_databases` と `vars` は環境ごとに丸ごと書き直す種類の
+設定**なので、本番の `vars` を変えたら `[env.preview.vars]` も合わせて変えること（片方だけだとプレビューで消える）。
 
 ### 3-2. カスタムドメイン
 
@@ -272,9 +278,8 @@ Pagesプロジェクト → Custom domains から追加する（手動でDNSレ�
   プレビューとしてビルドされる設定になっている。この状態では、リポジトリに push できる人なら誰でも
   （その人の GitHub アカウントが乗っ取られた場合も含む）、本番DBを読み書きするコードを公開URL
   （`*.pages.dev`）で動かせてしまい、管理者判定や閲覧記録を素通りできる。
-  プレビュー用のD1（`timetables-db-preview`、2026-09-25 作成・マイグレーション適用済み。
-  設定は `wrangler.preview-db.toml`、適用は `npm run db:migrate:preview`）を別に作ったので、
-  ダッシュボードで **Preview** の `DB` バインディングをこちらに差し替えること。あわせて、プレビューでは使わない `GOOGLE_CLIENT_SECRET` も
+  → **対応済み**: プレビュー用のD1（`timetables-db-preview`）を作り、`wrangler.toml` の `[env.preview]` で
+  プレビューだけそちらを使うようにした（マイグレーションは `npm run db:migrate:preview`）。あわせて、プレビューでは使わない `GOOGLE_CLIENT_SECRET` も
   プレビュー環境から外す（`OAUTH_REDIRECT_URI` が本番ドメインなので、プレビューではもともとログインできない）
 
 - **プライバシーポリシー / 利用規約の掲示**: 「誰が」「何のために」「どのデータを」「いつまで」保持するかを
