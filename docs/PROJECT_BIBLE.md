@@ -574,8 +574,9 @@ CIで走るテストは3系統。いずれも `.github/workflows/test.yml` が p
 
 | 対象 | 置き場所 | 実行 |
 |---|---|---|
-| 経路探索API（`ikunavi`）| `programs/3D_Graph/tests/` | `pytest`（リポジトリ直下の `pytest.ini` が両方のテストを拾う）|
+| 経路探索API（`ikunavi`）| `programs/3D_Graph/tests/` | `pytest`（リポジトリ直下の `pytest.ini` が3つとも拾う）|
 | ナビ画面のHTML/JSの噛み合わせ | `programs/html/tests/` | 同上 |
+| シラバス一覧HTMLの解析（前期・後期・通年の切り分け）| `programs/syllabus_courses/tests/` | 同上 |
 | 時間割サービス | `programs/timetables/tests/` | `npm run test`（vitest）+ `npm run typecheck` + `npm run build` |
 
 **経路探索APIのテスト**は、リポジトリの `data/` ではなく `tests/conftest.py` が組み立てる
