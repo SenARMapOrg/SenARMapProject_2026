@@ -25,3 +25,5 @@ GOOGLE_CLIENT_ID = "178048918023-5kr2gbeurb05a9dj662drv6gccn5us62.apps.googleuse
 
 # 以下はダッシュボード or `wrangler pages secret put` で別途設定するシークレット:
 #   GOOGLE_CLIENT_SECRET
+#   ADMIN_EMAILS  … 管理画面(/admin)を見られるメールアドレス（カンマ区切り）。Production のみに設定する。
+#                   未設定なら誰も見られない。ローカルでは `wrangler pages dev dist --binding ADMIN_EMAILS=...`

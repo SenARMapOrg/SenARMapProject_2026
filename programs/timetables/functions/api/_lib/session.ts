@@ -8,6 +8,7 @@ import type { AppEnv } from "./types";
 export const SESSION_COOKIE = "session";
 export const OAUTH_STATE_COOKIE = "oauth_state";
 export const OAUTH_VERIFIER_COOKIE = "oauth_verifier";
+export const OAUTH_NEXT_COOKIE = "oauth_next";
 
 /**
  * ローカル開発(http://localhost)ではSecure Cookieがブラウザに保存されないため、
@@ -36,19 +37,30 @@ export function clearSessionCookie(c: Context): void {
   deleteCookie(c, SESSION_COOKIE, { path: "/" });
 }
 
-export function setOauthCookies(c: Context, state: string, codeVerifier: string): void {
+/**
+ * nextPath はログイン後の戻り先。呼び出し側で sanitizeNextPath() を通した値だけを渡すこと
+ * （ここでは検証しない）。戻り先が無い場合は前回の値が残らないよう削除する。
+ */
+export function setOauthCookies(c: Context, state: string, codeVerifier: string, nextPath: string | null = null): void {
   // stateとPKCE検証用の値は認可フロー中(数分)だけ必要なので短い有効期限にする
   const opts = { ...baseCookieOptions(c), maxAge: 10 * 60 };
   setCookie(c, OAUTH_STATE_COOKIE, state, opts);
   setCookie(c, OAUTH_VERIFIER_COOKIE, codeVerifier, opts);
+  if (nextPath) {
+    setCookie(c, OAUTH_NEXT_COOKIE, nextPath, opts);
+  } else {
+    deleteCookie(c, OAUTH_NEXT_COOKIE, { path: "/" });
+  }
 }
 
-export function readAndClearOauthCookies(c: Context): { state?: string; codeVerifier?: string } {
+export function readAndClearOauthCookies(c: Context): { state?: string; codeVerifier?: string; nextPath?: string } {
   const state = getCookie(c, OAUTH_STATE_COOKIE);
   const codeVerifier = getCookie(c, OAUTH_VERIFIER_COOKIE);
+  const nextPath = getCookie(c, OAUTH_NEXT_COOKIE);
   deleteCookie(c, OAUTH_STATE_COOKIE, { path: "/" });
   deleteCookie(c, OAUTH_VERIFIER_COOKIE, { path: "/" });
-  return { state, codeVerifier };
+  deleteCookie(c, OAUTH_NEXT_COOKIE, { path: "/" });
+  return { state, codeVerifier, nextPath };
 }
 
 /**

@@ -4,6 +4,9 @@ export type Bindings = {
   OAUTH_REDIRECT_URI: string;
   GOOGLE_CLIENT_ID: string;
   GOOGLE_CLIENT_SECRET: string;
+  // 管理画面(/admin)を見られるメールアドレス（カンマ区切り）。未設定なら誰も見られない。
+  // リポジトリには書かず、Cloudflare Pages の環境変数（本番のみ）で設定する。
+  ADMIN_EMAILS?: string;
 };
 
 export type Variables = {

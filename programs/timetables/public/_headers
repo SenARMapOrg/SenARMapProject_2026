@@ -1,0 +1,23 @@
+# Cloudflare Pages のレスポンスヘッダ設定（dist/ に丸ごとコピーされる）。
+# 管理画面は登録ユーザーのメールアドレスと名前を表示するため、ページ自体にも厳しいヘッダを付ける。
+# （データは /api/admin/* から取得し、API 側でも同じ種類のヘッダを付けている）
+#   - CSP: 自サイトのスクリプト・スタイル・通信以外を禁止（XSS が起きても外部へ送れないように）
+#   - frame-ancestors / X-Frame-Options: 他サイトへの埋め込み（クリックジャッキング）を禁止
+#   - no-store / noindex / no-referrer: キャッシュ・検索エンジン・リファラ経由での漏えいを防ぐ
+/admin
+  Content-Security-Policy: default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'self'; font-src 'self'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: no-referrer
+  X-Robots-Tag: noindex, nofollow
+  Cache-Control: no-store, max-age=0
+  Permissions-Policy: camera=(), microphone=(), geolocation=()
+
+/admin.html
+  Content-Security-Policy: default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'self'; font-src 'self'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: no-referrer
+  X-Robots-Tag: noindex, nofollow
+  Cache-Control: no-store, max-age=0
+  Permissions-Policy: camera=(), microphone=(), geolocation=()
