@@ -17,12 +17,18 @@ export async function createSession(db: D1Database, userId: number): Promise<Ses
   return { id, user_id: userId, created_at: new Date().toISOString(), expires_at: expiresAt };
 }
 
+/**
+ * 有効期限内のセッションに対応するユーザーを返す。
+ * expires_at は ISO 8601（"2026-10-25T03:00:00.000Z"）で保存しているのに対し、datetime('now') は
+ * "2026-10-25 03:00:00" 形式なので、文字列のまま比べると期限当日は日付の後ろの 'T' と ' ' の比較になり
+ * 期限切れ後も最大1日有効なままになる。datetime() で同じ形式にそろえてから比べる。
+ */
 export async function findValidSession(db: D1Database, sessionId: string): Promise<UserRow | null> {
   const row = await db
     .prepare(
       `SELECT u.* FROM sessions s
        JOIN users u ON u.id = s.user_id
-       WHERE s.id = ? AND s.expires_at > datetime('now')`,
+       WHERE s.id = ? AND datetime(s.expires_at) > datetime('now')`,
     )
     .bind(sessionId)
     .first<UserRow>();
