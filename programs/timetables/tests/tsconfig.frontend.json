@@ -4,6 +4,7 @@
   "include": [
     "timetable-grid.test.ts",
     "admin-format.test.ts",
+    "ikunavi-rooms.test.ts",
     "../src"
   ]
 }

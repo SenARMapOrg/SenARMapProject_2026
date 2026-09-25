@@ -8,6 +8,7 @@
 // 今の時限に教室が無い場合は「空」のまま出発地なしで開く。
 
 import { type Term } from "./api";
+import { findRoom, loadIkuNaviRooms } from "./ikunavi-rooms";
 import { entryKey, getNowInfo, PERIOD_TIMES, TERM_LABELS, type SlotMap } from "./timetable-grid";
 
 // ナビ(programs/html/navi)は別サブドメインで公開されている。?from=&to= で教室名を渡すと
@@ -70,6 +71,13 @@ export async function renderNavPanel(
   link.rel = "noopener";
   const params = new URLSearchParams({ to: nextEntry.location });
   if (currentEntry?.location) params.set("from", currentEntry.location);
+  // 教室が IKU NAVI の教室と一致すれば建物番号も渡す（同じ名前の教室が複数の建物にあっても迷わないように）。
+  // 一致しない（オンライン・未登録の教室など）場合は教室名だけ渡し、IKU NAVI 側の入力欄に入った状態で開く
+  const buildings = await loadIkuNaviRooms();
+  const toRoom = findRoom(buildings, nextEntry.location);
+  if (toRoom) params.set("to_bldg", String(toRoom.building));
+  const fromRoom = findRoom(buildings, currentEntry?.location);
+  if (fromRoom) params.set("from_bldg", String(fromRoom.building));
   link.href = `${NAVI_BASE_URL}?${params.toString()}`;
   link.textContent = "次の教室へのナビを開く";
   panel.appendChild(link);

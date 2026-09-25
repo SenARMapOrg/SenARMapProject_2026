@@ -55,5 +55,16 @@ BUILDING_COLORS = [
 CORS_ALLOWED_ORIGINS = {
     "https://iku-navi.net",
     "https://www.iku-navi.net",
+    # 時間割共有（programs/timetables）が、教室の選択肢を作るために /api/all を読む
+    "https://timetables.iku-navi.net",
 }
+
+
+def cors_extra_origins():
+    """環境変数 IKUNAVI_CORS_EXTRA_ORIGINS（カンマ区切り）で許可オリジンを足す。
+    ローカルで時間割共有（wrangler pages dev）からこのAPIを読んで動作確認するとき用。本番では設定しない。"""
+    raw = os.environ.get("IKUNAVI_CORS_EXTRA_ORIGINS", "")
+    return {o.strip() for o in raw.split(",") if o.strip()}
+
+
 CORS_ORIGIN_PATTERN = r"^https://[a-z0-9.-]+\.pages\.dev$"  # Pages プレビュー用

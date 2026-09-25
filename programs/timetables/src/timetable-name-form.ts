@@ -11,11 +11,12 @@
 // 再集計されるだけで、共有の正本を持たない）。
 
 import { api, type Term } from "./api";
+import { createLocationField, type LocationField } from "./location-field";
 import {
-  AVAILABLE_COURSE_YEARS, DEFAULT_COURSE_YEAR, groupOfferings, loadCatalog, loadDepartmentCatalog,
-  searchOfferings, type CourseOffering, type OfferingTerm,
+  AVAILABLE_COURSE_YEARS, DEFAULT_COURSE_YEAR, filterOfferingsByTerm, groupOfferings, loadCatalog,
+  loadDepartmentCatalog, searchOfferings, type CourseOffering, type OfferingTerm,
 } from "./course-catalog";
-import { DAY_LABELS } from "./timetable-grid";
+import { DAY_LABELS, TERM_LABELS } from "./timetable-grid";
 
 const MAX_OFFERING_RESULTS = 30;
 const OFFERING_TERM_LABELS: Record<OfferingTerm, string> = { spring: "前期", fall: "後期", both: "通年" };
@@ -38,13 +39,16 @@ export function buildNameForm(
     term: Term, day: number, period: number, courseName: string, location: string | null,
     instructor: string | null,
   ) => boolean,
+  /** 今開いている学期タブ。一覧はこの学期と通年の科目だけに絞る */
+  getCurrentTerm: () => Term,
 ): NameFormHandle {
   const root = document.createElement("div");
   root.className = "reg-form";
   root.innerHTML = `
     <p class="hint">
       シラバスの開講科目一覧（<a href="/../syllabus_courses/" target="_blank" rel="noopener">programs/syllabus_courses</a>のデータ、2020〜2026年度分）から検索して選ぶと、
-      科目自身の学期（前期・後期・通年）に応じて自動で挿入されます。今表示している学期とは関係なく、前期タブを見ながら後期の科目を追加することもできます。
+      科目自身の学期（前期・後期・通年）に応じて自動で挿入されます。一覧には、今開いている学期タブの科目と通年の科目だけが出ます
+      （前期タブなら前期と通年、後期タブなら後期と通年。もう一方の学期の科目を探すときは、上の学期タブを切り替えてください）。
       過去の学年の時間割を登録する場合は、下の年度セレクトでその当時の年度に切り替えて検索してください。
       教室欄には、同じ開講（学期・曜日・時限・科目名・担当教員が一致するもの）に他の学生が登録した教室があれば自動で下書きされます
       （担当教員まで一致するものだけを見るので、同じ科目名でも別の先生が担当する別クラスの教室が混ざることはありません）。
@@ -52,6 +56,7 @@ export function buildNameForm(
       下のグリッドの空いているマスをクリックすると、そのコマに入れられる科目だけに絞り込めます。
     </p>
     <p class="hint slot-filter-badge" hidden></p>
+    <p class="hint reg-term-note"></p>
     <div class="filters">
       <label>年度 <select class="reg-year"></select></label>
       <label>学部 <select class="reg-faculty"><option value="">すべての学部</option></select></label>
@@ -77,6 +82,7 @@ export function buildNameForm(
   const queryInput = root.querySelector<HTMLInputElement>(".reg-query")!;
   const loadingEl = root.querySelector<HTMLParagraphElement>(".reg-loading")!;
   const listEl = root.querySelector<HTMLUListElement>(".offering-list")!;
+  const termNoteEl = root.querySelector<HTMLParagraphElement>(".reg-term-note")!;
   const messageEl = root.querySelector<HTMLParagraphElement>(".reg-message")!;
   const slotFilterBadge = root.querySelector<HTMLParagraphElement>(".slot-filter-badge")!;
 
@@ -184,11 +190,11 @@ export function buildNameForm(
   }
 
   /** 教室入力欄に候補を下書きする。ユーザーが既に何か入力していたら上書きしない */
-  async function fillLocationSuggestion(o: CourseOffering, input: HTMLInputElement): Promise<void> {
+  async function fillLocationSuggestion(o: CourseOffering, field: LocationField): Promise<void> {
     const key = offeringKey(o);
     if (suggestionCache.has(key)) {
       const cached = suggestionCache.get(key) ?? null;
-      if (cached && !input.value) input.value = cached;
+      if (cached && !field.input.value) field.setValue(cached);
       return;
     }
     try {
@@ -199,13 +205,18 @@ export function buildNameForm(
       suggestionCache.set(key, res.location);
       // 問い合わせ中にリストが再描画されて要素がDOMから外れていても、
       // 値を入れておけば後で参照された時のためのキャッシュにはなる（無害）
-      if (res.location && !input.value) input.value = res.location;
+      if (res.location && !field.input.value) field.setValue(res.location);
     } catch {
       // 候補が取得できなくても教室欄は空のまま手入力できるので、追加自体には支障ない
     }
   }
 
   function render(): void {
+    const term = getCurrentTerm();
+    const otherLabel = TERM_LABELS[term === "spring" ? "fall" : "spring"];
+    termNoteEl.textContent = `${TERM_LABELS[term]}タブを表示中のため、${TERM_LABELS[term]}と通年の科目だけを表示しています`
+      + `（${otherLabel}の科目は、上の学期タブを${otherLabel}に切り替えると表示されます）。`;
+
     const query = queryInput.value.trim();
     const faculty = facultySelect.value;
     const department = departmentSelect.value;
@@ -214,7 +225,7 @@ export function buildNameForm(
       listEl.replaceChildren();
       return;
     }
-    let matched = searchOfferings(offerings, query, faculty, department);
+    let matched = filterOfferingsByTerm(searchOfferings(offerings, query, faculty, department), term);
     if (slotFilter) {
       matched = matched.filter((o) => o.slots.some(
         (s) => s.day_of_week === slotFilter!.day && s.period === slotFilter!.period,
@@ -234,12 +245,12 @@ export function buildNameForm(
           <span class="offering-slots">${escapeHtml(slotsLabel)}</span>
         </div>
         <div class="offering-sub">${escapeHtml(o.instructor ?? "")} ・ ${escapeHtml(deptLabel)}</div>
-        <div class="offering-location-row">
-          <input type="text" class="offering-location-input" maxlength="100" placeholder="教室（任意）">
-        </div>
+        <div class="offering-location-row"></div>
       `;
-      const locationInput = li.querySelector<HTMLInputElement>(".offering-location-input")!;
-      void fillLocationSuggestion(o, locationInput);
+      const locationField = createLocationField({ placeholder: "教室（任意・例: 10101教室・オンライン）" });
+      li.querySelector(".offering-location-row")!.appendChild(locationField.root);
+      const locationInput = locationField.input;
+      void fillLocationSuggestion(o, locationField);
 
       const siblingRow = document.createElement("div");
       siblingRow.className = "offering-sibling-row";

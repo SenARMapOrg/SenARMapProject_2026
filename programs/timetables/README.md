@@ -183,6 +183,28 @@ Pagesプロジェクト → Custom domains から追加する（手動でDNSレ�
 
 ---
 
+### 3-5b. 教室の入力（IKU NAVI との連携）
+
+教室欄（「時間を指定して追加」と「科目名から追加」の各行）は、次のどれでも入力できる（`src/location-field.ts`）。
+
+- **プルダウン**: IKU NAVI の教室を、建物順（番号順・屋外は最後）→教室名順（数字は数値として比較）に並べたもの
+- **入力欄＋予測変換**: 打ち始めると IKU NAVI の教室が「建物名＋教室名」で候補に出る。建物名（「10号館」など）で打っても絞り込める。↑↓・Enter・Esc で操作できる
+- **自由入力**: 「オンライン」や IKU NAVI に未登録の教室など、何でもそのまま書ける
+
+教室データは IKU NAVI のナビ画面と同じ `https://api.iku-navi.net/api/all` を画面から直接読む（`src/ikunavi-rooms.ts`）。
+教室は追加され続けているため、静的なコピーを置かずに毎回APIから取っている。APIを読めない場合は
+プルダウンを隠し、自由入力だけで使えるようにしている。そのため:
+
+- API（`programs/3D_Graph`）の CORS 許可リストに `https://timetables.iku-navi.net` を入れている（`ikunavi/config.py`）
+- このアプリの CSP の `connect-src` に `https://api.iku-navi.net` を入れている（`public/_headers`）
+- ローカルで試すときは、Flask を `IKUNAVI_CORS_EXTRA_ORIGINS=http://127.0.0.1:8788 python app.py` のように起動し、
+  `VITE_IKUNAVI_API_BASE=http://127.0.0.1:5001 npm run build` でビルドする（CSP はビルド後の `dist/_headers` の
+  `connect-src` を一時的にローカルのAPIに書き換える）
+
+IKU NAVI の教室を選ぶと表示名（例: `10101教室`）が保存される。「次の教室へのナビを開く」では、保存された教室名が
+IKU NAVI の教室と一致すれば建物番号（`to_bldg` / `from_bldg`）も一緒に渡すので、同じ名前の教室が複数の建物に
+あっても IKU NAVI が教室を特定できる。一致しない教室（オンラインなど）は教室名だけを渡す。
+
 ### 3-6. 管理画面（`/admin`）
 
 `https://timetables.iku-navi.net/admin` を開くと、管理者だけが登録ユーザーの一覧を見られる。
@@ -278,8 +300,14 @@ Pagesプロジェクト → Custom domains から追加する（手動でDNSレ�
   プレビューとしてビルドされる設定になっている。この状態では、リポジトリに push できる人なら誰でも
   （その人の GitHub アカウントが乗っ取られた場合も含む）、本番DBを読み書きするコードを公開URL
   （`*.pages.dev`）で動かせてしまい、管理者判定や閲覧記録を素通りできる。
-  → **対応済み**: プレビュー用のD1（`timetables-db-preview`）を作り、`wrangler.toml` の `[env.preview]` で
-  プレビューだけそちらを使うようにした（マイグレーションは `npm run db:migrate:preview`）。あわせて、プレビューでは使わない `GOOGLE_CLIENT_SECRET` も
+  → **一部対応済み**: プレビュー用のD1（`timetables-db-preview`）を作り、`wrangler.toml` の `[env.preview]` で
+  プレビューだけそちらを使うようにした（マイグレーションは `npm run db:migrate:preview`）。
+  ただし、バインディングは**ブランチごとの `wrangler.toml`** で決まるため、これで防げるのは
+  「うっかり本番DBにつながる」ことだけ。(1) この設定を取り込んでいない古いブランチのプレビューは
+  本番DBのまま、(2) push できる人が自分のブランチの `wrangler.toml` に本番DBのIDを書けば、
+  プレビューを本番DBにつなぎ直せる（IDは公開されている）。故意の悪用まで防ぐには、ダッシュボードの
+  Settings → Builds → Branch control で**プレビューをビルドするブランチを信頼できるものに限る**か、
+  プレビューURLを Cloudflare Access で保護する必要があるあわせて、プレビューでは使わない `GOOGLE_CLIENT_SECRET` も
   プレビュー環境から外す（`OAUTH_REDIRECT_URI` が本番ドメインなので、プレビューではもともとログインできない）
 
 - **プライバシーポリシー / 利用規約の掲示**: 「誰が」「何のために」「どのデータを」「いつまで」保持するかを

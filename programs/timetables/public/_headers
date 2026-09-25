@@ -4,9 +4,10 @@
 #
 #   - CSP: 自サイトのスクリプト・スタイル・通信以外を禁止する。利用者向けの画面でXSSが起きても、
 #     外部のスクリプトを読み込んだり外部へデータを送ったりできないようにする
+#     通信先は自サイトのほか、教室の選択肢を作るための IKU NAVI のAPI（api.iku-navi.net）だけ許可する
 #   - frame-ancestors / X-Frame-Options: 他サイトへの埋め込み（クリックジャッキング）を禁止
 /*
-  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; font-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self' https://api.iku-navi.net; font-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'
   X-Frame-Options: DENY
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
