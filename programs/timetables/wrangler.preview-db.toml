@@ -1,0 +1,12 @@
+# プレビュー環境用のD1（timetables-db-preview）にマイグレーションを当てるための専用設定。
+#   npm run db:migrate:preview
+# Pages のデプロイには使われない（Pages が読むのは wrangler.toml だけ）。
+# プレビュー環境を本番DBから切り離すために作ったDB。README「投入前に判断・対応が必要なこと」参照。
+# database_id は秘密情報ではない（DBを操作するには Cloudflare アカウントの認証が別に必要）。
+name = "timetables-preview-db-migrations"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "timetables-db-preview"
+database_id = "539d5b79-45b6-46cc-82e8-a7d968516301"
+migrations_dir = "migrations"

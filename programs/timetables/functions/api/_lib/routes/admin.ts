@@ -5,11 +5,13 @@
 //   - 管理者だがログインから時間が経ちすぎている → 401 {code:"reauth_required"}
 //     （この応答が返るのは管理者本人だけなので、存在を知らせても問題ない）
 //   - 閲覧記録（admin_audit_log）を書けなかった → 503。記録を残せない状態では一覧を見せない
+//   - 自サイトのページ以外からのリクエスト（Sec-Fetch-Site が same-origin 以外）→ 404
 // 閲覧専用で、データを変更するエンドポイントは置かない。
 
 import { Hono, type Context, type Next } from "hono";
 import { getCookie } from "hono/cookie";
 
+import { ADMIN_SECURITY_HEADERS, isSameOriginRequest } from "../admin";
 import { recordAudit, recordDenial, requestMeta, resolveAdminAccess } from "../admin-access";
 import { getAdminSummary, listRecentAuditLog, listUsersForAdmin } from "../db";
 import { SESSION_COOKIE } from "../session";
@@ -24,17 +26,15 @@ const AUDIT_LOG_LIMIT = 100;
 
 /** 管理APIの応答に必ず付けるヘッダ（個人情報を含むのでキャッシュ・インデックス・埋め込みを禁止） */
 function setAdminResponseHeaders(c: Context<AppEnv>): void {
-  c.header("Cache-Control", "no-store, max-age=0");
-  c.header("Pragma", "no-cache");
-  c.header("X-Robots-Tag", "noindex, nofollow");
-  c.header("X-Content-Type-Options", "nosniff");
-  c.header("X-Frame-Options", "DENY");
-  c.header("Referrer-Policy", "no-referrer");
+  for (const [name, value] of Object.entries(ADMIN_SECURITY_HEADERS)) c.header(name, value);
 }
 
 function requireAdmin() {
   return async (c: Context<AppEnv>, next: Next) => {
     setAdminResponseHeaders(c);
+
+    // 別サイトから管理者のブラウザ経由で叩かせるリクエストは、判定より前に門前払いする
+    if (!isSameOriginRequest(c.req.header("Sec-Fetch-Site"))) return c.json(NOT_FOUND, 404);
 
     const access = await resolveAdminAccess(c.env.DB, c.env.ADMIN_EMAILS, getCookie(c, SESSION_COOKIE) ?? null);
     const meta = requestMeta(c.req.raw);
