@@ -10,7 +10,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p functions/tsconfig.json && tsc --noEmit -p tests/tsconfig.frontend.json && tsc --noEmit -p tests/tsconfig.functions.json",
     "db:migrate:local": "wrangler d1 migrations apply timetables-db --local",
     "db:migrate:remote": "wrangler d1 migrations apply timetables-db --remote",
-    "db:migrate:preview": "wrangler d1 migrations apply timetables-db-preview --remote --config wrangler.preview-db.toml",
+    "db:migrate:preview": "wrangler d1 migrations apply timetables-db-preview --remote --env preview",
     "sync-courses": "sh scripts/sync-courses.sh",
     "test": "vitest run",
     "test:watch": "vitest"
