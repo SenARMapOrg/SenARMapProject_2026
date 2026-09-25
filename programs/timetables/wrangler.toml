@@ -27,3 +27,27 @@ GOOGLE_CLIENT_ID = "178048918023-5kr2gbeurb05a9dj662drv6gccn5us62.apps.googleuse
 #   GOOGLE_CLIENT_SECRET
 #   ADMIN_EMAILS  … 管理画面(/admin)を見られるメールアドレス（カンマ区切り）。Production のみに設定する。
 #                   未設定なら誰も見られない。ローカルでは `wrangler pages dev dist --binding ADMIN_EMAILS=...`
+
+# ------------------------------------------------------------------------------------------
+# プレビュー環境（main 以外のブランチのデプロイ、*.pages.dev）の設定。
+#
+# このファイルに pages_build_output_dir があるため、Pages のバインディングと環境変数は
+# ダッシュボードではなくこのファイルが正になる（ダッシュボードでは変更できない）。
+#
+# プレビューは本番と別のDB（timetables-db-preview）を使う。同じDBを使うと、リポジトリに push できる人なら
+# 誰でも本番DBを読み書きするコードを公開URLで動かせてしまうため（2026-09-25 のセキュリティ点検で判明）。
+#
+# 注意: d1_databases と vars は「環境ごとに丸ごと書き直す」種類の設定で、[env.preview] で片方だけ書くと、
+# もう片方はプレビューで空になる。DB を分けるときは vars も同じ内容をここに書き直している。
+# 上の本番用の vars を変えたら、ここも合わせて変えること。
+# ------------------------------------------------------------------------------------------
+[[env.preview.d1_databases]]
+binding = "DB"
+database_name = "timetables-db-preview"
+database_id = "539d5b79-45b6-46cc-82e8-a7d968516301"
+
+[env.preview.vars]
+ALLOWED_EMAIL_DOMAIN = "senshu-u.jp"
+# OAuth のコールバック先は本番ドメインに固定されているため、プレビューではログインできない（意図どおり）
+OAUTH_REDIRECT_URI = "https://timetables.iku-navi.net/api/auth/callback"
+GOOGLE_CLIENT_ID = "178048918023-5kr2gbeurb05a9dj662drv6gccn5us62.apps.googleusercontent.com"
