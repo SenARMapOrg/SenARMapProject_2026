@@ -1,7 +1,7 @@
 // 管理画面の表示用の整形処理
 import { describe, expect, it } from "vitest";
 
-import { formatDbTime, matchesFilter, type AdminUser } from "../src/admin-format";
+import { auditEventLabel, formatDbTime, matchesFilter, type AdminUser } from "../src/admin-format";
 
 const user: AdminUser = {
   id: 1, email: "taro@senshu-u.jp", display_name: "専修 太郎", nickname: "たろう",
@@ -34,5 +34,17 @@ describe("matchesFilter", () => {
 
   it("あだ名・学部が未設定でも落ちない", () => {
     expect(matchesFilter({ ...user, nickname: null, faculty: null, department: null }, "x")).toBe(false);
+  });
+});
+
+describe("auditEventLabel", () => {
+  it("記録の種類を日本語で表示する", () => {
+    expect(auditEventLabel("admin_access")).toBe("閲覧");
+    expect(auditEventLabel("admin_denied")).toBe("拒否（管理API）");
+    expect(auditEventLabel("admin_page_denied")).toBe("拒否（管理画面→トップへ）");
+  });
+
+  it("想定外の値はそのまま出す", () => {
+    expect(auditEventLabel("something_new")).toBe("something_new");
   });
 });

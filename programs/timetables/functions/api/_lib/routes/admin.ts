@@ -4,19 +4,23 @@
 //   - 未ログイン・管理者でない → 404（管理APIがあること自体を知らせない）
 //   - 管理者だがログインから時間が経ちすぎている → 401 {code:"reauth_required"}
 //     （この応答が返るのは管理者本人だけなので、存在を知らせても問題ない）
+//   - 閲覧記録（admin_audit_log）を書けなかった → 503。記録を残せない状態では一覧を見せない
 // 閲覧専用で、データを変更するエンドポイントは置かない。
 
 import { Hono, type Context, type Next } from "hono";
 import { getCookie } from "hono/cookie";
 
-import { isAdminEmail, isSessionFresh, parseAdminEmails } from "../admin";
-import { findValidSession, getAdminSummary, getSessionCreatedAt, listUsersForAdmin } from "../db";
+import { recordAudit, recordDenial, requestMeta, resolveAdminAccess } from "../admin-access";
+import { getAdminSummary, listRecentAuditLog, listUsersForAdmin } from "../db";
 import { SESSION_COOKIE } from "../session";
 import type { AppEnv } from "../types";
 
 export const adminRoutes = new Hono<AppEnv>();
 
 const NOT_FOUND = { error: "Not Found" } as const;
+
+/** 管理画面に表示する閲覧記録の件数 */
+const AUDIT_LOG_LIMIT = 100;
 
 /** 管理APIの応答に必ず付けるヘッダ（個人情報を含むのでキャッシュ・インデックス・埋め込みを禁止） */
 function setAdminResponseHeaders(c: Context<AppEnv>): void {
@@ -32,36 +36,27 @@ function requireAdmin() {
   return async (c: Context<AppEnv>, next: Next) => {
     setAdminResponseHeaders(c);
 
-    const adminEmails = parseAdminEmails(c.env.ADMIN_EMAILS);
-    if (adminEmails.size === 0) return c.json(NOT_FOUND, 404);
+    const access = await resolveAdminAccess(c.env.DB, c.env.ADMIN_EMAILS, getCookie(c, SESSION_COOKIE) ?? null);
+    const meta = requestMeta(c.req.raw);
 
-    const sessionId = getCookie(c, SESSION_COOKIE);
-    if (!sessionId) return c.json(NOT_FOUND, 404);
-
-    const user = await findValidSession(c.env.DB, sessionId);
-    if (!user || !isAdminEmail(user.email, adminEmails)) {
-      if (user) {
-        // 管理者でないユーザーが管理APIを叩いた記録（誰かが探っている兆候として見られるように）
-        console.warn(JSON.stringify({ event: "admin_denied", user_id: user.id, path: c.req.path }));
-      }
+    if (access.kind === "anonymous") return c.json(NOT_FOUND, 404);
+    if (access.kind === "not_admin") {
+      await recordDenial(c.env.DB, "admin_denied", access.user, meta);
       return c.json(NOT_FOUND, 404);
     }
-
-    const sessionCreatedAt = await getSessionCreatedAt(c.env.DB, sessionId);
-    if (!isSessionFresh(sessionCreatedAt, new Date())) {
+    if (!access.fresh) {
       return c.json({ error: "再ログインが必要です", code: "reauth_required" }, 401);
     }
 
-    // 監査ログ（Cloudflare のリアルタイムログに出る）。閲覧した管理者と日時・接続元を残す
-    console.log(JSON.stringify({
-      event: "admin_access",
-      admin_user_id: user.id,
-      path: c.req.path,
-      ip: c.req.header("CF-Connecting-IP") ?? null,
-      at: new Date().toISOString(),
-    }));
+    // 記録を残せないなら見せない（記録が欠けた閲覧を作らない）
+    try {
+      await recordAudit(c.env.DB, "admin_access", access.user, meta);
+    } catch (err) {
+      console.error(JSON.stringify({ event: "audit_write_failed", admin_user_id: access.user.id, error: String(err) }));
+      return c.json({ error: "閲覧記録を保存できないため表示できません。管理者に連絡してください。" }, 503);
+    }
 
-    c.set("user", user);
+    c.set("user", access.user);
     await next();
   };
 }
@@ -74,6 +69,10 @@ adminRoutes.get("/users", async (c) => {
     listUsersForAdmin(c.env.DB),
   ]);
   return c.json({ summary, users });
+});
+
+adminRoutes.get("/audit-log", async (c) => {
+  return c.json({ entries: await listRecentAuditLog(c.env.DB, AUDIT_LOG_LIMIT) });
 });
 
 // 管理者向けの未知のパスも、一般向けと同じ 404 にそろえる

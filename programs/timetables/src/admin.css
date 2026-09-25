@@ -47,3 +47,5 @@
 
 /* 一覧の列が多いので、管理画面だけ本文の幅を広げる */
 .admin-page .app { max-width: 1200px; }
+
+.panel + .panel { margin-top: 14px; }

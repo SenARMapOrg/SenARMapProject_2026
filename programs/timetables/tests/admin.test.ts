@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   ADMIN_SESSION_MAX_AGE_MS, isAdminEmail, isSessionFresh, parseAdminEmails, parseDbTimestamp,
-  sanitizeNextPath,
+  readCookie, sanitizeNextPath,
 } from "../functions/api/_lib/admin";
 
 describe("管理者の許可リスト", () => {
@@ -93,5 +93,27 @@ describe("ログイン後の戻り先", () => {
   it("未指定なら null", () => {
     expect(sanitizeNextPath(undefined)).toBeNull();
     expect(sanitizeNextPath(null)).toBeNull();
+  });
+});
+
+describe("Cookie ヘッダの読み取り（/admin のページ用）", () => {
+  it("指定した名前の値を取り出す", () => {
+    expect(readCookie("theme=dark; session=abc123; other=1", "session")).toBe("abc123");
+  });
+
+  it("名前は完全一致で探す（前方一致の別Cookieに引っかからない）", () => {
+    expect(readCookie("session_old=zzz; session=abc", "session")).toBe("abc");
+    expect(readCookie("xsession=zzz", "session")).toBeNull();
+  });
+
+  it("無い・空・壊れた値は null", () => {
+    expect(readCookie(null, "session")).toBeNull();
+    expect(readCookie("", "session")).toBeNull();
+    expect(readCookie("session=", "session")).toBeNull();
+    expect(readCookie("session=%E0%A4%A", "session")).toBeNull();
+  });
+
+  it("URLエンコードされた値は戻す", () => {
+    expect(readCookie("oauth_next=%2Fadmin", "oauth_next")).toBe("/admin");
   });
 });

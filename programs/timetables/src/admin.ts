@@ -6,13 +6,23 @@
 // （innerHTML にデータを入れない）。
 
 import { api, ApiError, apiFetch } from "./api";
-import { formatDbTime, matchesFilter, type AdminUser, type AdminUsersResponse } from "./admin-format";
+import {
+  auditEventLabel, formatDbTime, matchesFilter,
+  type AdminUser, type AdminUsersResponse, type AuditLogEntry,
+} from "./admin-format";
 import { gradeLabel } from "./timetable-grid";
 
 // 管理APIの呼び出しは、利用者向けの画面のJSに含めないよう、このファイルにだけ置く
-/** 管理者以外・未ログインは 404、管理者でもログインから時間が経っていれば 401 */
+/**
+ * 管理者以外・未ログインは 404、管理者でもログインから時間が経っていれば 401、
+ * 閲覧記録を保存できないときは 503
+ */
 function fetchAdminUsers(): Promise<AdminUsersResponse> {
   return apiFetch("/api/admin/users");
+}
+
+function fetchAuditLog(): Promise<{ entries: AuditLogEntry[] }> {
+  return apiFetch("/api/admin/audit-log");
 }
 
 const LOGIN_URL = "/api/auth/login?next=/admin";
@@ -84,7 +94,7 @@ function renderRow(u: AdminUser): HTMLTableRowElement {
   return tr;
 }
 
-function renderUsers(data: AdminUsersResponse): void {
+function renderUsers(data: AdminUsersResponse): HTMLElement {
   const section = el("section", { className: "panel" });
   section.append(
     el("h1", { text: "登録ユーザー" }),
@@ -117,10 +127,44 @@ function renderUsers(data: AdminUsersResponse): void {
   const tableWrap = el("div", { className: "admin-table-wrap" });
   tableWrap.appendChild(table);
   section.append(filter, countEl, tableWrap);
-  appRoot.replaceChildren(section);
+  return section;
+}
+
+const AUDIT_COLUMNS = ["日時", "種類", "メール", "パス", "接続元IP"];
+
+function renderAuditLog(entries: AuditLogEntry[]): HTMLElement {
+  const section = el("section", { className: "panel" });
+  section.append(
+    el("h2", { text: "閲覧記録（直近100件）" }),
+    el("p", {
+      className: "hint",
+      text: "管理画面で一覧を見た記録と、管理者以外が管理画面・管理APIを開こうとした記録です。1年間保存します。",
+    }),
+  );
+  if (entries.length === 0) {
+    section.appendChild(el("p", { className: "hint", text: "記録はまだありません。" }));
+    return section;
+  }
+  const table = el("table", { className: "admin-table" });
+  const headRow = el("tr");
+  for (const col of AUDIT_COLUMNS) headRow.appendChild(el("th", { text: col }));
+  table.appendChild(el("thead")).appendChild(headRow);
+  const tbody = table.appendChild(el("tbody"));
+  for (const e of entries) {
+    const tr = el("tr");
+    const cells = [formatDbTime(e.created_at), auditEventLabel(e.event), e.email ?? "—", e.path, e.ip ?? "—"];
+    for (const text of cells) tr.appendChild(el("td", { text }));
+    tbody.appendChild(tr);
+  }
+  const wrap = el("div", { className: "admin-table-wrap" });
+  wrap.appendChild(table);
+  section.appendChild(wrap);
+  return section;
 }
 
 async function boot(): Promise<void> {
+  // 管理者でなければサーバー（functions/admin.ts）がトップページへ飛ばすので、通常ここには来ない。
+  // ページを開いた後にセッションが切れた場合などのための表示
   const me = await api.me();
   if (!me) {
     showMessagePanel("管理画面", "大学のGoogleアカウントでログインしてください。", { label: "Googleでログイン", href: LOGIN_URL });
@@ -130,8 +174,15 @@ async function boot(): Promise<void> {
   userNameEl.textContent = `${me.nickname ?? me.display_name} さん`;
 
   try {
-    renderUsers(await fetchAdminUsers());
+    // 一覧を先に取る（ここで閲覧記録が書かれる）。記録の表示はその記録も含めて出す
+    const users = await fetchAdminUsers();
+    const audit = await fetchAuditLog();
+    appRoot.replaceChildren(renderUsers(users), renderAuditLog(audit.entries));
   } catch (err) {
+    if (err instanceof ApiError && err.status === 503) {
+      showMessagePanel("表示できません", err.message);
+      return;
+    }
     if (err instanceof ApiError && err.status === 401) {
       showMessagePanel(
         "再ログインが必要です",
