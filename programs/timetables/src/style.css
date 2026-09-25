@@ -249,7 +249,7 @@ body {
 .slot-filter-badge { display: flex; align-items: center; gap: 4px; font-size: 12px; color: var(--accent-dark); }
 
 .offering-list { list-style: none; display: flex; flex-direction: column; gap: 6px; max-height: 320px; overflow-y: auto; }
-.offering-list li {
+.offering-list > li {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
