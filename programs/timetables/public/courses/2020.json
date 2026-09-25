@@ -245,7 +245,85 @@
     "course_name": "アドバンストスポーツ（サッカー）",
     "day_of_week": 1,
     "period": 3,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "古賀　初",
+    "departments": [
+      {
+        "faculty": "ネットワーク情報学部",
+        "department": "ネットワーク情報学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "心理学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "社会学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "ジャーナリズム学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "人文・ジャーナリズム学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "哲学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本文学文化学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本語学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "歴史学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "環境地理学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "英語英米文学科"
+      },
+      {
+        "faculty": "経営学部",
+        "department": "ビジネスデザイン学科"
+      },
+      {
+        "faculty": "経営学部",
+        "department": "経営学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "国際経済学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "現代経済学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "生活環境経済学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "経済学科"
+      }
+    ]
+  },
+  {
+    "course_name": "アドバンストスポーツ（サッカー）",
+    "day_of_week": 1,
+    "period": 3,
+    "term": "fall",
     "room": null,
     "instructor": "古賀　初",
     "departments": [
@@ -713,7 +791,85 @@
     "course_name": "アドバンストスポーツ（バドミントン）",
     "day_of_week": 3,
     "period": 3,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "渡辺　英次",
+    "departments": [
+      {
+        "faculty": "ネットワーク情報学部",
+        "department": "ネットワーク情報学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "心理学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "社会学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "ジャーナリズム学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "人文・ジャーナリズム学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "哲学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本文学文化学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本語学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "歴史学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "環境地理学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "英語英米文学科"
+      },
+      {
+        "faculty": "経営学部",
+        "department": "ビジネスデザイン学科"
+      },
+      {
+        "faculty": "経営学部",
+        "department": "経営学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "国際経済学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "現代経済学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "生活環境経済学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "経済学科"
+      }
+    ]
+  },
+  {
+    "course_name": "アドバンストスポーツ（バドミントン）",
+    "day_of_week": 3,
+    "period": 3,
+    "term": "fall",
     "room": null,
     "instructor": "渡辺　英次",
     "departments": [
@@ -4219,7 +4375,7 @@
     "course_name": "異文化理解の人類学",
     "day_of_week": 2,
     "period": 3,
-    "term": "both",
+    "term": "spring",
     "room": null,
     "instructor": "渡部　重行",
     "departments": [
@@ -4297,7 +4453,163 @@
     "course_name": "異文化理解の人類学",
     "day_of_week": 2,
     "period": 4,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "渡部　重行",
+    "departments": [
+      {
+        "faculty": "ネットワーク情報学部",
+        "department": "ネットワーク情報学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "心理学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "社会学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "ジャーナリズム学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "人文・ジャーナリズム学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "哲学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本文学文化学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本語学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "歴史学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "環境地理学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "英語英米文学科"
+      },
+      {
+        "faculty": "経営学部",
+        "department": "ビジネスデザイン学科"
+      },
+      {
+        "faculty": "経営学部",
+        "department": "経営学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "国際経済学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "現代経済学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "生活環境経済学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "経済学科"
+      }
+    ]
+  },
+  {
+    "course_name": "異文化理解の人類学",
+    "day_of_week": 2,
+    "period": 3,
+    "term": "fall",
+    "room": null,
+    "instructor": "渡部　重行",
+    "departments": [
+      {
+        "faculty": "ネットワーク情報学部",
+        "department": "ネットワーク情報学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "心理学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "社会学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "ジャーナリズム学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "人文・ジャーナリズム学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "哲学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本文学文化学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本語学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "歴史学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "環境地理学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "英語英米文学科"
+      },
+      {
+        "faculty": "経営学部",
+        "department": "ビジネスデザイン学科"
+      },
+      {
+        "faculty": "経営学部",
+        "department": "経営学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "国際経済学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "現代経済学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "生活環境経済学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "経済学科"
+      }
+    ]
+  },
+  {
+    "course_name": "異文化理解の人類学",
+    "day_of_week": 2,
+    "period": 4,
+    "term": "fall",
     "room": null,
     "instructor": "渡部　重行",
     "departments": [
@@ -17471,7 +17783,7 @@
     "course_name": "科学論・科学史１０１",
     "day_of_week": 0,
     "period": 1,
-    "term": "both",
+    "term": "spring",
     "room": null,
     "instructor": "大井　万紀人",
     "departments": [
@@ -17534,6 +17846,68 @@
     "day_of_week": 1,
     "period": 1,
     "term": "spring",
+    "room": null,
+    "instructor": "大井　万紀人",
+    "departments": [
+      {
+        "faculty": "ネットワーク情報学部",
+        "department": "ネットワーク情報学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "心理学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "社会学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "人文・ジャーナリズム学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "哲学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本文学文化学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本語学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "歴史学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "環境地理学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "英語英米文学科"
+      },
+      {
+        "faculty": "経営学部",
+        "department": "経営学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "国際経済学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "経済学科"
+      }
+    ]
+  },
+  {
+    "course_name": "科学論・科学史１０１",
+    "day_of_week": 0,
+    "period": 1,
+    "term": "fall",
     "room": null,
     "instructor": "大井　万紀人",
     "departments": [
@@ -18091,7 +18465,7 @@
     "course_name": "科学論１ａ",
     "day_of_week": 0,
     "period": 1,
-    "term": "both",
+    "term": "spring",
     "room": null,
     "instructor": "大井　万紀人",
     "departments": [
@@ -18166,6 +18540,80 @@
     "day_of_week": 1,
     "period": 1,
     "term": "spring",
+    "room": null,
+    "instructor": "大井　万紀人",
+    "departments": [
+      {
+        "faculty": "ネットワーク情報学部",
+        "department": "ネットワーク情報学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "心理学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "社会学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "ジャーナリズム学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "哲学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本文学文化学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本語学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "歴史学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "環境地理学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "英語英米文学科"
+      },
+      {
+        "faculty": "経営学部",
+        "department": "ビジネスデザイン学科"
+      },
+      {
+        "faculty": "経営学部",
+        "department": "経営学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "国際経済学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "現代経済学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "生活環境経済学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "経済学科"
+      }
+    ]
+  },
+  {
+    "course_name": "科学論１ａ",
+    "day_of_week": 0,
+    "period": 1,
+    "term": "fall",
     "room": null,
     "instructor": "大井　万紀人",
     "departments": [
@@ -18877,7 +19325,21 @@
     "course_name": "外国経済事情（英語）",
     "day_of_week": 0,
     "period": 2,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "田中　章喜",
+    "departments": [
+      {
+        "faculty": "経済学部",
+        "department": "経済学科"
+      }
+    ]
+  },
+  {
+    "course_name": "外国経済事情（英語）",
+    "day_of_week": 0,
+    "period": 2,
+    "term": "fall",
     "room": null,
     "instructor": "田中　章喜",
     "departments": [
@@ -18933,7 +19395,21 @@
     "course_name": "外国経済事情（ドイツ語）",
     "day_of_week": 4,
     "period": 3,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "枡田　大知彦",
+    "departments": [
+      {
+        "faculty": "経済学部",
+        "department": "経済学科"
+      }
+    ]
+  },
+  {
+    "course_name": "外国経済事情（ドイツ語）",
+    "day_of_week": 4,
+    "period": 3,
+    "term": "fall",
     "room": null,
     "instructor": "枡田　大知彦",
     "departments": [
@@ -18947,7 +19423,21 @@
     "course_name": "外国経済事情（ドイツ語）",
     "day_of_week": 2,
     "period": 2,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "加藤　浩平",
+    "departments": [
+      {
+        "faculty": "経済学部",
+        "department": "経済学科"
+      }
+    ]
+  },
+  {
+    "course_name": "外国経済事情（ドイツ語）",
+    "day_of_week": 2,
+    "period": 2,
+    "term": "fall",
     "room": null,
     "instructor": "加藤　浩平",
     "departments": [
@@ -18961,7 +19451,21 @@
     "course_name": "外国経済事情（フランス語）",
     "day_of_week": 1,
     "period": 2,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "齊藤　佳史",
+    "departments": [
+      {
+        "faculty": "経済学部",
+        "department": "経済学科"
+      }
+    ]
+  },
+  {
+    "course_name": "外国経済事情（フランス語）",
+    "day_of_week": 1,
+    "period": 2,
+    "term": "fall",
     "room": null,
     "instructor": "齊藤　佳史",
     "departments": [
@@ -18975,7 +19479,53 @@
     "course_name": "外国史ａ",
     "day_of_week": 1,
     "period": 4,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "福島　大我",
+    "departments": [
+      {
+        "faculty": "人間科学部",
+        "department": "心理学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "社会学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "人文・ジャーナリズム学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "哲学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "歴史学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "環境地理学科"
+      },
+      {
+        "faculty": "経営学部",
+        "department": "経営学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "国際経済学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "経済学科"
+      }
+    ]
+  },
+  {
+    "course_name": "外国史ａ",
+    "day_of_week": 1,
+    "period": 4,
+    "term": "fall",
     "room": null,
     "instructor": "福島　大我",
     "departments": [
@@ -19021,7 +19571,53 @@
     "course_name": "外国史ｂ",
     "day_of_week": 1,
     "period": 5,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "小笠原　強",
+    "departments": [
+      {
+        "faculty": "人間科学部",
+        "department": "心理学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "社会学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "人文・ジャーナリズム学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "哲学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "歴史学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "環境地理学科"
+      },
+      {
+        "faculty": "経営学部",
+        "department": "経営学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "国際経済学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "経済学科"
+      }
+    ]
+  },
+  {
+    "course_name": "外国史ｂ",
+    "day_of_week": 1,
+    "period": 5,
+    "term": "fall",
     "room": null,
     "instructor": "小笠原　強",
     "departments": [
@@ -22285,7 +22881,69 @@
     "course_name": "教育方法論",
     "day_of_week": 4,
     "period": 3,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "砂原　由和",
+    "departments": [
+      {
+        "faculty": "ネットワーク情報学部",
+        "department": "ネットワーク情報学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "心理学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "社会学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "人文・ジャーナリズム学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "哲学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本文学文化学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本語学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "歴史学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "環境地理学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "英語英米文学科"
+      },
+      {
+        "faculty": "経営学部",
+        "department": "経営学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "国際経済学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "経済学科"
+      }
+    ]
+  },
+  {
+    "course_name": "教育方法論",
+    "day_of_week": 4,
+    "period": 3,
+    "term": "fall",
     "room": null,
     "instructor": "砂原　由和",
     "departments": [
@@ -22409,7 +23067,69 @@
     "course_name": "教育方法論",
     "day_of_week": 3,
     "period": 4,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "砂原　由和",
+    "departments": [
+      {
+        "faculty": "ネットワーク情報学部",
+        "department": "ネットワーク情報学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "心理学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "社会学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "人文・ジャーナリズム学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "哲学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本文学文化学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本語学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "歴史学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "環境地理学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "英語英米文学科"
+      },
+      {
+        "faculty": "経営学部",
+        "department": "経営学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "国際経済学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "経済学科"
+      }
+    ]
+  },
+  {
+    "course_name": "教育方法論",
+    "day_of_week": 3,
+    "period": 4,
+    "term": "fall",
     "room": null,
     "instructor": "砂原　由和",
     "departments": [
@@ -22781,7 +23501,69 @@
     "course_name": "教育学２０１",
     "day_of_week": 2,
     "period": 2,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "広瀬　裕子",
+    "departments": [
+      {
+        "faculty": "ネットワーク情報学部",
+        "department": "ネットワーク情報学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "心理学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "社会学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "人文・ジャーナリズム学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "哲学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本文学文化学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本語学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "歴史学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "環境地理学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "英語英米文学科"
+      },
+      {
+        "faculty": "経営学部",
+        "department": "経営学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "国際経済学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "経済学科"
+      }
+    ]
+  },
+  {
+    "course_name": "教育学２０１",
+    "day_of_week": 2,
+    "period": 2,
+    "term": "fall",
     "room": null,
     "instructor": "広瀬　裕子",
     "departments": [
@@ -23263,7 +24045,65 @@
     "course_name": "教育と社会のダイナミズム",
     "day_of_week": 2,
     "period": 2,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "広瀬　裕子",
+    "departments": [
+      {
+        "faculty": "ネットワーク情報学部",
+        "department": "ネットワーク情報学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "心理学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "社会学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "人文・ジャーナリズム学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "哲学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本文学文化学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本語学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "歴史学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "環境地理学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "英語英米文学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "国際経済学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "経済学科"
+      }
+    ]
+  },
+  {
+    "course_name": "教育と社会のダイナミズム",
+    "day_of_week": 2,
+    "period": 2,
+    "term": "fall",
     "room": null,
     "instructor": "広瀬　裕子",
     "departments": [
@@ -24111,7 +24951,77 @@
     "course_name": "教職入門",
     "day_of_week": 1,
     "period": 1,
-    "term": "both",
+    "term": "fall",
+    "room": null,
+    "instructor": "齋藤　博志",
+    "departments": [
+      {
+        "faculty": "ネットワーク情報学部",
+        "department": "ネットワーク情報学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "心理学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "社会学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "人文・ジャーナリズム学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "哲学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本文学文化学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本語学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "歴史学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "環境地理学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "英語英米文学科"
+      },
+      {
+        "faculty": "経営学部",
+        "department": "経営学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "国際経済学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "現代経済学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "生活環境経済学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "経済学科"
+      }
+    ]
+  },
+  {
+    "course_name": "教職入門",
+    "day_of_week": 1,
+    "period": 1,
+    "term": "spring",
     "room": null,
     "instructor": "齋藤　博志",
     "departments": [
@@ -27343,7 +28253,69 @@
     "course_name": "教養特殊講義Ⅰ",
     "day_of_week": 4,
     "period": 2,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "中垣　恒太郎",
+    "departments": [
+      {
+        "faculty": "ネットワーク情報学部",
+        "department": "ネットワーク情報学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "心理学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "社会学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "人文・ジャーナリズム学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "哲学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本文学文化学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本語学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "歴史学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "環境地理学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "英語英米文学科"
+      },
+      {
+        "faculty": "経営学部",
+        "department": "経営学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "国際経済学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "経済学科"
+      }
+    ]
+  },
+  {
+    "course_name": "教養特殊講義Ⅰ",
+    "day_of_week": 4,
+    "period": 2,
+    "term": "fall",
     "room": null,
     "instructor": "中垣　恒太郎",
     "departments": [
@@ -27591,7 +28563,69 @@
     "course_name": "教養特殊講義Ⅴ",
     "day_of_week": 4,
     "period": 3,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "小西　恵美",
+    "departments": [
+      {
+        "faculty": "ネットワーク情報学部",
+        "department": "ネットワーク情報学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "心理学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "社会学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "人文・ジャーナリズム学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "哲学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本文学文化学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本語学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "歴史学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "環境地理学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "英語英米文学科"
+      },
+      {
+        "faculty": "経営学部",
+        "department": "経営学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "国際経済学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "経済学科"
+      }
+    ]
+  },
+  {
+    "course_name": "教養特殊講義Ⅴ",
+    "day_of_week": 4,
+    "period": 3,
+    "term": "fall",
     "room": null,
     "instructor": "小西　恵美",
     "departments": [
@@ -27715,7 +28749,69 @@
     "course_name": "教養特殊講義Ⅷ",
     "day_of_week": 1,
     "period": 2,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "神山　みや子",
+    "departments": [
+      {
+        "faculty": "ネットワーク情報学部",
+        "department": "ネットワーク情報学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "心理学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "社会学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "人文・ジャーナリズム学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "哲学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本文学文化学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本語学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "歴史学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "環境地理学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "英語英米文学科"
+      },
+      {
+        "faculty": "経営学部",
+        "department": "経営学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "国際経済学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "経済学科"
+      }
+    ]
+  },
+  {
+    "course_name": "教養特殊講義Ⅷ",
+    "day_of_week": 1,
+    "period": 2,
+    "term": "fall",
     "room": null,
     "instructor": "神山　みや子",
     "departments": [
@@ -41255,7 +42351,69 @@
     "course_name": "新領域科目３０３（キャリア開発）",
     "day_of_week": 1,
     "period": 2,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "大山　雅嗣",
+    "departments": [
+      {
+        "faculty": "ネットワーク情報学部",
+        "department": "ネットワーク情報学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "心理学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "社会学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "人文・ジャーナリズム学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "哲学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本文学文化学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本語学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "歴史学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "環境地理学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "英語英米文学科"
+      },
+      {
+        "faculty": "経営学部",
+        "department": "経営学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "国際経済学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "経済学科"
+      }
+    ]
+  },
+  {
+    "course_name": "新領域科目３０３（キャリア開発）",
+    "day_of_week": 1,
+    "period": 2,
+    "term": "fall",
     "room": null,
     "instructor": "大山　雅嗣",
     "departments": [
@@ -41317,7 +42475,65 @@
     "course_name": "General English 1",
     "day_of_week": 0,
     "period": 3,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "三品　直子",
+    "departments": [
+      {
+        "faculty": "ネットワーク情報学部",
+        "department": "ネットワーク情報学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "心理学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "社会学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "人文・ジャーナリズム学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "哲学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本文学文化学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本語学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "歴史学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "環境地理学科"
+      },
+      {
+        "faculty": "経営学部",
+        "department": "経営学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "国際経済学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "経済学科"
+      }
+    ]
+  },
+  {
+    "course_name": "General English 1",
+    "day_of_week": 0,
+    "period": 3,
+    "term": "fall",
     "room": null,
     "instructor": "三品　直子",
     "departments": [
@@ -41375,7 +42591,65 @@
     "course_name": "General English 1",
     "day_of_week": 0,
     "period": 4,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "真砂　久晃",
+    "departments": [
+      {
+        "faculty": "ネットワーク情報学部",
+        "department": "ネットワーク情報学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "心理学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "社会学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "人文・ジャーナリズム学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "哲学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本文学文化学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本語学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "歴史学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "環境地理学科"
+      },
+      {
+        "faculty": "経営学部",
+        "department": "経営学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "国際経済学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "経済学科"
+      }
+    ]
+  },
+  {
+    "course_name": "General English 1",
+    "day_of_week": 0,
+    "period": 4,
+    "term": "fall",
     "room": null,
     "instructor": "真砂　久晃",
     "departments": [
@@ -41433,7 +42707,65 @@
     "course_name": "General English 1",
     "day_of_week": 0,
     "period": 5,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "宮澤　信彦",
+    "departments": [
+      {
+        "faculty": "ネットワーク情報学部",
+        "department": "ネットワーク情報学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "心理学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "社会学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "人文・ジャーナリズム学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "哲学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本文学文化学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本語学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "歴史学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "環境地理学科"
+      },
+      {
+        "faculty": "経営学部",
+        "department": "経営学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "国際経済学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "経済学科"
+      }
+    ]
+  },
+  {
+    "course_name": "General English 1",
+    "day_of_week": 0,
+    "period": 5,
+    "term": "fall",
     "room": null,
     "instructor": "宮澤　信彦",
     "departments": [
@@ -41491,7 +42823,65 @@
     "course_name": "General English 1",
     "day_of_week": 2,
     "period": 2,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "杉本　孝子",
+    "departments": [
+      {
+        "faculty": "ネットワーク情報学部",
+        "department": "ネットワーク情報学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "心理学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "社会学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "人文・ジャーナリズム学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "哲学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本文学文化学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本語学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "歴史学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "環境地理学科"
+      },
+      {
+        "faculty": "経営学部",
+        "department": "経営学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "国際経済学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "経済学科"
+      }
+    ]
+  },
+  {
+    "course_name": "General English 1",
+    "day_of_week": 2,
+    "period": 2,
+    "term": "fall",
     "room": null,
     "instructor": "杉本　孝子",
     "departments": [
@@ -41549,7 +42939,65 @@
     "course_name": "General English 1",
     "day_of_week": 3,
     "period": 4,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "山本　満登香",
+    "departments": [
+      {
+        "faculty": "ネットワーク情報学部",
+        "department": "ネットワーク情報学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "心理学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "社会学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "人文・ジャーナリズム学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "哲学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本文学文化学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本語学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "歴史学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "環境地理学科"
+      },
+      {
+        "faculty": "経営学部",
+        "department": "経営学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "国際経済学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "経済学科"
+      }
+    ]
+  },
+  {
+    "course_name": "General English 1",
+    "day_of_week": 3,
+    "period": 4,
+    "term": "fall",
     "room": null,
     "instructor": "山本　満登香",
     "departments": [
@@ -41607,7 +43055,65 @@
     "course_name": "General English 1",
     "day_of_week": 3,
     "period": 5,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "宮田　宗彦",
+    "departments": [
+      {
+        "faculty": "ネットワーク情報学部",
+        "department": "ネットワーク情報学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "心理学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "社会学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "人文・ジャーナリズム学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "哲学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本文学文化学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本語学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "歴史学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "環境地理学科"
+      },
+      {
+        "faculty": "経営学部",
+        "department": "経営学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "国際経済学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "経済学科"
+      }
+    ]
+  },
+  {
+    "course_name": "General English 1",
+    "day_of_week": 3,
+    "period": 5,
+    "term": "fall",
     "room": null,
     "instructor": "宮田　宗彦",
     "departments": [
@@ -41665,7 +43171,65 @@
     "course_name": "General English 1",
     "day_of_week": 4,
     "period": 1,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "小西　恵美",
+    "departments": [
+      {
+        "faculty": "ネットワーク情報学部",
+        "department": "ネットワーク情報学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "心理学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "社会学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "人文・ジャーナリズム学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "哲学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本文学文化学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本語学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "歴史学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "環境地理学科"
+      },
+      {
+        "faculty": "経営学部",
+        "department": "経営学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "国際経済学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "経済学科"
+      }
+    ]
+  },
+  {
+    "course_name": "General English 1",
+    "day_of_week": 4,
+    "period": 1,
+    "term": "fall",
     "room": null,
     "instructor": "小西　恵美",
     "departments": [
@@ -41723,7 +43287,65 @@
     "course_name": "General English 1",
     "day_of_week": 4,
     "period": 3,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "長谷川　宏",
+    "departments": [
+      {
+        "faculty": "ネットワーク情報学部",
+        "department": "ネットワーク情報学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "心理学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "社会学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "人文・ジャーナリズム学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "哲学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本文学文化学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本語学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "歴史学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "環境地理学科"
+      },
+      {
+        "faculty": "経営学部",
+        "department": "経営学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "国際経済学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "経済学科"
+      }
+    ]
+  },
+  {
+    "course_name": "General English 1",
+    "day_of_week": 4,
+    "period": 3,
+    "term": "fall",
     "room": null,
     "instructor": "長谷川　宏",
     "departments": [
@@ -41781,7 +43403,7 @@
     "course_name": "General English 1",
     "day_of_week": 4,
     "period": 4,
-    "term": "both",
+    "term": "spring",
     "room": null,
     "instructor": "堀江　洋文",
     "departments": [
@@ -41839,7 +43461,123 @@
     "course_name": "General English 1",
     "day_of_week": 4,
     "period": 4,
-    "term": "both",
+    "term": "fall",
+    "room": null,
+    "instructor": "堀江　洋文",
+    "departments": [
+      {
+        "faculty": "ネットワーク情報学部",
+        "department": "ネットワーク情報学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "心理学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "社会学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "人文・ジャーナリズム学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "哲学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本文学文化学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本語学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "歴史学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "環境地理学科"
+      },
+      {
+        "faculty": "経営学部",
+        "department": "経営学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "国際経済学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "経済学科"
+      }
+    ]
+  },
+  {
+    "course_name": "General English 1",
+    "day_of_week": 4,
+    "period": 4,
+    "term": "spring",
+    "room": null,
+    "instructor": "小林　正弘",
+    "departments": [
+      {
+        "faculty": "ネットワーク情報学部",
+        "department": "ネットワーク情報学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "心理学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "社会学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "人文・ジャーナリズム学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "哲学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本文学文化学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本語学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "歴史学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "環境地理学科"
+      },
+      {
+        "faculty": "経営学部",
+        "department": "経営学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "国際経済学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "経済学科"
+      }
+    ]
+  },
+  {
+    "course_name": "General English 1",
+    "day_of_week": 4,
+    "period": 4,
+    "term": "fall",
     "room": null,
     "instructor": "小林　正弘",
     "departments": [
@@ -41897,7 +43635,33 @@
     "course_name": "General English 2",
     "day_of_week": 0,
     "period": 2,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "飯塚　聡",
+    "departments": [
+      {
+        "faculty": "ネットワーク情報学部",
+        "department": "ネットワーク情報学科"
+      },
+      {
+        "faculty": "経営学部",
+        "department": "経営学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "国際経済学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "経済学科"
+      }
+    ]
+  },
+  {
+    "course_name": "General English 2",
+    "day_of_week": 0,
+    "period": 2,
+    "term": "fall",
     "room": null,
     "instructor": "飯塚　聡",
     "departments": [
@@ -41923,7 +43687,33 @@
     "course_name": "General English 2",
     "day_of_week": 1,
     "period": 3,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "橋本　智弘",
+    "departments": [
+      {
+        "faculty": "ネットワーク情報学部",
+        "department": "ネットワーク情報学科"
+      },
+      {
+        "faculty": "経営学部",
+        "department": "経営学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "国際経済学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "経済学科"
+      }
+    ]
+  },
+  {
+    "course_name": "General English 2",
+    "day_of_week": 1,
+    "period": 3,
+    "term": "fall",
     "room": null,
     "instructor": "橋本　智弘",
     "departments": [
@@ -41949,7 +43739,33 @@
     "course_name": "General English 2",
     "day_of_week": 2,
     "period": 3,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "太田　由紀子",
+    "departments": [
+      {
+        "faculty": "ネットワーク情報学部",
+        "department": "ネットワーク情報学科"
+      },
+      {
+        "faculty": "経営学部",
+        "department": "経営学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "国際経済学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "経済学科"
+      }
+    ]
+  },
+  {
+    "course_name": "General English 2",
+    "day_of_week": 2,
+    "period": 3,
+    "term": "fall",
     "room": null,
     "instructor": "太田　由紀子",
     "departments": [
@@ -41975,7 +43791,33 @@
     "course_name": "General English 2",
     "day_of_week": 3,
     "period": 2,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "真鍋　守",
+    "departments": [
+      {
+        "faculty": "ネットワーク情報学部",
+        "department": "ネットワーク情報学科"
+      },
+      {
+        "faculty": "経営学部",
+        "department": "経営学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "国際経済学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "経済学科"
+      }
+    ]
+  },
+  {
+    "course_name": "General English 2",
+    "day_of_week": 3,
+    "period": 2,
+    "term": "fall",
     "room": null,
     "instructor": "真鍋　守",
     "departments": [
@@ -42001,7 +43843,33 @@
     "course_name": "General English 2",
     "day_of_week": 3,
     "period": 5,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "小西　恵美",
+    "departments": [
+      {
+        "faculty": "ネットワーク情報学部",
+        "department": "ネットワーク情報学科"
+      },
+      {
+        "faculty": "経営学部",
+        "department": "経営学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "国際経済学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "経済学科"
+      }
+    ]
+  },
+  {
+    "course_name": "General English 2",
+    "day_of_week": 3,
+    "period": 5,
+    "term": "fall",
     "room": null,
     "instructor": "小西　恵美",
     "departments": [
@@ -42027,7 +43895,7 @@
     "course_name": "General English 2",
     "day_of_week": 4,
     "period": 4,
-    "term": "both",
+    "term": "spring",
     "room": null,
     "instructor": "小松　良江",
     "departments": [
@@ -42053,7 +43921,59 @@
     "course_name": "General English 2",
     "day_of_week": 4,
     "period": 4,
-    "term": "both",
+    "term": "fall",
+    "room": null,
+    "instructor": "小松　良江",
+    "departments": [
+      {
+        "faculty": "ネットワーク情報学部",
+        "department": "ネットワーク情報学科"
+      },
+      {
+        "faculty": "経営学部",
+        "department": "経営学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "国際経済学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "経済学科"
+      }
+    ]
+  },
+  {
+    "course_name": "General English 2",
+    "day_of_week": 4,
+    "period": 4,
+    "term": "spring",
+    "room": null,
+    "instructor": "岡田　大樹",
+    "departments": [
+      {
+        "faculty": "ネットワーク情報学部",
+        "department": "ネットワーク情報学科"
+      },
+      {
+        "faculty": "経営学部",
+        "department": "経営学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "国際経済学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "経済学科"
+      }
+    ]
+  },
+  {
+    "course_name": "General English 2",
+    "day_of_week": 4,
+    "period": 4,
+    "term": "fall",
     "room": null,
     "instructor": "岡田　大樹",
     "departments": [
@@ -42141,7 +44061,77 @@
     "course_name": "ジャーナリズムと現代",
     "day_of_week": 2,
     "period": 5,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "宇賀神　貴宏",
+    "departments": [
+      {
+        "faculty": "ネットワーク情報学部",
+        "department": "ネットワーク情報学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "心理学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "社会学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "哲学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本文学文化学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本語学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "歴史学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "環境地理学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "英語英米文学科"
+      },
+      {
+        "faculty": "経営学部",
+        "department": "ビジネスデザイン学科"
+      },
+      {
+        "faculty": "経営学部",
+        "department": "経営学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "国際経済学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "現代経済学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "生活環境経済学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "経済学科"
+      }
+    ]
+  },
+  {
+    "course_name": "ジャーナリズムと現代",
+    "day_of_week": 2,
+    "period": 5,
+    "term": "fall",
     "room": null,
     "instructor": "宇賀神　貴宏",
     "departments": [
@@ -42759,7 +44749,61 @@
     "course_name": "情報処理基礎",
     "day_of_week": 2,
     "period": 3,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "御園生　純",
+    "departments": [
+      {
+        "faculty": "人間科学部",
+        "department": "心理学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "社会学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "人文・ジャーナリズム学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "哲学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本文学文化学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本語学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "歴史学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "環境地理学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "英語英米文学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "国際経済学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "経済学科"
+      }
+    ]
+  },
+  {
+    "course_name": "情報処理基礎",
+    "day_of_week": 2,
+    "period": 3,
+    "term": "fall",
     "room": null,
     "instructor": "御園生　純",
     "departments": [
@@ -42813,7 +44857,61 @@
     "course_name": "情報入門Ⅰ",
     "day_of_week": 2,
     "period": 3,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "御園生　純",
+    "departments": [
+      {
+        "faculty": "人間科学部",
+        "department": "心理学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "社会学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "人文・ジャーナリズム学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "哲学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本文学文化学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本語学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "歴史学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "環境地理学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "英語英米文学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "国際経済学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "経済学科"
+      }
+    ]
+  },
+  {
+    "course_name": "情報入門Ⅰ",
+    "day_of_week": 2,
+    "period": 3,
+    "term": "fall",
     "room": null,
     "instructor": "御園生　純",
     "departments": [
@@ -55797,7 +57895,85 @@
     "course_name": "世界の言語と文化（中国語）",
     "day_of_week": 4,
     "period": 2,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "中村　達雄",
+    "departments": [
+      {
+        "faculty": "ネットワーク情報学部",
+        "department": "ネットワーク情報学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "心理学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "社会学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "ジャーナリズム学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "人文・ジャーナリズム学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "哲学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本文学文化学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本語学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "歴史学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "環境地理学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "英語英米文学科"
+      },
+      {
+        "faculty": "経営学部",
+        "department": "ビジネスデザイン学科"
+      },
+      {
+        "faculty": "経営学部",
+        "department": "経営学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "国際経済学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "現代経済学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "生活環境経済学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "経済学科"
+      }
+    ]
+  },
+  {
+    "course_name": "世界の言語と文化（中国語）",
+    "day_of_week": 4,
+    "period": 2,
+    "term": "fall",
     "room": null,
     "instructor": "中村　達雄",
     "departments": [
@@ -55875,7 +58051,85 @@
     "course_name": "世界の言語と文化（ドイツ語）",
     "day_of_week": 0,
     "period": 4,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "寺尾　格",
+    "departments": [
+      {
+        "faculty": "ネットワーク情報学部",
+        "department": "ネットワーク情報学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "心理学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "社会学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "ジャーナリズム学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "人文・ジャーナリズム学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "哲学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本文学文化学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本語学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "歴史学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "環境地理学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "英語英米文学科"
+      },
+      {
+        "faculty": "経営学部",
+        "department": "ビジネスデザイン学科"
+      },
+      {
+        "faculty": "経営学部",
+        "department": "経営学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "国際経済学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "現代経済学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "生活環境経済学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "経済学科"
+      }
+    ]
+  },
+  {
+    "course_name": "世界の言語と文化（ドイツ語）",
+    "day_of_week": 0,
+    "period": 4,
+    "term": "fall",
     "room": null,
     "instructor": "寺尾　格",
     "departments": [
@@ -60543,7 +62797,65 @@
     "course_name": "総合英語Ｃ",
     "day_of_week": 0,
     "period": 3,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "三品　直子",
+    "departments": [
+      {
+        "faculty": "ネットワーク情報学部",
+        "department": "ネットワーク情報学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "心理学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "社会学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "人文・ジャーナリズム学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "哲学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本文学文化学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本語学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "歴史学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "環境地理学科"
+      },
+      {
+        "faculty": "経営学部",
+        "department": "経営学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "国際経済学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "経済学科"
+      }
+    ]
+  },
+  {
+    "course_name": "総合英語Ｃ",
+    "day_of_week": 0,
+    "period": 3,
+    "term": "fall",
     "room": null,
     "instructor": "三品　直子",
     "departments": [
@@ -60601,7 +62913,65 @@
     "course_name": "総合英語Ｃ",
     "day_of_week": 0,
     "period": 4,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "真砂　久晃",
+    "departments": [
+      {
+        "faculty": "ネットワーク情報学部",
+        "department": "ネットワーク情報学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "心理学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "社会学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "人文・ジャーナリズム学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "哲学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本文学文化学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本語学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "歴史学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "環境地理学科"
+      },
+      {
+        "faculty": "経営学部",
+        "department": "経営学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "国際経済学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "経済学科"
+      }
+    ]
+  },
+  {
+    "course_name": "総合英語Ｃ",
+    "day_of_week": 0,
+    "period": 4,
+    "term": "fall",
     "room": null,
     "instructor": "真砂　久晃",
     "departments": [
@@ -60659,7 +63029,65 @@
     "course_name": "総合英語Ｃ",
     "day_of_week": 0,
     "period": 5,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "宮澤　信彦",
+    "departments": [
+      {
+        "faculty": "ネットワーク情報学部",
+        "department": "ネットワーク情報学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "心理学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "社会学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "人文・ジャーナリズム学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "哲学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本文学文化学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本語学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "歴史学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "環境地理学科"
+      },
+      {
+        "faculty": "経営学部",
+        "department": "経営学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "国際経済学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "経済学科"
+      }
+    ]
+  },
+  {
+    "course_name": "総合英語Ｃ",
+    "day_of_week": 0,
+    "period": 5,
+    "term": "fall",
     "room": null,
     "instructor": "宮澤　信彦",
     "departments": [
@@ -60717,7 +63145,65 @@
     "course_name": "総合英語Ｃ",
     "day_of_week": 2,
     "period": 2,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "杉本　孝子",
+    "departments": [
+      {
+        "faculty": "ネットワーク情報学部",
+        "department": "ネットワーク情報学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "心理学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "社会学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "人文・ジャーナリズム学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "哲学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本文学文化学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本語学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "歴史学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "環境地理学科"
+      },
+      {
+        "faculty": "経営学部",
+        "department": "経営学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "国際経済学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "経済学科"
+      }
+    ]
+  },
+  {
+    "course_name": "総合英語Ｃ",
+    "day_of_week": 2,
+    "period": 2,
+    "term": "fall",
     "room": null,
     "instructor": "杉本　孝子",
     "departments": [
@@ -60775,7 +63261,65 @@
     "course_name": "総合英語Ｃ",
     "day_of_week": 3,
     "period": 4,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "山本　満登香",
+    "departments": [
+      {
+        "faculty": "ネットワーク情報学部",
+        "department": "ネットワーク情報学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "心理学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "社会学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "人文・ジャーナリズム学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "哲学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本文学文化学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本語学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "歴史学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "環境地理学科"
+      },
+      {
+        "faculty": "経営学部",
+        "department": "経営学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "国際経済学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "経済学科"
+      }
+    ]
+  },
+  {
+    "course_name": "総合英語Ｃ",
+    "day_of_week": 3,
+    "period": 4,
+    "term": "fall",
     "room": null,
     "instructor": "山本　満登香",
     "departments": [
@@ -60833,7 +63377,65 @@
     "course_name": "総合英語Ｃ",
     "day_of_week": 3,
     "period": 5,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "宮田　宗彦",
+    "departments": [
+      {
+        "faculty": "ネットワーク情報学部",
+        "department": "ネットワーク情報学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "心理学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "社会学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "人文・ジャーナリズム学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "哲学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本文学文化学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本語学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "歴史学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "環境地理学科"
+      },
+      {
+        "faculty": "経営学部",
+        "department": "経営学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "国際経済学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "経済学科"
+      }
+    ]
+  },
+  {
+    "course_name": "総合英語Ｃ",
+    "day_of_week": 3,
+    "period": 5,
+    "term": "fall",
     "room": null,
     "instructor": "宮田　宗彦",
     "departments": [
@@ -60891,7 +63493,65 @@
     "course_name": "総合英語Ｃ",
     "day_of_week": 4,
     "period": 1,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "小西　恵美",
+    "departments": [
+      {
+        "faculty": "ネットワーク情報学部",
+        "department": "ネットワーク情報学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "心理学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "社会学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "人文・ジャーナリズム学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "哲学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本文学文化学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本語学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "歴史学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "環境地理学科"
+      },
+      {
+        "faculty": "経営学部",
+        "department": "経営学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "国際経済学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "経済学科"
+      }
+    ]
+  },
+  {
+    "course_name": "総合英語Ｃ",
+    "day_of_week": 4,
+    "period": 1,
+    "term": "fall",
     "room": null,
     "instructor": "小西　恵美",
     "departments": [
@@ -60949,7 +63609,65 @@
     "course_name": "総合英語Ｃ",
     "day_of_week": 4,
     "period": 3,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "長谷川　宏",
+    "departments": [
+      {
+        "faculty": "ネットワーク情報学部",
+        "department": "ネットワーク情報学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "心理学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "社会学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "人文・ジャーナリズム学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "哲学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本文学文化学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本語学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "歴史学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "環境地理学科"
+      },
+      {
+        "faculty": "経営学部",
+        "department": "経営学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "国際経済学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "経済学科"
+      }
+    ]
+  },
+  {
+    "course_name": "総合英語Ｃ",
+    "day_of_week": 4,
+    "period": 3,
+    "term": "fall",
     "room": null,
     "instructor": "長谷川　宏",
     "departments": [
@@ -61007,7 +63725,7 @@
     "course_name": "総合英語Ｃ",
     "day_of_week": 4,
     "period": 4,
-    "term": "both",
+    "term": "spring",
     "room": null,
     "instructor": "堀江　洋文",
     "departments": [
@@ -61065,7 +63783,123 @@
     "course_name": "総合英語Ｃ",
     "day_of_week": 4,
     "period": 4,
-    "term": "both",
+    "term": "fall",
+    "room": null,
+    "instructor": "堀江　洋文",
+    "departments": [
+      {
+        "faculty": "ネットワーク情報学部",
+        "department": "ネットワーク情報学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "心理学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "社会学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "人文・ジャーナリズム学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "哲学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本文学文化学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本語学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "歴史学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "環境地理学科"
+      },
+      {
+        "faculty": "経営学部",
+        "department": "経営学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "国際経済学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "経済学科"
+      }
+    ]
+  },
+  {
+    "course_name": "総合英語Ｃ",
+    "day_of_week": 4,
+    "period": 4,
+    "term": "spring",
+    "room": null,
+    "instructor": "小林　正弘",
+    "departments": [
+      {
+        "faculty": "ネットワーク情報学部",
+        "department": "ネットワーク情報学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "心理学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "社会学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "人文・ジャーナリズム学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "哲学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本文学文化学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本語学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "歴史学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "環境地理学科"
+      },
+      {
+        "faculty": "経営学部",
+        "department": "経営学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "国際経済学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "経済学科"
+      }
+    ]
+  },
+  {
+    "course_name": "総合英語Ｃ",
+    "day_of_week": 4,
+    "period": 4,
+    "term": "fall",
     "room": null,
     "instructor": "小林　正弘",
     "departments": [
@@ -61123,7 +63957,65 @@
     "course_name": "総合英語Ｃ",
     "day_of_week": 0,
     "period": 2,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "飯塚　聡",
+    "departments": [
+      {
+        "faculty": "ネットワーク情報学部",
+        "department": "ネットワーク情報学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "心理学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "社会学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "人文・ジャーナリズム学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "哲学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本文学文化学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本語学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "歴史学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "環境地理学科"
+      },
+      {
+        "faculty": "経営学部",
+        "department": "経営学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "国際経済学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "経済学科"
+      }
+    ]
+  },
+  {
+    "course_name": "総合英語Ｃ",
+    "day_of_week": 0,
+    "period": 2,
+    "term": "fall",
     "room": null,
     "instructor": "飯塚　聡",
     "departments": [
@@ -61181,7 +64073,65 @@
     "course_name": "総合英語Ｃ",
     "day_of_week": 1,
     "period": 3,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "橋本　智弘",
+    "departments": [
+      {
+        "faculty": "ネットワーク情報学部",
+        "department": "ネットワーク情報学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "心理学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "社会学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "人文・ジャーナリズム学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "哲学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本文学文化学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本語学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "歴史学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "環境地理学科"
+      },
+      {
+        "faculty": "経営学部",
+        "department": "経営学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "国際経済学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "経済学科"
+      }
+    ]
+  },
+  {
+    "course_name": "総合英語Ｃ",
+    "day_of_week": 1,
+    "period": 3,
+    "term": "fall",
     "room": null,
     "instructor": "橋本　智弘",
     "departments": [
@@ -61239,7 +64189,65 @@
     "course_name": "総合英語Ｃ",
     "day_of_week": 2,
     "period": 3,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "太田　由紀子",
+    "departments": [
+      {
+        "faculty": "ネットワーク情報学部",
+        "department": "ネットワーク情報学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "心理学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "社会学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "人文・ジャーナリズム学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "哲学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本文学文化学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本語学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "歴史学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "環境地理学科"
+      },
+      {
+        "faculty": "経営学部",
+        "department": "経営学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "国際経済学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "経済学科"
+      }
+    ]
+  },
+  {
+    "course_name": "総合英語Ｃ",
+    "day_of_week": 2,
+    "period": 3,
+    "term": "fall",
     "room": null,
     "instructor": "太田　由紀子",
     "departments": [
@@ -61297,7 +64305,65 @@
     "course_name": "総合英語Ｃ",
     "day_of_week": 3,
     "period": 2,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "真鍋　守",
+    "departments": [
+      {
+        "faculty": "ネットワーク情報学部",
+        "department": "ネットワーク情報学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "心理学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "社会学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "人文・ジャーナリズム学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "哲学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本文学文化学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本語学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "歴史学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "環境地理学科"
+      },
+      {
+        "faculty": "経営学部",
+        "department": "経営学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "国際経済学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "経済学科"
+      }
+    ]
+  },
+  {
+    "course_name": "総合英語Ｃ",
+    "day_of_week": 3,
+    "period": 2,
+    "term": "fall",
     "room": null,
     "instructor": "真鍋　守",
     "departments": [
@@ -61355,7 +64421,65 @@
     "course_name": "総合英語Ｃ",
     "day_of_week": 3,
     "period": 5,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "小西　恵美",
+    "departments": [
+      {
+        "faculty": "ネットワーク情報学部",
+        "department": "ネットワーク情報学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "心理学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "社会学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "人文・ジャーナリズム学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "哲学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本文学文化学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本語学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "歴史学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "環境地理学科"
+      },
+      {
+        "faculty": "経営学部",
+        "department": "経営学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "国際経済学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "経済学科"
+      }
+    ]
+  },
+  {
+    "course_name": "総合英語Ｃ",
+    "day_of_week": 3,
+    "period": 5,
+    "term": "fall",
     "room": null,
     "instructor": "小西　恵美",
     "departments": [
@@ -61413,7 +64537,7 @@
     "course_name": "総合英語Ｃ",
     "day_of_week": 4,
     "period": 4,
-    "term": "both",
+    "term": "spring",
     "room": null,
     "instructor": "小松　良江",
     "departments": [
@@ -61471,7 +64595,123 @@
     "course_name": "総合英語Ｃ",
     "day_of_week": 4,
     "period": 4,
-    "term": "both",
+    "term": "fall",
+    "room": null,
+    "instructor": "小松　良江",
+    "departments": [
+      {
+        "faculty": "ネットワーク情報学部",
+        "department": "ネットワーク情報学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "心理学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "社会学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "人文・ジャーナリズム学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "哲学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本文学文化学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本語学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "歴史学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "環境地理学科"
+      },
+      {
+        "faculty": "経営学部",
+        "department": "経営学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "国際経済学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "経済学科"
+      }
+    ]
+  },
+  {
+    "course_name": "総合英語Ｃ",
+    "day_of_week": 4,
+    "period": 4,
+    "term": "spring",
+    "room": null,
+    "instructor": "岡田　大樹",
+    "departments": [
+      {
+        "faculty": "ネットワーク情報学部",
+        "department": "ネットワーク情報学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "心理学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "社会学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "人文・ジャーナリズム学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "哲学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本文学文化学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本語学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "歴史学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "環境地理学科"
+      },
+      {
+        "faculty": "経営学部",
+        "department": "経営学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "国際経済学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "経済学科"
+      }
+    ]
+  },
+  {
+    "course_name": "総合英語Ｃ",
+    "day_of_week": 4,
+    "period": 4,
+    "term": "fall",
     "room": null,
     "instructor": "岡田　大樹",
     "departments": [
@@ -65325,7 +68565,69 @@
     "course_name": "地理学１０１",
     "day_of_week": 0,
     "period": 4,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "三河　雅弘",
+    "departments": [
+      {
+        "faculty": "ネットワーク情報学部",
+        "department": "ネットワーク情報学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "心理学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "社会学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "人文・ジャーナリズム学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "哲学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本文学文化学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本語学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "歴史学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "環境地理学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "英語英米文学科"
+      },
+      {
+        "faculty": "経営学部",
+        "department": "経営学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "国際経済学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "経済学科"
+      }
+    ]
+  },
+  {
+    "course_name": "地理学１０１",
+    "day_of_week": 0,
+    "period": 4,
+    "term": "fall",
     "room": null,
     "instructor": "三河　雅弘",
     "departments": [
@@ -65695,7 +68997,81 @@
     "course_name": "地理学への招待",
     "day_of_week": 0,
     "period": 4,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "三河　雅弘",
+    "departments": [
+      {
+        "faculty": "ネットワーク情報学部",
+        "department": "ネットワーク情報学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "心理学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "社会学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "ジャーナリズム学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "人文・ジャーナリズム学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "哲学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本文学文化学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本語学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "歴史学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "英語英米文学科"
+      },
+      {
+        "faculty": "経営学部",
+        "department": "ビジネスデザイン学科"
+      },
+      {
+        "faculty": "経営学部",
+        "department": "経営学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "国際経済学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "現代経済学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "生活環境経済学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "経済学科"
+      }
+    ]
+  },
+  {
+    "course_name": "地理学への招待",
+    "day_of_week": 0,
+    "period": 4,
+    "term": "fall",
     "room": null,
     "instructor": "三河　雅弘",
     "departments": [
@@ -66045,7 +69421,69 @@
     "course_name": "哲学１０１",
     "day_of_week": 1,
     "period": 3,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "小長野　航太",
+    "departments": [
+      {
+        "faculty": "ネットワーク情報学部",
+        "department": "ネットワーク情報学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "心理学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "社会学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "人文・ジャーナリズム学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "哲学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本文学文化学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本語学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "歴史学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "環境地理学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "英語英米文学科"
+      },
+      {
+        "faculty": "経営学部",
+        "department": "経営学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "国際経済学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "経済学科"
+      }
+    ]
+  },
+  {
+    "course_name": "哲学１０１",
+    "day_of_week": 1,
+    "period": 3,
+    "term": "fall",
     "room": null,
     "instructor": "小長野　航太",
     "departments": [
@@ -66107,7 +69545,69 @@
     "course_name": "哲学１０１",
     "day_of_week": 1,
     "period": 2,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "佐藤　雅男",
+    "departments": [
+      {
+        "faculty": "ネットワーク情報学部",
+        "department": "ネットワーク情報学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "心理学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "社会学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "人文・ジャーナリズム学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "哲学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本文学文化学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本語学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "歴史学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "環境地理学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "英語英米文学科"
+      },
+      {
+        "faculty": "経営学部",
+        "department": "経営学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "国際経済学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "経済学科"
+      }
+    ]
+  },
+  {
+    "course_name": "哲学１０１",
+    "day_of_week": 1,
+    "period": 2,
+    "term": "fall",
     "room": null,
     "instructor": "佐藤　雅男",
     "departments": [
@@ -66409,7 +69909,65 @@
     "course_name": "哲学入門",
     "day_of_week": 1,
     "period": 3,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "小長野　航太",
+    "departments": [
+      {
+        "faculty": "ネットワーク情報学部",
+        "department": "ネットワーク情報学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "心理学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "社会学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "人文・ジャーナリズム学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本文学文化学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本語学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "歴史学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "環境地理学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "英語英米文学科"
+      },
+      {
+        "faculty": "経営学部",
+        "department": "経営学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "国際経済学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "経済学科"
+      }
+    ]
+  },
+  {
+    "course_name": "哲学入門",
+    "day_of_week": 1,
+    "period": 3,
+    "term": "fall",
     "room": null,
     "instructor": "小長野　航太",
     "departments": [
@@ -66467,7 +70025,65 @@
     "course_name": "哲学入門",
     "day_of_week": 1,
     "period": 2,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "佐藤　雅男",
+    "departments": [
+      {
+        "faculty": "ネットワーク情報学部",
+        "department": "ネットワーク情報学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "心理学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "社会学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "人文・ジャーナリズム学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本文学文化学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本語学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "歴史学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "環境地理学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "英語英米文学科"
+      },
+      {
+        "faculty": "経営学部",
+        "department": "経営学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "国際経済学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "経済学科"
+      }
+    ]
+  },
+  {
+    "course_name": "哲学入門",
+    "day_of_week": 1,
+    "period": 2,
+    "term": "fall",
     "room": null,
     "instructor": "佐藤　雅男",
     "departments": [
@@ -66827,7 +70443,69 @@
     "course_name": "テーマ科目２０３（イギリス）",
     "day_of_week": 4,
     "period": 3,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "小西　恵美",
+    "departments": [
+      {
+        "faculty": "ネットワーク情報学部",
+        "department": "ネットワーク情報学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "心理学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "社会学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "人文・ジャーナリズム学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "哲学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本文学文化学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本語学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "歴史学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "環境地理学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "英語英米文学科"
+      },
+      {
+        "faculty": "経営学部",
+        "department": "経営学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "国際経済学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "経済学科"
+      }
+    ]
+  },
+  {
+    "course_name": "テーマ科目２０３（イギリス）",
+    "day_of_week": 4,
+    "period": 3,
+    "term": "fall",
     "room": null,
     "instructor": "小西　恵美",
     "departments": [
@@ -67013,7 +70691,69 @@
     "course_name": "テーマ科目２０７（ノートテイク）",
     "day_of_week": 1,
     "period": 2,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "神山　みや子",
+    "departments": [
+      {
+        "faculty": "ネットワーク情報学部",
+        "department": "ネットワーク情報学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "心理学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "社会学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "人文・ジャーナリズム学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "哲学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本文学文化学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本語学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "歴史学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "環境地理学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "英語英米文学科"
+      },
+      {
+        "faculty": "経営学部",
+        "department": "経営学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "国際経済学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "経済学科"
+      }
+    ]
+  },
+  {
+    "course_name": "テーマ科目２０７（ノートテイク）",
+    "day_of_week": 1,
+    "period": 2,
+    "term": "fall",
     "room": null,
     "instructor": "神山　みや子",
     "departments": [
@@ -67089,7 +70829,21 @@
     "course_name": "特殊講義",
     "day_of_week": 3,
     "period": 2,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "森　啓明",
+    "departments": [
+      {
+        "faculty": "経済学部",
+        "department": "経済学科"
+      }
+    ]
+  },
+  {
+    "course_name": "特殊講義",
+    "day_of_week": 3,
+    "period": 2,
+    "term": "fall",
     "room": null,
     "instructor": "森　啓明",
     "departments": [
@@ -67117,7 +70871,21 @@
     "course_name": "特殊講義",
     "day_of_week": 2,
     "period": 3,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "杉橋　やよい",
+    "departments": [
+      {
+        "faculty": "経済学部",
+        "department": "経済学科"
+      }
+    ]
+  },
+  {
+    "course_name": "特殊講義",
+    "day_of_week": 2,
+    "period": 3,
+    "term": "fall",
     "room": null,
     "instructor": "杉橋　やよい",
     "departments": [
@@ -67145,7 +70913,21 @@
     "course_name": "特殊講義",
     "day_of_week": 3,
     "period": 3,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "森　啓明",
+    "departments": [
+      {
+        "faculty": "経済学部",
+        "department": "経済学科"
+      }
+    ]
+  },
+  {
+    "course_name": "特殊講義",
+    "day_of_week": 3,
+    "period": 3,
+    "term": "fall",
     "room": null,
     "instructor": "森　啓明",
     "departments": [
@@ -67187,7 +70969,21 @@
     "course_name": "特殊講義",
     "day_of_week": 3,
     "period": 2,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "吉田　雅明",
+    "departments": [
+      {
+        "faculty": "経済学部",
+        "department": "経済学科"
+      }
+    ]
+  },
+  {
+    "course_name": "特殊講義",
+    "day_of_week": 3,
+    "period": 2,
+    "term": "fall",
     "room": null,
     "instructor": "吉田　雅明",
     "departments": [
@@ -67201,7 +70997,21 @@
     "course_name": "特殊講義",
     "day_of_week": 1,
     "period": 2,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "西部　忠",
+    "departments": [
+      {
+        "faculty": "経済学部",
+        "department": "経済学科"
+      }
+    ]
+  },
+  {
+    "course_name": "特殊講義",
+    "day_of_week": 1,
+    "period": 2,
+    "term": "fall",
     "room": null,
     "instructor": "西部　忠",
     "departments": [
@@ -67215,7 +71025,21 @@
     "course_name": "特殊講義",
     "day_of_week": 3,
     "period": 2,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "西部　忠",
+    "departments": [
+      {
+        "faculty": "経済学部",
+        "department": "経済学科"
+      }
+    ]
+  },
+  {
+    "course_name": "特殊講義",
+    "day_of_week": 3,
+    "period": 2,
+    "term": "fall",
     "room": null,
     "instructor": "西部　忠",
     "departments": [
@@ -70235,7 +74059,69 @@
     "course_name": "道徳教育指導論",
     "day_of_week": 0,
     "period": 2,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "相賀　由美子",
+    "departments": [
+      {
+        "faculty": "ネットワーク情報学部",
+        "department": "ネットワーク情報学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "心理学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "社会学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "人文・ジャーナリズム学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "哲学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本文学文化学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本語学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "歴史学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "環境地理学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "英語英米文学科"
+      },
+      {
+        "faculty": "経営学部",
+        "department": "経営学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "国際経済学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "経済学科"
+      }
+    ]
+  },
+  {
+    "course_name": "道徳教育指導論",
+    "day_of_week": 0,
+    "period": 2,
+    "term": "fall",
     "room": null,
     "instructor": "相賀　由美子",
     "departments": [
@@ -78609,7 +82495,7 @@
     "course_name": "文化人類学１０１",
     "day_of_week": 2,
     "period": 3,
-    "term": "both",
+    "term": "spring",
     "room": null,
     "instructor": "渡部　重行",
     "departments": [
@@ -78671,7 +82557,131 @@
     "course_name": "文化人類学１０１",
     "day_of_week": 2,
     "period": 4,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "渡部　重行",
+    "departments": [
+      {
+        "faculty": "ネットワーク情報学部",
+        "department": "ネットワーク情報学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "心理学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "社会学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "人文・ジャーナリズム学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "哲学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本文学文化学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本語学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "歴史学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "環境地理学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "英語英米文学科"
+      },
+      {
+        "faculty": "経営学部",
+        "department": "経営学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "国際経済学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "経済学科"
+      }
+    ]
+  },
+  {
+    "course_name": "文化人類学１０１",
+    "day_of_week": 2,
+    "period": 3,
+    "term": "fall",
+    "room": null,
+    "instructor": "渡部　重行",
+    "departments": [
+      {
+        "faculty": "ネットワーク情報学部",
+        "department": "ネットワーク情報学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "心理学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "社会学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "人文・ジャーナリズム学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "哲学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本文学文化学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本語学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "歴史学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "環境地理学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "英語英米文学科"
+      },
+      {
+        "faculty": "経営学部",
+        "department": "経営学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "国際経済学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "経済学科"
+      }
+    ]
+  },
+  {
+    "course_name": "文化人類学１０１",
+    "day_of_week": 2,
+    "period": 4,
+    "term": "fall",
     "room": null,
     "instructor": "渡部　重行",
     "departments": [
@@ -85761,7 +89771,7 @@
     "course_name": "論理学１０２",
     "day_of_week": 4,
     "period": 3,
-    "term": "both",
+    "term": "fall",
     "room": null,
     "instructor": "木原　弘行",
     "departments": [
@@ -85823,6 +89833,68 @@
     "course_name": "論理学１０２",
     "day_of_week": 4,
     "period": 4,
+    "term": "spring",
+    "room": null,
+    "instructor": "木原　弘行",
+    "departments": [
+      {
+        "faculty": "ネットワーク情報学部",
+        "department": "ネットワーク情報学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "心理学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "社会学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "人文・ジャーナリズム学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "哲学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本文学文化学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本語学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "歴史学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "環境地理学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "英語英米文学科"
+      },
+      {
+        "faculty": "経営学部",
+        "department": "経営学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "国際経済学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "経済学科"
+      }
+    ]
+  },
+  {
+    "course_name": "論理学１０２",
+    "day_of_week": 4,
+    "period": 3,
     "term": "spring",
     "room": null,
     "instructor": "木原　弘行",
@@ -86253,7 +90325,25 @@
     "course_name": "外国史１",
     "day_of_week": 1,
     "period": 4,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "福島　大我",
+    "departments": [
+      {
+        "faculty": "経済学部",
+        "department": "現代経済学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "生活環境経済学科"
+      }
+    ]
+  },
+  {
+    "course_name": "外国史１",
+    "day_of_week": 1,
+    "period": 4,
+    "term": "fall",
     "room": null,
     "instructor": "福島　大我",
     "departments": [
@@ -86271,7 +90361,25 @@
     "course_name": "外国史２",
     "day_of_week": 1,
     "period": 5,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "小笠原　強",
+    "departments": [
+      {
+        "faculty": "経済学部",
+        "department": "現代経済学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "生活環境経済学科"
+      }
+    ]
+  },
+  {
+    "course_name": "外国史２",
+    "day_of_week": 1,
+    "period": 5,
+    "term": "fall",
     "room": null,
     "instructor": "小笠原　強",
     "departments": [
@@ -86649,7 +90757,7 @@
     "course_name": "ことばと論理",
     "day_of_week": 4,
     "period": 3,
-    "term": "both",
+    "term": "fall",
     "room": null,
     "instructor": "木原　弘行",
     "departments": [
@@ -86794,10 +90902,154 @@
     ]
   },
   {
+    "course_name": "ことばと論理",
+    "day_of_week": 4,
+    "period": 3,
+    "term": "spring",
+    "room": null,
+    "instructor": "木原　弘行",
+    "departments": [
+      {
+        "faculty": "ネットワーク情報学部",
+        "department": "ネットワーク情報学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "心理学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "社会学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "ジャーナリズム学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "人文・ジャーナリズム学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "哲学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本文学文化学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本語学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "歴史学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "環境地理学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "英語英米文学科"
+      },
+      {
+        "faculty": "経営学部",
+        "department": "ビジネスデザイン学科"
+      },
+      {
+        "faculty": "経営学部",
+        "department": "経営学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "国際経済学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "現代経済学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "生活環境経済学科"
+      }
+    ]
+  },
+  {
     "course_name": "子どもと社会の教育学",
     "day_of_week": 2,
     "period": 2,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "広瀬　裕子",
+    "departments": [
+      {
+        "faculty": "ネットワーク情報学部",
+        "department": "ネットワーク情報学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "心理学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "社会学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "ジャーナリズム学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "哲学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本文学文化学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本語学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "歴史学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "環境地理学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "英語英米文学科"
+      },
+      {
+        "faculty": "経営学部",
+        "department": "ビジネスデザイン学科"
+      },
+      {
+        "faculty": "経営学部",
+        "department": "経営学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "国際経済学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "現代経済学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "生活環境経済学科"
+      }
+    ]
+  },
+  {
+    "course_name": "子どもと社会の教育学",
+    "day_of_week": 2,
+    "period": 2,
+    "term": "fall",
     "room": null,
     "instructor": "広瀬　裕子",
     "departments": [
@@ -88181,7 +92433,61 @@
     "course_name": "情報入門１",
     "day_of_week": 2,
     "period": 3,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "御園生　純",
+    "departments": [
+      {
+        "faculty": "人間科学部",
+        "department": "心理学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "社会学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "哲学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本文学文化学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本語学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "歴史学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "環境地理学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "英語英米文学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "国際経済学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "現代経済学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "生活環境経済学科"
+      }
+    ]
+  },
+  {
+    "course_name": "情報入門１",
+    "day_of_week": 2,
+    "period": 3,
+    "term": "fall",
     "room": null,
     "instructor": "御園生　純",
     "departments": [
@@ -91925,7 +96231,73 @@
     "course_name": "哲学",
     "day_of_week": 1,
     "period": 3,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "小長野　航太",
+    "departments": [
+      {
+        "faculty": "ネットワーク情報学部",
+        "department": "ネットワーク情報学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "心理学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "社会学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "ジャーナリズム学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本文学文化学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本語学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "歴史学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "環境地理学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "英語英米文学科"
+      },
+      {
+        "faculty": "経営学部",
+        "department": "ビジネスデザイン学科"
+      },
+      {
+        "faculty": "経営学部",
+        "department": "経営学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "国際経済学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "現代経済学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "生活環境経済学科"
+      }
+    ]
+  },
+  {
+    "course_name": "哲学",
+    "day_of_week": 1,
+    "period": 3,
+    "term": "fall",
     "room": null,
     "instructor": "小長野　航太",
     "departments": [
@@ -91991,7 +96363,73 @@
     "course_name": "哲学",
     "day_of_week": 1,
     "period": 2,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "佐藤　雅男",
+    "departments": [
+      {
+        "faculty": "ネットワーク情報学部",
+        "department": "ネットワーク情報学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "心理学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "社会学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "ジャーナリズム学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本文学文化学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本語学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "歴史学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "環境地理学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "英語英米文学科"
+      },
+      {
+        "faculty": "経営学部",
+        "department": "ビジネスデザイン学科"
+      },
+      {
+        "faculty": "経営学部",
+        "department": "経営学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "国際経済学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "現代経済学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "生活環境経済学科"
+      }
+    ]
+  },
+  {
+    "course_name": "哲学",
+    "day_of_week": 1,
+    "period": 2,
+    "term": "fall",
     "room": null,
     "instructor": "佐藤　雅男",
     "departments": [
@@ -95789,7 +100227,21 @@
     "course_name": "経済時事英語",
     "day_of_week": 0,
     "period": 2,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "傅　凱儀",
+    "departments": [
+      {
+        "faculty": "経済学部",
+        "department": "国際経済学科"
+      }
+    ]
+  },
+  {
+    "course_name": "経済時事英語",
+    "day_of_week": 0,
+    "period": 2,
+    "term": "fall",
     "room": null,
     "instructor": "傅　凱儀",
     "departments": [
@@ -95803,7 +100255,21 @@
     "course_name": "経済時事英語",
     "day_of_week": 0,
     "period": 3,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "堀江　洋文",
+    "departments": [
+      {
+        "faculty": "経済学部",
+        "department": "国際経済学科"
+      }
+    ]
+  },
+  {
+    "course_name": "経済時事英語",
+    "day_of_week": 0,
+    "period": 3,
+    "term": "fall",
     "room": null,
     "instructor": "堀江　洋文",
     "departments": [
@@ -95817,7 +100283,21 @@
     "course_name": "経済時事英語",
     "day_of_week": 0,
     "period": 4,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "堀江　洋文",
+    "departments": [
+      {
+        "faculty": "経済学部",
+        "department": "国際経済学科"
+      }
+    ]
+  },
+  {
+    "course_name": "経済時事英語",
+    "day_of_week": 0,
+    "period": 4,
+    "term": "fall",
     "room": null,
     "instructor": "堀江　洋文",
     "departments": [
@@ -96195,7 +100675,21 @@
     "course_name": "国際コミュニケーション１",
     "day_of_week": 0,
     "period": 3,
-    "term": "both",
+    "term": "fall",
+    "room": null,
+    "instructor": "サンチェス，スサナ",
+    "departments": [
+      {
+        "faculty": "経済学部",
+        "department": "国際経済学科"
+      }
+    ]
+  },
+  {
+    "course_name": "国際コミュニケーション１",
+    "day_of_week": 0,
+    "period": 3,
+    "term": "spring",
     "room": null,
     "instructor": "サンチェス，スサナ",
     "departments": [
@@ -96209,7 +100703,21 @@
     "course_name": "国際コミュニケーション１",
     "day_of_week": 0,
     "period": 4,
-    "term": "both",
+    "term": "fall",
+    "room": null,
+    "instructor": "サンチェス，スサナ",
+    "departments": [
+      {
+        "faculty": "経済学部",
+        "department": "国際経済学科"
+      }
+    ]
+  },
+  {
+    "course_name": "国際コミュニケーション１",
+    "day_of_week": 0,
+    "period": 4,
+    "term": "spring",
     "room": null,
     "instructor": "サンチェス，スサナ",
     "departments": [
@@ -96615,7 +101123,21 @@
     "course_name": "国際事情３（英語）",
     "day_of_week": 0,
     "period": 2,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "田中　章喜",
+    "departments": [
+      {
+        "faculty": "経済学部",
+        "department": "国際経済学科"
+      }
+    ]
+  },
+  {
+    "course_name": "国際事情３（英語）",
+    "day_of_week": 0,
+    "period": 2,
+    "term": "fall",
     "room": null,
     "instructor": "田中　章喜",
     "departments": [
@@ -96671,7 +101193,21 @@
     "course_name": "国際事情３（コリア語）",
     "day_of_week": 4,
     "period": 4,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "崔　誠姫",
+    "departments": [
+      {
+        "faculty": "経済学部",
+        "department": "国際経済学科"
+      }
+    ]
+  },
+  {
+    "course_name": "国際事情３（コリア語）",
+    "day_of_week": 4,
+    "period": 4,
+    "term": "fall",
     "room": null,
     "instructor": "崔　誠姫",
     "departments": [
@@ -96713,7 +101249,21 @@
     "course_name": "国際事情３（ドイツ語）",
     "day_of_week": 4,
     "period": 3,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "枡田　大知彦",
+    "departments": [
+      {
+        "faculty": "経済学部",
+        "department": "国際経済学科"
+      }
+    ]
+  },
+  {
+    "course_name": "国際事情３（ドイツ語）",
+    "day_of_week": 4,
+    "period": 3,
+    "term": "fall",
     "room": null,
     "instructor": "枡田　大知彦",
     "departments": [
@@ -96727,7 +101277,21 @@
     "course_name": "国際事情３（ドイツ語）",
     "day_of_week": 2,
     "period": 2,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "加藤　浩平",
+    "departments": [
+      {
+        "faculty": "経済学部",
+        "department": "国際経済学科"
+      }
+    ]
+  },
+  {
+    "course_name": "国際事情３（ドイツ語）",
+    "day_of_week": 2,
+    "period": 2,
+    "term": "fall",
     "room": null,
     "instructor": "加藤　浩平",
     "departments": [
@@ -96741,7 +101305,21 @@
     "course_name": "国際事情３（フランス語）",
     "day_of_week": 1,
     "period": 2,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "齊藤　佳史",
+    "departments": [
+      {
+        "faculty": "経済学部",
+        "department": "国際経済学科"
+      }
+    ]
+  },
+  {
+    "course_name": "国際事情３（フランス語）",
+    "day_of_week": 1,
+    "period": 2,
+    "term": "fall",
     "room": null,
     "instructor": "齊藤　佳史",
     "departments": [
@@ -96937,7 +101515,21 @@
     "course_name": "地域研究特殊講義",
     "day_of_week": 4,
     "period": 2,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "小西　恵美",
+    "departments": [
+      {
+        "faculty": "経済学部",
+        "department": "国際経済学科"
+      }
+    ]
+  },
+  {
+    "course_name": "地域研究特殊講義",
+    "day_of_week": 4,
+    "period": 2,
+    "term": "fall",
     "room": null,
     "instructor": "小西　恵美",
     "departments": [
@@ -97067,6 +101659,10 @@
     "room": null,
     "instructor": "伊藤　尚枝",
     "departments": [
+      {
+        "faculty": "文学部",
+        "department": "ジャーナリズム学科"
+      },
       {
         "faculty": "文学部",
         "department": "人文・ジャーナリズム学科"
@@ -100845,7 +105441,29 @@
     "course_name": "教養特殊講義Ⅵ",
     "day_of_week": 1,
     "period": 7,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "丸茂　雄一",
+    "departments": [
+      {
+        "faculty": "商学部",
+        "department": "二部マーケティング学科"
+      },
+      {
+        "faculty": "法学部",
+        "department": "二部法律学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "二部経済学科"
+      }
+    ]
+  },
+  {
+    "course_name": "教養特殊講義Ⅵ",
+    "day_of_week": 1,
+    "period": 7,
+    "term": "fall",
     "room": null,
     "instructor": "丸茂　雄一",
     "departments": [
@@ -105833,7 +110451,45 @@
     "course_name": "スポーツ文化論",
     "day_of_week": 3,
     "period": 5,
-    "term": "both",
+    "term": "fall",
+    "room": null,
+    "instructor": "中嶋　哲也",
+    "departments": [
+      {
+        "faculty": "商学部",
+        "department": "マーケティング学科"
+      },
+      {
+        "faculty": "商学部",
+        "department": "二部マーケティング学科"
+      },
+      {
+        "faculty": "商学部",
+        "department": "会計学科"
+      },
+      {
+        "faculty": "法学部",
+        "department": "二部法律学科"
+      },
+      {
+        "faculty": "法学部",
+        "department": "政治学科"
+      },
+      {
+        "faculty": "法学部",
+        "department": "法律学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "二部経済学科"
+      }
+    ]
+  },
+  {
+    "course_name": "スポーツ文化論",
+    "day_of_week": 3,
+    "period": 5,
+    "term": "spring",
     "room": null,
     "instructor": "中嶋　哲也",
     "departments": [
@@ -107005,7 +111661,45 @@
     "course_name": "総合科目１１０",
     "day_of_week": 4,
     "period": 5,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "中垣　恒太郎",
+    "departments": [
+      {
+        "faculty": "商学部",
+        "department": "マーケティング学科"
+      },
+      {
+        "faculty": "商学部",
+        "department": "二部マーケティング学科"
+      },
+      {
+        "faculty": "商学部",
+        "department": "会計学科"
+      },
+      {
+        "faculty": "法学部",
+        "department": "二部法律学科"
+      },
+      {
+        "faculty": "法学部",
+        "department": "政治学科"
+      },
+      {
+        "faculty": "法学部",
+        "department": "法律学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "二部経済学科"
+      }
+    ]
+  },
+  {
+    "course_name": "総合科目１１０",
+    "day_of_week": 4,
+    "period": 5,
+    "term": "fall",
     "room": null,
     "instructor": "中垣　恒太郎",
     "departments": [
@@ -108559,7 +113253,29 @@
     "course_name": "特殊講義",
     "day_of_week": 0,
     "period": 7,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "姜　徳洙",
+    "departments": [
+      {
+        "faculty": "商学部",
+        "department": "二部マーケティング学科"
+      },
+      {
+        "faculty": "法学部",
+        "department": "二部法律学科"
+      },
+      {
+        "faculty": "経済学部",
+        "department": "二部経済学科"
+      }
+    ]
+  },
+  {
+    "course_name": "特殊講義",
+    "day_of_week": 0,
+    "period": 7,
+    "term": "fall",
     "room": null,
     "instructor": "姜　徳洙",
     "departments": [
@@ -112609,7 +117325,33 @@
     "course_name": "アドバンストスポーツ（バスケットボール）",
     "day_of_week": 4,
     "period": 2,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "玉城　耕二",
+    "departments": [
+      {
+        "faculty": "商学部",
+        "department": "マーケティング学科"
+      },
+      {
+        "faculty": "商学部",
+        "department": "会計学科"
+      },
+      {
+        "faculty": "法学部",
+        "department": "政治学科"
+      },
+      {
+        "faculty": "法学部",
+        "department": "法律学科"
+      }
+    ]
+  },
+  {
+    "course_name": "アドバンストスポーツ（バスケットボール）",
+    "day_of_week": 4,
+    "period": 2,
+    "term": "fall",
     "room": null,
     "instructor": "玉城　耕二",
     "departments": [
@@ -119071,7 +123813,33 @@
     "course_name": "キャリア入門",
     "day_of_week": 0,
     "period": 1,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "須東　朋広",
+    "departments": [
+      {
+        "faculty": "国際コミュニケーション学部",
+        "department": "日本語学科"
+      },
+      {
+        "faculty": "国際コミュニケーション学部",
+        "department": "異文化コミュニケーション学科"
+      },
+      {
+        "faculty": "法学部",
+        "department": "政治学科"
+      },
+      {
+        "faculty": "法学部",
+        "department": "法律学科"
+      }
+    ]
+  },
+  {
+    "course_name": "キャリア入門",
+    "day_of_week": 0,
+    "period": 1,
+    "term": "fall",
     "room": null,
     "instructor": "須東　朋広",
     "departments": [
@@ -119097,7 +123865,33 @@
     "course_name": "キャリア入門",
     "day_of_week": 0,
     "period": 2,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "須東　朋広",
+    "departments": [
+      {
+        "faculty": "国際コミュニケーション学部",
+        "department": "日本語学科"
+      },
+      {
+        "faculty": "国際コミュニケーション学部",
+        "department": "異文化コミュニケーション学科"
+      },
+      {
+        "faculty": "法学部",
+        "department": "政治学科"
+      },
+      {
+        "faculty": "法学部",
+        "department": "法律学科"
+      }
+    ]
+  },
+  {
+    "course_name": "キャリア入門",
+    "day_of_week": 0,
+    "period": 2,
+    "term": "fall",
     "room": null,
     "instructor": "須東　朋広",
     "departments": [
@@ -119123,7 +123917,33 @@
     "course_name": "キャリア入門",
     "day_of_week": 0,
     "period": 3,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "須東　朋広",
+    "departments": [
+      {
+        "faculty": "国際コミュニケーション学部",
+        "department": "日本語学科"
+      },
+      {
+        "faculty": "国際コミュニケーション学部",
+        "department": "異文化コミュニケーション学科"
+      },
+      {
+        "faculty": "法学部",
+        "department": "政治学科"
+      },
+      {
+        "faculty": "法学部",
+        "department": "法律学科"
+      }
+    ]
+  },
+  {
+    "course_name": "キャリア入門",
+    "day_of_week": 0,
+    "period": 3,
+    "term": "fall",
     "room": null,
     "instructor": "須東　朋広",
     "departments": [
@@ -125051,7 +129871,33 @@
     "course_name": "新領域科目３０３（キャリア開発）",
     "day_of_week": 2,
     "period": 1,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "大山　雅嗣",
+    "departments": [
+      {
+        "faculty": "商学部",
+        "department": "マーケティング学科"
+      },
+      {
+        "faculty": "商学部",
+        "department": "会計学科"
+      },
+      {
+        "faculty": "法学部",
+        "department": "政治学科"
+      },
+      {
+        "faculty": "法学部",
+        "department": "法律学科"
+      }
+    ]
+  },
+  {
+    "course_name": "新領域科目３０３（キャリア開発）",
+    "day_of_week": 2,
+    "period": 1,
+    "term": "fall",
     "room": null,
     "instructor": "大山　雅嗣",
     "departments": [
@@ -125077,7 +129923,33 @@
     "course_name": "General English 1",
     "day_of_week": 1,
     "period": 3,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "石黒　恭代",
+    "departments": [
+      {
+        "faculty": "商学部",
+        "department": "マーケティング学科"
+      },
+      {
+        "faculty": "商学部",
+        "department": "会計学科"
+      },
+      {
+        "faculty": "法学部",
+        "department": "政治学科"
+      },
+      {
+        "faculty": "法学部",
+        "department": "法律学科"
+      }
+    ]
+  },
+  {
+    "course_name": "General English 1",
+    "day_of_week": 1,
+    "period": 3,
+    "term": "fall",
     "room": null,
     "instructor": "石黒　恭代",
     "departments": [
@@ -125103,7 +129975,33 @@
     "course_name": "General English 1",
     "day_of_week": 1,
     "period": 5,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "大田　信良",
+    "departments": [
+      {
+        "faculty": "商学部",
+        "department": "マーケティング学科"
+      },
+      {
+        "faculty": "商学部",
+        "department": "会計学科"
+      },
+      {
+        "faculty": "法学部",
+        "department": "政治学科"
+      },
+      {
+        "faculty": "法学部",
+        "department": "法律学科"
+      }
+    ]
+  },
+  {
+    "course_name": "General English 1",
+    "day_of_week": 1,
+    "period": 5,
+    "term": "fall",
     "room": null,
     "instructor": "大田　信良",
     "departments": [
@@ -125129,7 +130027,33 @@
     "course_name": "General English 1",
     "day_of_week": 2,
     "period": 2,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "河野　真太郎",
+    "departments": [
+      {
+        "faculty": "商学部",
+        "department": "マーケティング学科"
+      },
+      {
+        "faculty": "商学部",
+        "department": "会計学科"
+      },
+      {
+        "faculty": "法学部",
+        "department": "政治学科"
+      },
+      {
+        "faculty": "法学部",
+        "department": "法律学科"
+      }
+    ]
+  },
+  {
+    "course_name": "General English 1",
+    "day_of_week": 2,
+    "period": 2,
+    "term": "fall",
     "room": null,
     "instructor": "河野　真太郎",
     "departments": [
@@ -125155,7 +130079,33 @@
     "course_name": "General English 1",
     "day_of_week": 3,
     "period": 4,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "源中　由記",
+    "departments": [
+      {
+        "faculty": "商学部",
+        "department": "マーケティング学科"
+      },
+      {
+        "faculty": "商学部",
+        "department": "会計学科"
+      },
+      {
+        "faculty": "法学部",
+        "department": "政治学科"
+      },
+      {
+        "faculty": "法学部",
+        "department": "法律学科"
+      }
+    ]
+  },
+  {
+    "course_name": "General English 1",
+    "day_of_week": 3,
+    "period": 4,
+    "term": "fall",
     "room": null,
     "instructor": "源中　由記",
     "departments": [
@@ -125233,7 +130183,33 @@
     "course_name": "General English 1",
     "day_of_week": 4,
     "period": 2,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "宮前　和代",
+    "departments": [
+      {
+        "faculty": "商学部",
+        "department": "マーケティング学科"
+      },
+      {
+        "faculty": "商学部",
+        "department": "会計学科"
+      },
+      {
+        "faculty": "法学部",
+        "department": "政治学科"
+      },
+      {
+        "faculty": "法学部",
+        "department": "法律学科"
+      }
+    ]
+  },
+  {
+    "course_name": "General English 1",
+    "day_of_week": 4,
+    "period": 2,
+    "term": "fall",
     "room": null,
     "instructor": "宮前　和代",
     "departments": [
@@ -125259,7 +130235,33 @@
     "course_name": "General English 2",
     "day_of_week": 0,
     "period": 2,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "フリックマン，ジェフリー　Ｃ．",
+    "departments": [
+      {
+        "faculty": "商学部",
+        "department": "マーケティング学科"
+      },
+      {
+        "faculty": "商学部",
+        "department": "会計学科"
+      },
+      {
+        "faculty": "法学部",
+        "department": "政治学科"
+      },
+      {
+        "faculty": "法学部",
+        "department": "法律学科"
+      }
+    ]
+  },
+  {
+    "course_name": "General English 2",
+    "day_of_week": 0,
+    "period": 2,
+    "term": "fall",
     "room": null,
     "instructor": "フリックマン，ジェフリー　Ｃ．",
     "departments": [
@@ -125285,7 +130287,33 @@
     "course_name": "General English 2",
     "day_of_week": 1,
     "period": 4,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "石黒　恭代",
+    "departments": [
+      {
+        "faculty": "商学部",
+        "department": "マーケティング学科"
+      },
+      {
+        "faculty": "商学部",
+        "department": "会計学科"
+      },
+      {
+        "faculty": "法学部",
+        "department": "政治学科"
+      },
+      {
+        "faculty": "法学部",
+        "department": "法律学科"
+      }
+    ]
+  },
+  {
+    "course_name": "General English 2",
+    "day_of_week": 1,
+    "period": 4,
+    "term": "fall",
     "room": null,
     "instructor": "石黒　恭代",
     "departments": [
@@ -125311,7 +130339,33 @@
     "course_name": "General English 2",
     "day_of_week": 2,
     "period": 2,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "松田　智穂子",
+    "departments": [
+      {
+        "faculty": "商学部",
+        "department": "マーケティング学科"
+      },
+      {
+        "faculty": "商学部",
+        "department": "会計学科"
+      },
+      {
+        "faculty": "法学部",
+        "department": "政治学科"
+      },
+      {
+        "faculty": "法学部",
+        "department": "法律学科"
+      }
+    ]
+  },
+  {
+    "course_name": "General English 2",
+    "day_of_week": 2,
+    "period": 2,
+    "term": "fall",
     "room": null,
     "instructor": "松田　智穂子",
     "departments": [
@@ -125337,7 +130391,33 @@
     "course_name": "General English 2",
     "day_of_week": 2,
     "period": 4,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "大谷　伴子",
+    "departments": [
+      {
+        "faculty": "商学部",
+        "department": "マーケティング学科"
+      },
+      {
+        "faculty": "商学部",
+        "department": "会計学科"
+      },
+      {
+        "faculty": "法学部",
+        "department": "政治学科"
+      },
+      {
+        "faculty": "法学部",
+        "department": "法律学科"
+      }
+    ]
+  },
+  {
+    "course_name": "General English 2",
+    "day_of_week": 2,
+    "period": 4,
+    "term": "fall",
     "room": null,
     "instructor": "大谷　伴子",
     "departments": [
@@ -125363,7 +130443,33 @@
     "course_name": "General English 2",
     "day_of_week": 3,
     "period": 1,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "河野　真太郎",
+    "departments": [
+      {
+        "faculty": "商学部",
+        "department": "マーケティング学科"
+      },
+      {
+        "faculty": "商学部",
+        "department": "会計学科"
+      },
+      {
+        "faculty": "法学部",
+        "department": "政治学科"
+      },
+      {
+        "faculty": "法学部",
+        "department": "法律学科"
+      }
+    ]
+  },
+  {
+    "course_name": "General English 2",
+    "day_of_week": 3,
+    "period": 1,
+    "term": "fall",
     "room": null,
     "instructor": "河野　真太郎",
     "departments": [
@@ -125389,7 +130495,33 @@
     "course_name": "General English 2",
     "day_of_week": 4,
     "period": 3,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "メニッシュ，マーク　Ｃ．",
+    "departments": [
+      {
+        "faculty": "商学部",
+        "department": "マーケティング学科"
+      },
+      {
+        "faculty": "商学部",
+        "department": "会計学科"
+      },
+      {
+        "faculty": "法学部",
+        "department": "政治学科"
+      },
+      {
+        "faculty": "法学部",
+        "department": "法律学科"
+      }
+    ]
+  },
+  {
+    "course_name": "General English 2",
+    "day_of_week": 4,
+    "period": 3,
+    "term": "fall",
     "room": null,
     "instructor": "メニッシュ，マーク　Ｃ．",
     "departments": [
@@ -125433,7 +130565,41 @@
     "course_name": "ジャーナリズムと現代",
     "day_of_week": 3,
     "period": 6,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "平井　信太郎",
+    "departments": [
+      {
+        "faculty": "商学部",
+        "department": "マーケティング学科"
+      },
+      {
+        "faculty": "商学部",
+        "department": "会計学科"
+      },
+      {
+        "faculty": "国際コミュニケーション学部",
+        "department": "日本語学科"
+      },
+      {
+        "faculty": "国際コミュニケーション学部",
+        "department": "異文化コミュニケーション学科"
+      },
+      {
+        "faculty": "法学部",
+        "department": "政治学科"
+      },
+      {
+        "faculty": "法学部",
+        "department": "法律学科"
+      }
+    ]
+  },
+  {
+    "course_name": "ジャーナリズムと現代",
+    "day_of_week": 3,
+    "period": 6,
+    "term": "fall",
     "room": null,
     "instructor": "平井　信太郎",
     "departments": [
@@ -130031,7 +135197,33 @@
     "course_name": "スポーツウェルネス",
     "day_of_week": 3,
     "period": 6,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "中嶋　哲也",
+    "departments": [
+      {
+        "faculty": "商学部",
+        "department": "マーケティング学科"
+      },
+      {
+        "faculty": "商学部",
+        "department": "会計学科"
+      },
+      {
+        "faculty": "法学部",
+        "department": "政治学科"
+      },
+      {
+        "faculty": "法学部",
+        "department": "法律学科"
+      }
+    ]
+  },
+  {
+    "course_name": "スポーツウェルネス",
+    "day_of_week": 3,
+    "period": 6,
+    "term": "fall",
     "room": null,
     "instructor": "中嶋　哲也",
     "departments": [
@@ -130057,7 +135249,33 @@
     "course_name": "スポーツウェルネス",
     "day_of_week": 3,
     "period": 7,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "中嶋　哲也",
+    "departments": [
+      {
+        "faculty": "商学部",
+        "department": "マーケティング学科"
+      },
+      {
+        "faculty": "商学部",
+        "department": "会計学科"
+      },
+      {
+        "faculty": "法学部",
+        "department": "政治学科"
+      },
+      {
+        "faculty": "法学部",
+        "department": "法律学科"
+      }
+    ]
+  },
+  {
+    "course_name": "スポーツウェルネス",
+    "day_of_week": 3,
+    "period": 7,
+    "term": "fall",
     "room": null,
     "instructor": "中嶋　哲也",
     "departments": [
@@ -130083,7 +135301,33 @@
     "course_name": "スポーツウェルネス",
     "day_of_week": 4,
     "period": 6,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "篠村　朋樹",
+    "departments": [
+      {
+        "faculty": "商学部",
+        "department": "マーケティング学科"
+      },
+      {
+        "faculty": "商学部",
+        "department": "会計学科"
+      },
+      {
+        "faculty": "法学部",
+        "department": "政治学科"
+      },
+      {
+        "faculty": "法学部",
+        "department": "法律学科"
+      }
+    ]
+  },
+  {
+    "course_name": "スポーツウェルネス",
+    "day_of_week": 4,
+    "period": 6,
+    "term": "fall",
     "room": null,
     "instructor": "篠村　朋樹",
     "departments": [
@@ -130109,7 +135353,33 @@
     "course_name": "スポーツウェルネス",
     "day_of_week": 4,
     "period": 7,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "篠村　朋樹",
+    "departments": [
+      {
+        "faculty": "商学部",
+        "department": "マーケティング学科"
+      },
+      {
+        "faculty": "商学部",
+        "department": "会計学科"
+      },
+      {
+        "faculty": "法学部",
+        "department": "政治学科"
+      },
+      {
+        "faculty": "法学部",
+        "department": "法律学科"
+      }
+    ]
+  },
+  {
+    "course_name": "スポーツウェルネス",
+    "day_of_week": 4,
+    "period": 7,
+    "term": "fall",
     "room": null,
     "instructor": "篠村　朋樹",
     "departments": [
@@ -136621,7 +141891,33 @@
     "course_name": "総合英語Ｃ",
     "day_of_week": 1,
     "period": 3,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "石黒　恭代",
+    "departments": [
+      {
+        "faculty": "商学部",
+        "department": "マーケティング学科"
+      },
+      {
+        "faculty": "商学部",
+        "department": "会計学科"
+      },
+      {
+        "faculty": "法学部",
+        "department": "政治学科"
+      },
+      {
+        "faculty": "法学部",
+        "department": "法律学科"
+      }
+    ]
+  },
+  {
+    "course_name": "総合英語Ｃ",
+    "day_of_week": 1,
+    "period": 3,
+    "term": "fall",
     "room": null,
     "instructor": "石黒　恭代",
     "departments": [
@@ -136647,7 +141943,33 @@
     "course_name": "総合英語Ｃ",
     "day_of_week": 1,
     "period": 5,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "大田　信良",
+    "departments": [
+      {
+        "faculty": "商学部",
+        "department": "マーケティング学科"
+      },
+      {
+        "faculty": "商学部",
+        "department": "会計学科"
+      },
+      {
+        "faculty": "法学部",
+        "department": "政治学科"
+      },
+      {
+        "faculty": "法学部",
+        "department": "法律学科"
+      }
+    ]
+  },
+  {
+    "course_name": "総合英語Ｃ",
+    "day_of_week": 1,
+    "period": 5,
+    "term": "fall",
     "room": null,
     "instructor": "大田　信良",
     "departments": [
@@ -136673,7 +141995,33 @@
     "course_name": "総合英語Ｃ",
     "day_of_week": 2,
     "period": 2,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "河野　真太郎",
+    "departments": [
+      {
+        "faculty": "商学部",
+        "department": "マーケティング学科"
+      },
+      {
+        "faculty": "商学部",
+        "department": "会計学科"
+      },
+      {
+        "faculty": "法学部",
+        "department": "政治学科"
+      },
+      {
+        "faculty": "法学部",
+        "department": "法律学科"
+      }
+    ]
+  },
+  {
+    "course_name": "総合英語Ｃ",
+    "day_of_week": 2,
+    "period": 2,
+    "term": "fall",
     "room": null,
     "instructor": "河野　真太郎",
     "departments": [
@@ -136699,7 +142047,33 @@
     "course_name": "総合英語Ｃ",
     "day_of_week": 3,
     "period": 4,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "源中　由記",
+    "departments": [
+      {
+        "faculty": "商学部",
+        "department": "マーケティング学科"
+      },
+      {
+        "faculty": "商学部",
+        "department": "会計学科"
+      },
+      {
+        "faculty": "法学部",
+        "department": "政治学科"
+      },
+      {
+        "faculty": "法学部",
+        "department": "法律学科"
+      }
+    ]
+  },
+  {
+    "course_name": "総合英語Ｃ",
+    "day_of_week": 3,
+    "period": 4,
+    "term": "fall",
     "room": null,
     "instructor": "源中　由記",
     "departments": [
@@ -136777,7 +142151,33 @@
     "course_name": "総合英語Ｃ",
     "day_of_week": 4,
     "period": 2,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "宮前　和代",
+    "departments": [
+      {
+        "faculty": "商学部",
+        "department": "マーケティング学科"
+      },
+      {
+        "faculty": "商学部",
+        "department": "会計学科"
+      },
+      {
+        "faculty": "法学部",
+        "department": "政治学科"
+      },
+      {
+        "faculty": "法学部",
+        "department": "法律学科"
+      }
+    ]
+  },
+  {
+    "course_name": "総合英語Ｃ",
+    "day_of_week": 4,
+    "period": 2,
+    "term": "fall",
     "room": null,
     "instructor": "宮前　和代",
     "departments": [
@@ -136803,7 +142203,33 @@
     "course_name": "総合英語Ｃ",
     "day_of_week": 0,
     "period": 2,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "フリックマン，ジェフリー　Ｃ．",
+    "departments": [
+      {
+        "faculty": "商学部",
+        "department": "マーケティング学科"
+      },
+      {
+        "faculty": "商学部",
+        "department": "会計学科"
+      },
+      {
+        "faculty": "法学部",
+        "department": "政治学科"
+      },
+      {
+        "faculty": "法学部",
+        "department": "法律学科"
+      }
+    ]
+  },
+  {
+    "course_name": "総合英語Ｃ",
+    "day_of_week": 0,
+    "period": 2,
+    "term": "fall",
     "room": null,
     "instructor": "フリックマン，ジェフリー　Ｃ．",
     "departments": [
@@ -136829,7 +142255,33 @@
     "course_name": "総合英語Ｃ",
     "day_of_week": 1,
     "period": 4,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "石黒　恭代",
+    "departments": [
+      {
+        "faculty": "商学部",
+        "department": "マーケティング学科"
+      },
+      {
+        "faculty": "商学部",
+        "department": "会計学科"
+      },
+      {
+        "faculty": "法学部",
+        "department": "政治学科"
+      },
+      {
+        "faculty": "法学部",
+        "department": "法律学科"
+      }
+    ]
+  },
+  {
+    "course_name": "総合英語Ｃ",
+    "day_of_week": 1,
+    "period": 4,
+    "term": "fall",
     "room": null,
     "instructor": "石黒　恭代",
     "departments": [
@@ -136855,7 +142307,33 @@
     "course_name": "総合英語Ｃ",
     "day_of_week": 2,
     "period": 2,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "松田　智穂子",
+    "departments": [
+      {
+        "faculty": "商学部",
+        "department": "マーケティング学科"
+      },
+      {
+        "faculty": "商学部",
+        "department": "会計学科"
+      },
+      {
+        "faculty": "法学部",
+        "department": "政治学科"
+      },
+      {
+        "faculty": "法学部",
+        "department": "法律学科"
+      }
+    ]
+  },
+  {
+    "course_name": "総合英語Ｃ",
+    "day_of_week": 2,
+    "period": 2,
+    "term": "fall",
     "room": null,
     "instructor": "松田　智穂子",
     "departments": [
@@ -136881,7 +142359,33 @@
     "course_name": "総合英語Ｃ",
     "day_of_week": 2,
     "period": 4,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "大谷　伴子",
+    "departments": [
+      {
+        "faculty": "商学部",
+        "department": "マーケティング学科"
+      },
+      {
+        "faculty": "商学部",
+        "department": "会計学科"
+      },
+      {
+        "faculty": "法学部",
+        "department": "政治学科"
+      },
+      {
+        "faculty": "法学部",
+        "department": "法律学科"
+      }
+    ]
+  },
+  {
+    "course_name": "総合英語Ｃ",
+    "day_of_week": 2,
+    "period": 4,
+    "term": "fall",
     "room": null,
     "instructor": "大谷　伴子",
     "departments": [
@@ -136907,7 +142411,33 @@
     "course_name": "総合英語Ｃ",
     "day_of_week": 3,
     "period": 1,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "河野　真太郎",
+    "departments": [
+      {
+        "faculty": "商学部",
+        "department": "マーケティング学科"
+      },
+      {
+        "faculty": "商学部",
+        "department": "会計学科"
+      },
+      {
+        "faculty": "法学部",
+        "department": "政治学科"
+      },
+      {
+        "faculty": "法学部",
+        "department": "法律学科"
+      }
+    ]
+  },
+  {
+    "course_name": "総合英語Ｃ",
+    "day_of_week": 3,
+    "period": 1,
+    "term": "fall",
     "room": null,
     "instructor": "河野　真太郎",
     "departments": [
@@ -136933,7 +142463,33 @@
     "course_name": "総合英語Ｃ",
     "day_of_week": 4,
     "period": 3,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "メニッシュ，マーク　Ｃ．",
+    "departments": [
+      {
+        "faculty": "商学部",
+        "department": "マーケティング学科"
+      },
+      {
+        "faculty": "商学部",
+        "department": "会計学科"
+      },
+      {
+        "faculty": "法学部",
+        "department": "政治学科"
+      },
+      {
+        "faculty": "法学部",
+        "department": "法律学科"
+      }
+    ]
+  },
+  {
+    "course_name": "総合英語Ｃ",
+    "day_of_week": 4,
+    "period": 3,
+    "term": "fall",
     "room": null,
     "instructor": "メニッシュ，マーク　Ｃ．",
     "departments": [
@@ -137187,7 +142743,33 @@
     "course_name": "体育演習",
     "day_of_week": 3,
     "period": 6,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "中嶋　哲也",
+    "departments": [
+      {
+        "faculty": "商学部",
+        "department": "マーケティング学科"
+      },
+      {
+        "faculty": "商学部",
+        "department": "会計学科"
+      },
+      {
+        "faculty": "法学部",
+        "department": "政治学科"
+      },
+      {
+        "faculty": "法学部",
+        "department": "法律学科"
+      }
+    ]
+  },
+  {
+    "course_name": "体育演習",
+    "day_of_week": 3,
+    "period": 6,
+    "term": "fall",
     "room": null,
     "instructor": "中嶋　哲也",
     "departments": [
@@ -137213,7 +142795,33 @@
     "course_name": "体育演習",
     "day_of_week": 3,
     "period": 7,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "中嶋　哲也",
+    "departments": [
+      {
+        "faculty": "商学部",
+        "department": "マーケティング学科"
+      },
+      {
+        "faculty": "商学部",
+        "department": "会計学科"
+      },
+      {
+        "faculty": "法学部",
+        "department": "政治学科"
+      },
+      {
+        "faculty": "法学部",
+        "department": "法律学科"
+      }
+    ]
+  },
+  {
+    "course_name": "体育演習",
+    "day_of_week": 3,
+    "period": 7,
+    "term": "fall",
     "room": null,
     "instructor": "中嶋　哲也",
     "departments": [
@@ -137239,7 +142847,33 @@
     "course_name": "体育演習",
     "day_of_week": 4,
     "period": 6,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "篠村　朋樹",
+    "departments": [
+      {
+        "faculty": "商学部",
+        "department": "マーケティング学科"
+      },
+      {
+        "faculty": "商学部",
+        "department": "会計学科"
+      },
+      {
+        "faculty": "法学部",
+        "department": "政治学科"
+      },
+      {
+        "faculty": "法学部",
+        "department": "法律学科"
+      }
+    ]
+  },
+  {
+    "course_name": "体育演習",
+    "day_of_week": 4,
+    "period": 6,
+    "term": "fall",
     "room": null,
     "instructor": "篠村　朋樹",
     "departments": [
@@ -137265,7 +142899,33 @@
     "course_name": "体育演習",
     "day_of_week": 4,
     "period": 7,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "篠村　朋樹",
+    "departments": [
+      {
+        "faculty": "商学部",
+        "department": "マーケティング学科"
+      },
+      {
+        "faculty": "商学部",
+        "department": "会計学科"
+      },
+      {
+        "faculty": "法学部",
+        "department": "政治学科"
+      },
+      {
+        "faculty": "法学部",
+        "department": "法律学科"
+      }
+    ]
+  },
+  {
+    "course_name": "体育演習",
+    "day_of_week": 4,
+    "period": 7,
+    "term": "fall",
     "room": null,
     "instructor": "篠村　朋樹",
     "departments": [
@@ -139109,7 +144769,33 @@
     "course_name": "地理学１０１",
     "day_of_week": 0,
     "period": 1,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "松尾　容孝",
+    "departments": [
+      {
+        "faculty": "商学部",
+        "department": "マーケティング学科"
+      },
+      {
+        "faculty": "商学部",
+        "department": "会計学科"
+      },
+      {
+        "faculty": "法学部",
+        "department": "政治学科"
+      },
+      {
+        "faculty": "法学部",
+        "department": "法律学科"
+      }
+    ]
+  },
+  {
+    "course_name": "地理学１０１",
+    "day_of_week": 0,
+    "period": 1,
+    "term": "fall",
     "room": null,
     "instructor": "松尾　容孝",
     "departments": [
@@ -139135,7 +144821,41 @@
     "course_name": "地理学への招待",
     "day_of_week": 0,
     "period": 1,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "松尾　容孝",
+    "departments": [
+      {
+        "faculty": "商学部",
+        "department": "マーケティング学科"
+      },
+      {
+        "faculty": "商学部",
+        "department": "会計学科"
+      },
+      {
+        "faculty": "国際コミュニケーション学部",
+        "department": "日本語学科"
+      },
+      {
+        "faculty": "国際コミュニケーション学部",
+        "department": "異文化コミュニケーション学科"
+      },
+      {
+        "faculty": "法学部",
+        "department": "政治学科"
+      },
+      {
+        "faculty": "法学部",
+        "department": "法律学科"
+      }
+    ]
+  },
+  {
+    "course_name": "地理学への招待",
+    "day_of_week": 0,
+    "period": 1,
+    "term": "fall",
     "room": null,
     "instructor": "松尾　容孝",
     "departments": [
@@ -139883,7 +145603,25 @@
     "course_name": "データ分析入門",
     "day_of_week": 2,
     "period": 3,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "巴山　竜来",
+    "departments": [
+      {
+        "faculty": "法学部",
+        "department": "政治学科"
+      },
+      {
+        "faculty": "法学部",
+        "department": "法律学科"
+      }
+    ]
+  },
+  {
+    "course_name": "データ分析入門",
+    "day_of_week": 2,
+    "period": 3,
+    "term": "fall",
     "room": null,
     "instructor": "巴山　竜来",
     "departments": [
@@ -139919,7 +145657,29 @@
     "course_name": "データ分析入門",
     "day_of_week": 2,
     "period": 5,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "本田　竜広",
+    "departments": [
+      {
+        "faculty": "国際コミュニケーション学部",
+        "department": "異文化コミュニケーション学科"
+      },
+      {
+        "faculty": "法学部",
+        "department": "政治学科"
+      },
+      {
+        "faculty": "法学部",
+        "department": "法律学科"
+      }
+    ]
+  },
+  {
+    "course_name": "データ分析入門",
+    "day_of_week": 2,
+    "period": 5,
+    "term": "fall",
     "room": null,
     "instructor": "本田　竜広",
     "departments": [
@@ -144911,7 +150671,41 @@
     "course_name": "倫理学",
     "day_of_week": 1,
     "period": 3,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "伊藤　啓輔",
+    "departments": [
+      {
+        "faculty": "商学部",
+        "department": "マーケティング学科"
+      },
+      {
+        "faculty": "商学部",
+        "department": "会計学科"
+      },
+      {
+        "faculty": "国際コミュニケーション学部",
+        "department": "日本語学科"
+      },
+      {
+        "faculty": "国際コミュニケーション学部",
+        "department": "異文化コミュニケーション学科"
+      },
+      {
+        "faculty": "法学部",
+        "department": "政治学科"
+      },
+      {
+        "faculty": "法学部",
+        "department": "法律学科"
+      }
+    ]
+  },
+  {
+    "course_name": "倫理学",
+    "day_of_week": 1,
+    "period": 3,
+    "term": "fall",
     "room": null,
     "instructor": "伊藤　啓輔",
     "departments": [
@@ -145005,7 +150799,33 @@
     "course_name": "倫理学１０１",
     "day_of_week": 1,
     "period": 3,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "伊藤　啓輔",
+    "departments": [
+      {
+        "faculty": "商学部",
+        "department": "マーケティング学科"
+      },
+      {
+        "faculty": "商学部",
+        "department": "会計学科"
+      },
+      {
+        "faculty": "法学部",
+        "department": "政治学科"
+      },
+      {
+        "faculty": "法学部",
+        "department": "法律学科"
+      }
+    ]
+  },
+  {
+    "course_name": "倫理学１０１",
+    "day_of_week": 1,
+    "period": 3,
+    "term": "fall",
     "room": null,
     "instructor": "伊藤　啓輔",
     "departments": [
@@ -145127,7 +150947,25 @@
     "course_name": "倫理とは何か",
     "day_of_week": 1,
     "period": 3,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "伊藤　啓輔",
+    "departments": [
+      {
+        "faculty": "法学部",
+        "department": "政治学科"
+      },
+      {
+        "faculty": "法学部",
+        "department": "法律学科"
+      }
+    ]
+  },
+  {
+    "course_name": "倫理とは何か",
+    "day_of_week": 1,
+    "period": 3,
+    "term": "fall",
     "room": null,
     "instructor": "伊藤　啓輔",
     "departments": [
@@ -151935,7 +157773,61 @@
     "course_name": "キャリア科目１（キャリア開発）",
     "day_of_week": 1,
     "period": 2,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "大山　雅嗣",
+    "departments": [
+      {
+        "faculty": "ネットワーク情報学部",
+        "department": "ネットワーク情報学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "心理学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "社会学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "ジャーナリズム学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "哲学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本文学文化学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "歴史学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "環境地理学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "英語英米文学科"
+      },
+      {
+        "faculty": "経営学部",
+        "department": "ビジネスデザイン学科"
+      },
+      {
+        "faculty": "経営学部",
+        "department": "経営学科"
+      }
+    ]
+  },
+  {
+    "course_name": "キャリア科目１（キャリア開発）",
+    "day_of_week": 1,
+    "period": 2,
+    "term": "fall",
     "room": null,
     "instructor": "大山　雅嗣",
     "departments": [
@@ -156477,7 +162369,61 @@
     "course_name": "General English",
     "day_of_week": 0,
     "period": 3,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "三品　直子",
+    "departments": [
+      {
+        "faculty": "ネットワーク情報学部",
+        "department": "ネットワーク情報学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "心理学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "社会学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "ジャーナリズム学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "哲学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本文学文化学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本語学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "歴史学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "環境地理学科"
+      },
+      {
+        "faculty": "経営学部",
+        "department": "ビジネスデザイン学科"
+      },
+      {
+        "faculty": "経営学部",
+        "department": "経営学科"
+      }
+    ]
+  },
+  {
+    "course_name": "General English",
+    "day_of_week": 0,
+    "period": 3,
+    "term": "fall",
     "room": null,
     "instructor": "三品　直子",
     "departments": [
@@ -156531,7 +162477,61 @@
     "course_name": "General English",
     "day_of_week": 0,
     "period": 4,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "真砂　久晃",
+    "departments": [
+      {
+        "faculty": "ネットワーク情報学部",
+        "department": "ネットワーク情報学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "心理学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "社会学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "ジャーナリズム学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "哲学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本文学文化学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本語学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "歴史学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "環境地理学科"
+      },
+      {
+        "faculty": "経営学部",
+        "department": "ビジネスデザイン学科"
+      },
+      {
+        "faculty": "経営学部",
+        "department": "経営学科"
+      }
+    ]
+  },
+  {
+    "course_name": "General English",
+    "day_of_week": 0,
+    "period": 4,
+    "term": "fall",
     "room": null,
     "instructor": "真砂　久晃",
     "departments": [
@@ -156585,7 +162585,61 @@
     "course_name": "General English",
     "day_of_week": 0,
     "period": 5,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "宮澤　信彦",
+    "departments": [
+      {
+        "faculty": "ネットワーク情報学部",
+        "department": "ネットワーク情報学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "心理学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "社会学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "ジャーナリズム学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "哲学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本文学文化学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本語学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "歴史学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "環境地理学科"
+      },
+      {
+        "faculty": "経営学部",
+        "department": "ビジネスデザイン学科"
+      },
+      {
+        "faculty": "経営学部",
+        "department": "経営学科"
+      }
+    ]
+  },
+  {
+    "course_name": "General English",
+    "day_of_week": 0,
+    "period": 5,
+    "term": "fall",
     "room": null,
     "instructor": "宮澤　信彦",
     "departments": [
@@ -156639,7 +162693,61 @@
     "course_name": "General English",
     "day_of_week": 2,
     "period": 2,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "杉本　孝子",
+    "departments": [
+      {
+        "faculty": "ネットワーク情報学部",
+        "department": "ネットワーク情報学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "心理学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "社会学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "ジャーナリズム学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "哲学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本文学文化学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本語学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "歴史学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "環境地理学科"
+      },
+      {
+        "faculty": "経営学部",
+        "department": "ビジネスデザイン学科"
+      },
+      {
+        "faculty": "経営学部",
+        "department": "経営学科"
+      }
+    ]
+  },
+  {
+    "course_name": "General English",
+    "day_of_week": 2,
+    "period": 2,
+    "term": "fall",
     "room": null,
     "instructor": "杉本　孝子",
     "departments": [
@@ -156693,7 +162801,61 @@
     "course_name": "General English",
     "day_of_week": 3,
     "period": 4,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "山本　満登香",
+    "departments": [
+      {
+        "faculty": "ネットワーク情報学部",
+        "department": "ネットワーク情報学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "心理学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "社会学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "ジャーナリズム学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "哲学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本文学文化学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本語学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "歴史学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "環境地理学科"
+      },
+      {
+        "faculty": "経営学部",
+        "department": "ビジネスデザイン学科"
+      },
+      {
+        "faculty": "経営学部",
+        "department": "経営学科"
+      }
+    ]
+  },
+  {
+    "course_name": "General English",
+    "day_of_week": 3,
+    "period": 4,
+    "term": "fall",
     "room": null,
     "instructor": "山本　満登香",
     "departments": [
@@ -156747,7 +162909,61 @@
     "course_name": "General English",
     "day_of_week": 3,
     "period": 5,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "宮田　宗彦",
+    "departments": [
+      {
+        "faculty": "ネットワーク情報学部",
+        "department": "ネットワーク情報学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "心理学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "社会学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "ジャーナリズム学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "哲学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本文学文化学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本語学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "歴史学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "環境地理学科"
+      },
+      {
+        "faculty": "経営学部",
+        "department": "ビジネスデザイン学科"
+      },
+      {
+        "faculty": "経営学部",
+        "department": "経営学科"
+      }
+    ]
+  },
+  {
+    "course_name": "General English",
+    "day_of_week": 3,
+    "period": 5,
+    "term": "fall",
     "room": null,
     "instructor": "宮田　宗彦",
     "departments": [
@@ -156801,7 +163017,61 @@
     "course_name": "General English",
     "day_of_week": 4,
     "period": 1,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "小西　恵美",
+    "departments": [
+      {
+        "faculty": "ネットワーク情報学部",
+        "department": "ネットワーク情報学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "心理学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "社会学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "ジャーナリズム学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "哲学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本文学文化学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本語学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "歴史学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "環境地理学科"
+      },
+      {
+        "faculty": "経営学部",
+        "department": "ビジネスデザイン学科"
+      },
+      {
+        "faculty": "経営学部",
+        "department": "経営学科"
+      }
+    ]
+  },
+  {
+    "course_name": "General English",
+    "day_of_week": 4,
+    "period": 1,
+    "term": "fall",
     "room": null,
     "instructor": "小西　恵美",
     "departments": [
@@ -156855,7 +163125,61 @@
     "course_name": "General English",
     "day_of_week": 4,
     "period": 3,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "長谷川　宏",
+    "departments": [
+      {
+        "faculty": "ネットワーク情報学部",
+        "department": "ネットワーク情報学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "心理学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "社会学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "ジャーナリズム学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "哲学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本文学文化学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本語学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "歴史学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "環境地理学科"
+      },
+      {
+        "faculty": "経営学部",
+        "department": "ビジネスデザイン学科"
+      },
+      {
+        "faculty": "経営学部",
+        "department": "経営学科"
+      }
+    ]
+  },
+  {
+    "course_name": "General English",
+    "day_of_week": 4,
+    "period": 3,
+    "term": "fall",
     "room": null,
     "instructor": "長谷川　宏",
     "departments": [
@@ -156909,7 +163233,7 @@
     "course_name": "General English",
     "day_of_week": 4,
     "period": 4,
-    "term": "both",
+    "term": "spring",
     "room": null,
     "instructor": "堀江　洋文",
     "departments": [
@@ -156963,7 +163287,115 @@
     "course_name": "General English",
     "day_of_week": 4,
     "period": 4,
-    "term": "both",
+    "term": "fall",
+    "room": null,
+    "instructor": "堀江　洋文",
+    "departments": [
+      {
+        "faculty": "ネットワーク情報学部",
+        "department": "ネットワーク情報学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "心理学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "社会学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "ジャーナリズム学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "哲学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本文学文化学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本語学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "歴史学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "環境地理学科"
+      },
+      {
+        "faculty": "経営学部",
+        "department": "ビジネスデザイン学科"
+      },
+      {
+        "faculty": "経営学部",
+        "department": "経営学科"
+      }
+    ]
+  },
+  {
+    "course_name": "General English",
+    "day_of_week": 4,
+    "period": 4,
+    "term": "spring",
+    "room": null,
+    "instructor": "小林　正弘",
+    "departments": [
+      {
+        "faculty": "ネットワーク情報学部",
+        "department": "ネットワーク情報学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "心理学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "社会学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "ジャーナリズム学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "哲学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本文学文化学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本語学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "歴史学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "環境地理学科"
+      },
+      {
+        "faculty": "経営学部",
+        "department": "ビジネスデザイン学科"
+      },
+      {
+        "faculty": "経営学部",
+        "department": "経営学科"
+      }
+    ]
+  },
+  {
+    "course_name": "General English",
+    "day_of_week": 4,
+    "period": 4,
+    "term": "fall",
     "room": null,
     "instructor": "小林　正弘",
     "departments": [
@@ -165045,7 +171477,61 @@
     "course_name": "テーマ科目（イギリス）",
     "day_of_week": 4,
     "period": 3,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "小西　恵美",
+    "departments": [
+      {
+        "faculty": "ネットワーク情報学部",
+        "department": "ネットワーク情報学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "心理学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "社会学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "ジャーナリズム学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "哲学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本文学文化学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "歴史学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "環境地理学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "英語英米文学科"
+      },
+      {
+        "faculty": "経営学部",
+        "department": "ビジネスデザイン学科"
+      },
+      {
+        "faculty": "経営学部",
+        "department": "経営学科"
+      }
+    ]
+  },
+  {
+    "course_name": "テーマ科目（イギリス）",
+    "day_of_week": 4,
+    "period": 3,
+    "term": "fall",
     "room": null,
     "instructor": "小西　恵美",
     "departments": [
@@ -165207,7 +171693,61 @@
     "course_name": "テーマ科目（ノートテイク）",
     "day_of_week": 1,
     "period": 2,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "神山　みや子",
+    "departments": [
+      {
+        "faculty": "ネットワーク情報学部",
+        "department": "ネットワーク情報学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "心理学科"
+      },
+      {
+        "faculty": "人間科学部",
+        "department": "社会学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "ジャーナリズム学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "哲学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "日本文学文化学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "歴史学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "環境地理学科"
+      },
+      {
+        "faculty": "文学部",
+        "department": "英語英米文学科"
+      },
+      {
+        "faculty": "経営学部",
+        "department": "ビジネスデザイン学科"
+      },
+      {
+        "faculty": "経営学部",
+        "department": "経営学科"
+      }
+    ]
+  },
+  {
+    "course_name": "テーマ科目（ノートテイク）",
+    "day_of_week": 1,
+    "period": 2,
+    "term": "fall",
     "room": null,
     "instructor": "神山　みや子",
     "departments": [
@@ -165279,7 +171819,7 @@
     "course_name": "統計入門",
     "day_of_week": 0,
     "period": 3,
-    "term": "both",
+    "term": "spring",
     "room": null,
     "instructor": "宇佐美　嘉弘",
     "departments": [
@@ -165297,7 +171837,43 @@
     "course_name": "統計入門",
     "day_of_week": 0,
     "period": 3,
-    "term": "both",
+    "term": "fall",
+    "room": null,
+    "instructor": "宇佐美　嘉弘",
+    "departments": [
+      {
+        "faculty": "経営学部",
+        "department": "ビジネスデザイン学科"
+      },
+      {
+        "faculty": "経営学部",
+        "department": "経営学科"
+      }
+    ]
+  },
+  {
+    "course_name": "統計入門",
+    "day_of_week": 0,
+    "period": 3,
+    "term": "spring",
+    "room": null,
+    "instructor": "森　一将",
+    "departments": [
+      {
+        "faculty": "経営学部",
+        "department": "ビジネスデザイン学科"
+      },
+      {
+        "faculty": "経営学部",
+        "department": "経営学科"
+      }
+    ]
+  },
+  {
+    "course_name": "統計入門",
+    "day_of_week": 0,
+    "period": 3,
+    "term": "fall",
     "room": null,
     "instructor": "森　一将",
     "departments": [
@@ -165315,7 +171891,7 @@
     "course_name": "統計入門",
     "day_of_week": 0,
     "period": 4,
-    "term": "both",
+    "term": "spring",
     "room": null,
     "instructor": "川崎　玉恵",
     "departments": [
@@ -165333,7 +171909,43 @@
     "course_name": "統計入門",
     "day_of_week": 0,
     "period": 4,
-    "term": "both",
+    "term": "fall",
+    "room": null,
+    "instructor": "川崎　玉恵",
+    "departments": [
+      {
+        "faculty": "経営学部",
+        "department": "ビジネスデザイン学科"
+      },
+      {
+        "faculty": "経営学部",
+        "department": "経営学科"
+      }
+    ]
+  },
+  {
+    "course_name": "統計入門",
+    "day_of_week": 0,
+    "period": 4,
+    "term": "spring",
+    "room": null,
+    "instructor": "森　一将",
+    "departments": [
+      {
+        "faculty": "経営学部",
+        "department": "ビジネスデザイン学科"
+      },
+      {
+        "faculty": "経営学部",
+        "department": "経営学科"
+      }
+    ]
+  },
+  {
+    "course_name": "統計入門",
+    "day_of_week": 0,
+    "period": 4,
+    "term": "fall",
     "room": null,
     "instructor": "森　一将",
     "departments": [
@@ -165423,7 +172035,25 @@
     "course_name": "統計入門",
     "day_of_week": 2,
     "period": 1,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "宇佐美　嘉弘",
+    "departments": [
+      {
+        "faculty": "経営学部",
+        "department": "ビジネスデザイン学科"
+      },
+      {
+        "faculty": "経営学部",
+        "department": "経営学科"
+      }
+    ]
+  },
+  {
+    "course_name": "統計入門",
+    "day_of_week": 2,
+    "period": 1,
+    "term": "fall",
     "room": null,
     "instructor": "宇佐美　嘉弘",
     "departments": [
@@ -171855,7 +178485,43 @@
     "course_name": "管理会計論",
     "day_of_week": 2,
     "period": 3,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "伊藤　和憲",
+    "departments": [
+      {
+        "faculty": "商学部",
+        "department": "マーケティング学科"
+      },
+      {
+        "faculty": "商学部",
+        "department": "会計学科"
+      }
+    ]
+  },
+  {
+    "course_name": "管理会計論",
+    "day_of_week": 4,
+    "period": 2,
+    "term": "spring",
+    "room": null,
+    "instructor": "伊藤　和憲",
+    "departments": [
+      {
+        "faculty": "商学部",
+        "department": "マーケティング学科"
+      },
+      {
+        "faculty": "商学部",
+        "department": "会計学科"
+      }
+    ]
+  },
+  {
+    "course_name": "管理会計論",
+    "day_of_week": 2,
+    "period": 3,
+    "term": "fall",
     "room": null,
     "instructor": "伊藤　和憲",
     "departments": [
@@ -171869,7 +178535,7 @@
     "course_name": "管理会計論",
     "day_of_week": 4,
     "period": 2,
-    "term": "both",
+    "term": "fall",
     "room": null,
     "instructor": "伊藤　和憲",
     "departments": [
@@ -175165,7 +181831,25 @@
     "course_name": "ゼミナール",
     "day_of_week": 4,
     "period": 3,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "飯田　巳貴",
+    "departments": [
+      {
+        "faculty": "商学部",
+        "department": "マーケティング学科"
+      },
+      {
+        "faculty": "商学部",
+        "department": "会計学科"
+      }
+    ]
+  },
+  {
+    "course_name": "ゼミナール",
+    "day_of_week": 4,
+    "period": 3,
+    "term": "fall",
     "room": null,
     "instructor": "飯田　巳貴",
     "departments": [
@@ -175381,7 +182065,25 @@
     "course_name": "ゼミナール",
     "day_of_week": 2,
     "period": 4,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "伊藤　和憲",
+    "departments": [
+      {
+        "faculty": "商学部",
+        "department": "マーケティング学科"
+      },
+      {
+        "faculty": "商学部",
+        "department": "会計学科"
+      }
+    ]
+  },
+  {
+    "course_name": "ゼミナール",
+    "day_of_week": 2,
+    "period": 4,
+    "term": "fall",
     "room": null,
     "instructor": "伊藤　和憲",
     "departments": [
@@ -175417,7 +182119,7 @@
     "course_name": "ゼミナール",
     "day_of_week": 2,
     "period": 5,
-    "term": "both",
+    "term": "spring",
     "room": null,
     "instructor": "岩尾　詠一郎",
     "departments": [
@@ -175436,6 +182138,24 @@
     "day_of_week": 2,
     "period": 4,
     "term": "spring",
+    "room": null,
+    "instructor": "岩尾　詠一郎",
+    "departments": [
+      {
+        "faculty": "商学部",
+        "department": "マーケティング学科"
+      },
+      {
+        "faculty": "商学部",
+        "department": "会計学科"
+      }
+    ]
+  },
+  {
+    "course_name": "ゼミナール",
+    "day_of_week": 2,
+    "period": 5,
+    "term": "fall",
     "room": null,
     "instructor": "岩尾　詠一郎",
     "departments": [
@@ -175507,7 +182227,25 @@
     "course_name": "ゼミナール",
     "day_of_week": 4,
     "period": 4,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "内野　明",
+    "departments": [
+      {
+        "faculty": "商学部",
+        "department": "マーケティング学科"
+      },
+      {
+        "faculty": "商学部",
+        "department": "会計学科"
+      }
+    ]
+  },
+  {
+    "course_name": "ゼミナール",
+    "day_of_week": 4,
+    "period": 4,
+    "term": "fall",
     "room": null,
     "instructor": "内野　明",
     "departments": [
@@ -175543,7 +182281,25 @@
     "course_name": "ゼミナール",
     "day_of_week": 3,
     "period": 4,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "内野　里美",
+    "departments": [
+      {
+        "faculty": "商学部",
+        "department": "マーケティング学科"
+      },
+      {
+        "faculty": "商学部",
+        "department": "会計学科"
+      }
+    ]
+  },
+  {
+    "course_name": "ゼミナール",
+    "day_of_week": 3,
+    "period": 4,
+    "term": "fall",
     "room": null,
     "instructor": "内野　里美",
     "departments": [
@@ -175597,7 +182353,25 @@
     "course_name": "ゼミナール",
     "day_of_week": 2,
     "period": 4,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "大崎　恒次",
+    "departments": [
+      {
+        "faculty": "商学部",
+        "department": "マーケティング学科"
+      },
+      {
+        "faculty": "商学部",
+        "department": "会計学科"
+      }
+    ]
+  },
+  {
+    "course_name": "ゼミナール",
+    "day_of_week": 2,
+    "period": 4,
+    "term": "fall",
     "room": null,
     "instructor": "大崎　恒次",
     "departments": [
@@ -175633,7 +182407,25 @@
     "course_name": "ゼミナール",
     "day_of_week": 2,
     "period": 3,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "太田　和博",
+    "departments": [
+      {
+        "faculty": "商学部",
+        "department": "マーケティング学科"
+      },
+      {
+        "faculty": "商学部",
+        "department": "会計学科"
+      }
+    ]
+  },
+  {
+    "course_name": "ゼミナール",
+    "day_of_week": 2,
+    "period": 3,
+    "term": "fall",
     "room": null,
     "instructor": "太田　和博",
     "departments": [
@@ -175669,7 +182461,7 @@
     "course_name": "ゼミナール",
     "day_of_week": 3,
     "period": 4,
-    "term": "both",
+    "term": "spring",
     "room": null,
     "instructor": "大林　守",
     "departments": [
@@ -175703,9 +182495,45 @@
   },
   {
     "course_name": "ゼミナール",
+    "day_of_week": 3,
+    "period": 4,
+    "term": "fall",
+    "room": null,
+    "instructor": "大林　守",
+    "departments": [
+      {
+        "faculty": "商学部",
+        "department": "マーケティング学科"
+      },
+      {
+        "faculty": "商学部",
+        "department": "会計学科"
+      }
+    ]
+  },
+  {
+    "course_name": "ゼミナール",
     "day_of_week": 0,
     "period": 5,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "小酒井　正和",
+    "departments": [
+      {
+        "faculty": "商学部",
+        "department": "マーケティング学科"
+      },
+      {
+        "faculty": "商学部",
+        "department": "会計学科"
+      }
+    ]
+  },
+  {
+    "course_name": "ゼミナール",
+    "day_of_week": 0,
+    "period": 5,
+    "term": "fall",
     "room": null,
     "instructor": "小酒井　正和",
     "departments": [
@@ -175723,7 +182551,7 @@
     "course_name": "ゼミナール",
     "day_of_week": 3,
     "period": 4,
-    "term": "both",
+    "term": "spring",
     "room": null,
     "instructor": "奥瀬　喜之",
     "departments": [
@@ -175758,6 +182586,24 @@
   {
     "course_name": "ゼミナール",
     "day_of_week": 3,
+    "period": 4,
+    "term": "fall",
+    "room": null,
+    "instructor": "奥瀬　喜之",
+    "departments": [
+      {
+        "faculty": "商学部",
+        "department": "マーケティング学科"
+      },
+      {
+        "faculty": "商学部",
+        "department": "会計学科"
+      }
+    ]
+  },
+  {
+    "course_name": "ゼミナール",
+    "day_of_week": 3,
     "period": 3,
     "term": "spring",
     "room": null,
@@ -175777,7 +182623,25 @@
     "course_name": "ゼミナール",
     "day_of_week": 2,
     "period": 2,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "奥西　康宏",
+    "departments": [
+      {
+        "faculty": "商学部",
+        "department": "マーケティング学科"
+      },
+      {
+        "faculty": "商学部",
+        "department": "会計学科"
+      }
+    ]
+  },
+  {
+    "course_name": "ゼミナール",
+    "day_of_week": 2,
+    "period": 2,
+    "term": "fall",
     "room": null,
     "instructor": "奥西　康宏",
     "departments": [
@@ -175885,7 +182749,25 @@
     "course_name": "ゼミナール",
     "day_of_week": 2,
     "period": 2,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "椛田　龍三",
+    "departments": [
+      {
+        "faculty": "商学部",
+        "department": "マーケティング学科"
+      },
+      {
+        "faculty": "商学部",
+        "department": "会計学科"
+      }
+    ]
+  },
+  {
+    "course_name": "ゼミナール",
+    "day_of_week": 2,
+    "period": 2,
+    "term": "fall",
     "room": null,
     "instructor": "椛田　龍三",
     "departments": [
@@ -175939,7 +182821,25 @@
     "course_name": "ゼミナール",
     "day_of_week": 3,
     "period": 3,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "川野　訓志",
+    "departments": [
+      {
+        "faculty": "商学部",
+        "department": "マーケティング学科"
+      },
+      {
+        "faculty": "商学部",
+        "department": "会計学科"
+      }
+    ]
+  },
+  {
+    "course_name": "ゼミナール",
+    "day_of_week": 3,
+    "period": 3,
+    "term": "fall",
     "room": null,
     "instructor": "川野　訓志",
     "departments": [
@@ -176011,7 +182911,7 @@
     "course_name": "ゼミナール",
     "day_of_week": 4,
     "period": 4,
-    "term": "both",
+    "term": "spring",
     "room": null,
     "instructor": "金　鐘勲",
     "departments": [
@@ -176029,6 +182929,24 @@
     "course_name": "ゼミナール",
     "day_of_week": 4,
     "period": 5,
+    "term": "fall",
+    "room": null,
+    "instructor": "金　鐘勲",
+    "departments": [
+      {
+        "faculty": "商学部",
+        "department": "マーケティング学科"
+      },
+      {
+        "faculty": "商学部",
+        "department": "会計学科"
+      }
+    ]
+  },
+  {
+    "course_name": "ゼミナール",
+    "day_of_week": 4,
+    "period": 4,
     "term": "fall",
     "room": null,
     "instructor": "金　鐘勲",
@@ -176137,7 +183055,25 @@
     "course_name": "ゼミナール",
     "day_of_week": 3,
     "period": 4,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "小林　守",
+    "departments": [
+      {
+        "faculty": "商学部",
+        "department": "マーケティング学科"
+      },
+      {
+        "faculty": "商学部",
+        "department": "会計学科"
+      }
+    ]
+  },
+  {
+    "course_name": "ゼミナール",
+    "day_of_week": 3,
+    "period": 4,
+    "term": "fall",
     "room": null,
     "instructor": "小林　守",
     "departments": [
@@ -176173,7 +183109,25 @@
     "course_name": "ゼミナール",
     "day_of_week": 3,
     "period": 4,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "小藤　康夫",
+    "departments": [
+      {
+        "faculty": "商学部",
+        "department": "マーケティング学科"
+      },
+      {
+        "faculty": "商学部",
+        "department": "会計学科"
+      }
+    ]
+  },
+  {
+    "course_name": "ゼミナール",
+    "day_of_week": 3,
+    "period": 4,
+    "term": "fall",
     "room": null,
     "instructor": "小藤　康夫",
     "departments": [
@@ -176191,7 +183145,7 @@
     "course_name": "ゼミナール",
     "day_of_week": 2,
     "period": 4,
-    "term": "both",
+    "term": "spring",
     "room": null,
     "instructor": "阪本　将英",
     "departments": [
@@ -176225,9 +183179,45 @@
   },
   {
     "course_name": "ゼミナール",
+    "day_of_week": 2,
+    "period": 4,
+    "term": "fall",
+    "room": null,
+    "instructor": "阪本　将英",
+    "departments": [
+      {
+        "faculty": "商学部",
+        "department": "マーケティング学科"
+      },
+      {
+        "faculty": "商学部",
+        "department": "会計学科"
+      }
+    ]
+  },
+  {
+    "course_name": "ゼミナール",
     "day_of_week": 3,
     "period": 3,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "櫻井　康弘",
+    "departments": [
+      {
+        "faculty": "商学部",
+        "department": "マーケティング学科"
+      },
+      {
+        "faculty": "商学部",
+        "department": "会計学科"
+      }
+    ]
+  },
+  {
+    "course_name": "ゼミナール",
+    "day_of_week": 3,
+    "period": 3,
+    "term": "fall",
     "room": null,
     "instructor": "櫻井　康弘",
     "departments": [
@@ -176263,7 +183253,25 @@
     "course_name": "ゼミナール",
     "day_of_week": 3,
     "period": 3,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "佐藤　文雄",
+    "departments": [
+      {
+        "faculty": "商学部",
+        "department": "マーケティング学科"
+      },
+      {
+        "faculty": "商学部",
+        "department": "会計学科"
+      }
+    ]
+  },
+  {
+    "course_name": "ゼミナール",
+    "day_of_week": 3,
+    "period": 3,
+    "term": "fall",
     "room": null,
     "instructor": "佐藤　文雄",
     "departments": [
@@ -176281,7 +183289,25 @@
     "course_name": "ゼミナール",
     "day_of_week": 0,
     "period": 4,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "瀬下　博之",
+    "departments": [
+      {
+        "faculty": "商学部",
+        "department": "マーケティング学科"
+      },
+      {
+        "faculty": "商学部",
+        "department": "会計学科"
+      }
+    ]
+  },
+  {
+    "course_name": "ゼミナール",
+    "day_of_week": 0,
+    "period": 4,
+    "term": "fall",
     "room": null,
     "instructor": "瀬下　博之",
     "departments": [
@@ -176299,7 +183325,25 @@
     "course_name": "ゼミナール",
     "day_of_week": 3,
     "period": 4,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "高萩　栄一郎",
+    "departments": [
+      {
+        "faculty": "商学部",
+        "department": "マーケティング学科"
+      },
+      {
+        "faculty": "商学部",
+        "department": "会計学科"
+      }
+    ]
+  },
+  {
+    "course_name": "ゼミナール",
+    "day_of_week": 3,
+    "period": 4,
+    "term": "fall",
     "room": null,
     "instructor": "高萩　栄一郎",
     "departments": [
@@ -176335,7 +183379,25 @@
     "course_name": "ゼミナール",
     "day_of_week": 3,
     "period": 4,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "高橋　裕",
+    "departments": [
+      {
+        "faculty": "商学部",
+        "department": "マーケティング学科"
+      },
+      {
+        "faculty": "商学部",
+        "department": "会計学科"
+      }
+    ]
+  },
+  {
+    "course_name": "ゼミナール",
+    "day_of_week": 3,
+    "period": 4,
+    "term": "fall",
     "room": null,
     "instructor": "高橋　裕",
     "departments": [
@@ -176371,7 +183433,7 @@
     "course_name": "ゼミナール",
     "day_of_week": 3,
     "period": 4,
-    "term": "both",
+    "term": "spring",
     "room": null,
     "instructor": "高橋　義仁",
     "departments": [
@@ -176390,6 +183452,24 @@
     "day_of_week": 3,
     "period": 5,
     "term": "spring",
+    "room": null,
+    "instructor": "高橋　義仁",
+    "departments": [
+      {
+        "faculty": "商学部",
+        "department": "マーケティング学科"
+      },
+      {
+        "faculty": "商学部",
+        "department": "会計学科"
+      }
+    ]
+  },
+  {
+    "course_name": "ゼミナール",
+    "day_of_week": 3,
+    "period": 4,
+    "term": "fall",
     "room": null,
     "instructor": "高橋　義仁",
     "departments": [
@@ -176425,7 +183505,25 @@
     "course_name": "ゼミナール",
     "day_of_week": 1,
     "period": 2,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "建部　宏明",
+    "departments": [
+      {
+        "faculty": "商学部",
+        "department": "マーケティング学科"
+      },
+      {
+        "faculty": "商学部",
+        "department": "会計学科"
+      }
+    ]
+  },
+  {
+    "course_name": "ゼミナール",
+    "day_of_week": 1,
+    "period": 2,
+    "term": "fall",
     "room": null,
     "instructor": "建部　宏明",
     "departments": [
@@ -176515,7 +183613,7 @@
     "course_name": "ゼミナール",
     "day_of_week": 0,
     "period": 4,
-    "term": "both",
+    "term": "spring",
     "room": null,
     "instructor": "谷守　正行",
     "departments": [
@@ -176533,6 +183631,24 @@
     "course_name": "ゼミナール",
     "day_of_week": 1,
     "period": 2,
+    "term": "fall",
+    "room": null,
+    "instructor": "谷守　正行",
+    "departments": [
+      {
+        "faculty": "商学部",
+        "department": "マーケティング学科"
+      },
+      {
+        "faculty": "商学部",
+        "department": "会計学科"
+      }
+    ]
+  },
+  {
+    "course_name": "ゼミナール",
+    "day_of_week": 0,
+    "period": 4,
     "term": "fall",
     "room": null,
     "instructor": "谷守　正行",
@@ -176605,7 +183721,7 @@
     "course_name": "ゼミナール",
     "day_of_week": 3,
     "period": 4,
-    "term": "both",
+    "term": "spring",
     "room": null,
     "instructor": "趙　時英",
     "departments": [
@@ -176624,6 +183740,24 @@
     "day_of_week": 3,
     "period": 5,
     "term": "spring",
+    "room": null,
+    "instructor": "趙　時英",
+    "departments": [
+      {
+        "faculty": "商学部",
+        "department": "マーケティング学科"
+      },
+      {
+        "faculty": "商学部",
+        "department": "会計学科"
+      }
+    ]
+  },
+  {
+    "course_name": "ゼミナール",
+    "day_of_week": 3,
+    "period": 4,
+    "term": "fall",
     "room": null,
     "instructor": "趙　時英",
     "departments": [
@@ -176659,7 +183793,25 @@
     "course_name": "ゼミナール",
     "day_of_week": 2,
     "period": 3,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "手嶋　宣之",
+    "departments": [
+      {
+        "faculty": "商学部",
+        "department": "マーケティング学科"
+      },
+      {
+        "faculty": "商学部",
+        "department": "会計学科"
+      }
+    ]
+  },
+  {
+    "course_name": "ゼミナール",
+    "day_of_week": 2,
+    "period": 3,
+    "term": "fall",
     "room": null,
     "instructor": "手嶋　宣之",
     "departments": [
@@ -176731,7 +183883,7 @@
     "course_name": "ゼミナール",
     "day_of_week": 4,
     "period": 3,
-    "term": "both",
+    "term": "spring",
     "room": null,
     "instructor": "成岡　浩一",
     "departments": [
@@ -176765,9 +183917,27 @@
   },
   {
     "course_name": "ゼミナール",
+    "day_of_week": 4,
+    "period": 3,
+    "term": "fall",
+    "room": null,
+    "instructor": "成岡　浩一",
+    "departments": [
+      {
+        "faculty": "商学部",
+        "department": "マーケティング学科"
+      },
+      {
+        "faculty": "商学部",
+        "department": "会計学科"
+      }
+    ]
+  },
+  {
+    "course_name": "ゼミナール",
     "day_of_week": 2,
     "period": 5,
-    "term": "both",
+    "term": "spring",
     "room": null,
     "instructor": "新島　裕基",
     "departments": [
@@ -176785,6 +183955,24 @@
     "course_name": "ゼミナール",
     "day_of_week": 2,
     "period": 4,
+    "term": "fall",
+    "room": null,
+    "instructor": "新島　裕基",
+    "departments": [
+      {
+        "faculty": "商学部",
+        "department": "マーケティング学科"
+      },
+      {
+        "faculty": "商学部",
+        "department": "会計学科"
+      }
+    ]
+  },
+  {
+    "course_name": "ゼミナール",
+    "day_of_week": 2,
+    "period": 5,
     "term": "fall",
     "room": null,
     "instructor": "新島　裕基",
@@ -176857,7 +184045,25 @@
     "course_name": "ゼミナール",
     "day_of_week": 2,
     "period": 4,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "菱山　淳",
+    "departments": [
+      {
+        "faculty": "商学部",
+        "department": "マーケティング学科"
+      },
+      {
+        "faculty": "商学部",
+        "department": "会計学科"
+      }
+    ]
+  },
+  {
+    "course_name": "ゼミナール",
+    "day_of_week": 2,
+    "period": 4,
+    "term": "fall",
     "room": null,
     "instructor": "菱山　淳",
     "departments": [
@@ -176893,7 +184099,7 @@
     "course_name": "ゼミナール",
     "day_of_week": 1,
     "period": 2,
-    "term": "both",
+    "term": "spring",
     "room": null,
     "instructor": "松本　徹",
     "departments": [
@@ -176910,6 +184116,24 @@
   {
     "course_name": "ゼミナール",
     "day_of_week": 4,
+    "period": 2,
+    "term": "fall",
+    "room": null,
+    "instructor": "松本　徹",
+    "departments": [
+      {
+        "faculty": "商学部",
+        "department": "マーケティング学科"
+      },
+      {
+        "faculty": "商学部",
+        "department": "会計学科"
+      }
+    ]
+  },
+  {
+    "course_name": "ゼミナール",
+    "day_of_week": 1,
     "period": 2,
     "term": "fall",
     "room": null,
@@ -176965,7 +184189,25 @@
     "course_name": "ゼミナール",
     "day_of_week": 2,
     "period": 4,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "八島　明朗",
+    "departments": [
+      {
+        "faculty": "商学部",
+        "department": "マーケティング学科"
+      },
+      {
+        "faculty": "商学部",
+        "department": "会計学科"
+      }
+    ]
+  },
+  {
+    "course_name": "ゼミナール",
+    "day_of_week": 2,
+    "period": 4,
+    "term": "fall",
     "room": null,
     "instructor": "八島　明朗",
     "departments": [
@@ -176983,7 +184225,25 @@
     "course_name": "ゼミナール",
     "day_of_week": 1,
     "period": 1,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "柳　裕治",
+    "departments": [
+      {
+        "faculty": "商学部",
+        "department": "マーケティング学科"
+      },
+      {
+        "faculty": "商学部",
+        "department": "会計学科"
+      }
+    ]
+  },
+  {
+    "course_name": "ゼミナール",
+    "day_of_week": 1,
+    "period": 1,
+    "term": "fall",
     "room": null,
     "instructor": "柳　裕治",
     "departments": [
@@ -177001,7 +184261,7 @@
     "course_name": "ゼミナール",
     "day_of_week": 2,
     "period": 3,
-    "term": "both",
+    "term": "spring",
     "room": null,
     "instructor": "渡邊　隆彦",
     "departments": [
@@ -177036,8 +184296,26 @@
   {
     "course_name": "ゼミナール",
     "day_of_week": 2,
+    "period": 3,
+    "term": "fall",
+    "room": null,
+    "instructor": "渡邊　隆彦",
+    "departments": [
+      {
+        "faculty": "商学部",
+        "department": "マーケティング学科"
+      },
+      {
+        "faculty": "商学部",
+        "department": "会計学科"
+      }
+    ]
+  },
+  {
+    "course_name": "ゼミナール",
+    "day_of_week": 2,
     "period": 4,
-    "term": "both",
+    "term": "spring",
     "room": null,
     "instructor": "渡辺　達朗",
     "departments": [
@@ -177056,6 +184334,24 @@
     "day_of_week": 2,
     "period": 5,
     "term": "spring",
+    "room": null,
+    "instructor": "渡辺　達朗",
+    "departments": [
+      {
+        "faculty": "商学部",
+        "department": "マーケティング学科"
+      },
+      {
+        "faculty": "商学部",
+        "department": "会計学科"
+      }
+    ]
+  },
+  {
+    "course_name": "ゼミナール",
+    "day_of_week": 2,
+    "period": 4,
+    "term": "fall",
     "room": null,
     "instructor": "渡辺　達朗",
     "departments": [
@@ -179645,7 +186941,7 @@
     "course_name": "マーケティングリサーチ",
     "day_of_week": 1,
     "period": 1,
-    "term": "both",
+    "term": "spring",
     "room": null,
     "instructor": "奥瀬　喜之",
     "departments": [
@@ -179663,7 +186959,43 @@
     "course_name": "マーケティングリサーチ",
     "day_of_week": 4,
     "period": 1,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "奥瀬　喜之",
+    "departments": [
+      {
+        "faculty": "商学部",
+        "department": "マーケティング学科"
+      },
+      {
+        "faculty": "商学部",
+        "department": "会計学科"
+      }
+    ]
+  },
+  {
+    "course_name": "マーケティングリサーチ",
+    "day_of_week": 1,
+    "period": 1,
+    "term": "fall",
+    "room": null,
+    "instructor": "奥瀬　喜之",
+    "departments": [
+      {
+        "faculty": "商学部",
+        "department": "マーケティング学科"
+      },
+      {
+        "faculty": "商学部",
+        "department": "会計学科"
+      }
+    ]
+  },
+  {
+    "course_name": "マーケティングリサーチ",
+    "day_of_week": 4,
+    "period": 1,
+    "term": "fall",
     "room": null,
     "instructor": "奥瀬　喜之",
     "departments": [
@@ -180808,34 +188140,6 @@
     "term": "fall",
     "room": null,
     "instructor": "宮田　宗彦",
-    "departments": [
-      {
-        "faculty": "商学部",
-        "department": "マーケティング学科"
-      }
-    ]
-  },
-  {
-    "course_name": "管理会計論",
-    "day_of_week": 2,
-    "period": 3,
-    "term": "spring",
-    "room": null,
-    "instructor": "伊藤　和憲",
-    "departments": [
-      {
-        "faculty": "商学部",
-        "department": "マーケティング学科"
-      }
-    ]
-  },
-  {
-    "course_name": "管理会計論",
-    "day_of_week": 4,
-    "period": 2,
-    "term": "spring",
-    "room": null,
-    "instructor": "伊藤　和憲",
     "departments": [
       {
         "faculty": "商学部",
@@ -186381,7 +193685,7 @@
     "course_name": "英語英米文学概論１",
     "day_of_week": 1,
     "period": 1,
-    "term": "both",
+    "term": "spring",
     "room": null,
     "instructor": "中垣　恒太郎",
     "departments": [
@@ -186395,7 +193699,35 @@
     "course_name": "英語英米文学概論１",
     "day_of_week": 1,
     "period": 1,
-    "term": "both",
+    "term": "fall",
+    "room": null,
+    "instructor": "中垣　恒太郎",
+    "departments": [
+      {
+        "faculty": "文学部",
+        "department": "英語英米文学科"
+      }
+    ]
+  },
+  {
+    "course_name": "英語英米文学概論１",
+    "day_of_week": 1,
+    "period": 1,
+    "term": "spring",
+    "room": null,
+    "instructor": "末廣　幹",
+    "departments": [
+      {
+        "faculty": "文学部",
+        "department": "英語英米文学科"
+      }
+    ]
+  },
+  {
+    "course_name": "英語英米文学概論１",
+    "day_of_week": 1,
+    "period": 1,
+    "term": "fall",
     "room": null,
     "instructor": "末廣　幹",
     "departments": [
@@ -186409,7 +193741,7 @@
     "course_name": "英語英米文学概論２",
     "day_of_week": 1,
     "period": 1,
-    "term": "both",
+    "term": "fall",
     "room": null,
     "instructor": "田邉　祐司",
     "departments": [
@@ -186423,7 +193755,35 @@
     "course_name": "英語英米文学概論２",
     "day_of_week": 1,
     "period": 1,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "田邉　祐司",
+    "departments": [
+      {
+        "faculty": "文学部",
+        "department": "英語英米文学科"
+      }
+    ]
+  },
+  {
+    "course_name": "英語英米文学概論２",
+    "day_of_week": 1,
+    "period": 1,
+    "term": "fall",
+    "room": null,
+    "instructor": "岡部　玲子",
+    "departments": [
+      {
+        "faculty": "文学部",
+        "department": "英語英米文学科"
+      }
+    ]
+  },
+  {
+    "course_name": "英語英米文学概論２",
+    "day_of_week": 1,
+    "period": 1,
+    "term": "spring",
     "room": null,
     "instructor": "岡部　玲子",
     "departments": [
@@ -222605,7 +229965,21 @@
     "course_name": "言語情報処理",
     "day_of_week": 3,
     "period": 3,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "阿部　貴人",
+    "departments": [
+      {
+        "faculty": "文学部",
+        "department": "日本語学科"
+      }
+    ]
+  },
+  {
+    "course_name": "言語情報処理",
+    "day_of_week": 3,
+    "period": 3,
+    "term": "fall",
     "room": null,
     "instructor": "阿部　貴人",
     "departments": [
@@ -223395,7 +230769,21 @@
     "course_name": "日本語統計・情報処理",
     "day_of_week": 3,
     "period": 3,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "阿部　貴人",
+    "departments": [
+      {
+        "faculty": "文学部",
+        "department": "日本語学科"
+      }
+    ]
+  },
+  {
+    "course_name": "日本語統計・情報処理",
+    "day_of_week": 3,
+    "period": 3,
+    "term": "fall",
     "room": null,
     "instructor": "阿部　貴人",
     "departments": [
@@ -228791,7 +236179,7 @@
     "course_name": "データ分析入門",
     "day_of_week": 0,
     "period": 1,
-    "term": "both",
+    "term": "spring",
     "room": null,
     "instructor": "伊藤　尚枝",
     "departments": [
@@ -230835,7 +238223,21 @@
     "course_name": "情報と法",
     "day_of_week": 4,
     "period": 4,
-    "term": "both",
+    "term": "spring",
+    "room": null,
+    "instructor": "中川　淨宗",
+    "departments": [
+      {
+        "faculty": "ネットワーク情報学部",
+        "department": "ネットワーク情報学科"
+      }
+    ]
+  },
+  {
+    "course_name": "情報と法",
+    "day_of_week": 4,
+    "period": 4,
+    "term": "fall",
     "room": null,
     "instructor": "中川　淨宗",
     "departments": [
@@ -243682,20 +251084,6 @@
     "term": "spring",
     "room": null,
     "instructor": "伊藤　尚枝",
-    "departments": [
-      {
-        "faculty": "国際コミュニケーション学部",
-        "department": "異文化コミュニケーション学科"
-      }
-    ]
-  },
-  {
-    "course_name": "データ分析入門",
-    "day_of_week": 2,
-    "period": 5,
-    "term": "spring",
-    "room": null,
-    "instructor": "本田　竜広",
     "departments": [
       {
         "faculty": "国際コミュニケーション学部",
