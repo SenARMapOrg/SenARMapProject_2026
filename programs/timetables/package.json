@@ -5,7 +5,7 @@
   "scripts": {
     "dev:vite": "vite build --watch",
     "dev": "wrangler pages dev dist --compatibility-date=2026-01-01",
-    "build": "vite build",
+    "build": "vite build && node scripts/embed-admin-page.mjs",
     "deploy": "vite build && wrangler pages deploy dist",
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p functions/tsconfig.json && tsc --noEmit -p tests/tsconfig.frontend.json && tsc --noEmit -p tests/tsconfig.functions.json",
     "db:migrate:local": "wrangler d1 migrations apply timetables-db --local",
