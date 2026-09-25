@@ -278,8 +278,14 @@ Pagesプロジェクト → Custom domains から追加する（手動でDNSレ�
   プレビューとしてビルドされる設定になっている。この状態では、リポジトリに push できる人なら誰でも
   （その人の GitHub アカウントが乗っ取られた場合も含む）、本番DBを読み書きするコードを公開URL
   （`*.pages.dev`）で動かせてしまい、管理者判定や閲覧記録を素通りできる。
-  → **対応済み**: プレビュー用のD1（`timetables-db-preview`）を作り、`wrangler.toml` の `[env.preview]` で
-  プレビューだけそちらを使うようにした（マイグレーションは `npm run db:migrate:preview`）。あわせて、プレビューでは使わない `GOOGLE_CLIENT_SECRET` も
+  → **一部対応済み**: プレビュー用のD1（`timetables-db-preview`）を作り、`wrangler.toml` の `[env.preview]` で
+  プレビューだけそちらを使うようにした（マイグレーションは `npm run db:migrate:preview`）。
+  ただし、バインディングは**ブランチごとの `wrangler.toml`** で決まるため、これで防げるのは
+  「うっかり本番DBにつながる」ことだけ。(1) この設定を取り込んでいない古いブランチのプレビューは
+  本番DBのまま、(2) push できる人が自分のブランチの `wrangler.toml` に本番DBのIDを書けば、
+  プレビューを本番DBにつなぎ直せる（IDは公開されている）。故意の悪用まで防ぐには、ダッシュボードの
+  Settings → Builds → Branch control で**プレビューをビルドするブランチを信頼できるものに限る**か、
+  プレビューURLを Cloudflare Access で保護する必要があるあわせて、プレビューでは使わない `GOOGLE_CLIENT_SECRET` も
   プレビュー環境から外す（`OAUTH_REDIRECT_URI` が本番ドメインなので、プレビューではもともとログインできない）
 
 - **プライバシーポリシー / 利用規約の掲示**: 「誰が」「何のために」「どのデータを」「いつまで」保持するかを
