@@ -139,6 +139,8 @@ Pagesプロジェクト → Custom domains から追加する（手動でDNSレ�
 `main` にマージするだけで自動的に再ビルド・再デプロイされる。DBスキーマを変更した場合のみ、
 `migrations/` に新しいファイルを追加し `npx wrangler d1 migrations apply timetables-db --remote` を
 手動で実行する必要がある（マイグレーションの自動適用はCI化していない）。
+**プレビュー環境用のDB（`timetables-db-preview`）にも `npm run db:migrate:preview` で同じものを当てること**
+（当て忘れると、プレビューのビルドだけ「サーバー内部エラー」になる）。
 
 ### 3-4. 科目データ（オートコンプリート用）の更新
 
@@ -270,8 +272,9 @@ Pagesプロジェクト → Custom domains から追加する（手動でDNSレ�
   プレビューとしてビルドされる設定になっている。この状態では、リポジトリに push できる人なら誰でも
   （その人の GitHub アカウントが乗っ取られた場合も含む）、本番DBを読み書きするコードを公開URL
   （`*.pages.dev`）で動かせてしまい、管理者判定や閲覧記録を素通りできる。
-  プレビュー用のD1（例: `timetables-db-preview`）を別に作ってプレビューのバインディングを差し替えるか、
-  プレビューのビルド対象を絞ること。あわせて、プレビューでは使わない `GOOGLE_CLIENT_SECRET` も
+  プレビュー用のD1（`timetables-db-preview`、2026-09-25 作成・マイグレーション適用済み。
+  設定は `wrangler.preview-db.toml`、適用は `npm run db:migrate:preview`）を別に作ったので、
+  ダッシュボードで **Preview** の `DB` バインディングをこちらに差し替えること。あわせて、プレビューでは使わない `GOOGLE_CLIENT_SECRET` も
   プレビュー環境から外す（`OAUTH_REDIRECT_URI` が本番ドメインなので、プレビューではもともとログインできない）
 
 - **プライバシーポリシー / 利用規約の掲示**: 「誰が」「何のために」「どのデータを」「いつまで」保持するかを
