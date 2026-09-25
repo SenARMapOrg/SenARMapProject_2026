@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { getCookie } from "hono/cookie";
 
+import { sanitizeNextPath } from "../admin";
 import {
   createSession, deleteSession, resolvePendingInvitesForEmail, upsertUser,
 } from "../db";
@@ -20,7 +21,8 @@ authRoutes.get("/login", async (c) => {
   const state = crypto.randomUUID();
   const codeVerifier = generateCodeVerifier();
   const codeChallenge = await codeChallengeFromVerifier(codeVerifier);
-  setOauthCookies(c, state, codeVerifier);
+  // ?next= は許可リストにある自サイト内のパス(/admin)だけ受け付ける。それ以外は無視してトップに戻す
+  setOauthCookies(c, state, codeVerifier, sanitizeNextPath(c.req.query("next")));
 
   const url = buildAuthorizeUrl({
     clientId: c.env.GOOGLE_CLIENT_ID,
@@ -34,7 +36,7 @@ authRoutes.get("/login", async (c) => {
 
 authRoutes.get("/callback", async (c) => {
   const query = c.req.query();
-  const { state: expectedState, codeVerifier } = readAndClearOauthCookies(c);
+  const { state: expectedState, codeVerifier, nextPath } = readAndClearOauthCookies(c);
 
   if (query.error) {
     return c.redirect(`/?login_error=${encodeURIComponent(query.error)}`);
@@ -87,7 +89,8 @@ authRoutes.get("/callback", async (c) => {
   const session = await createSession(c.env.DB, user.id);
   setSessionCookie(c, session.id, new Date(session.expires_at));
 
-  return c.redirect("/");
+  // Cookie に入っている値も改ざんされうるので、戻る直前にもう一度許可リストで確かめる
+  return c.redirect(sanitizeNextPath(nextPath) ?? "/");
 });
 
 authRoutes.post("/logout", requireAuth(), async (c) => {

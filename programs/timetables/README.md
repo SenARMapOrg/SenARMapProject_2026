@@ -124,6 +124,7 @@ Cloudflareダッシュボード → **Workers & Pages → Create → Pages → C
 | D1データベースのバインディング | Settings → Functions → D1 database bindings で `DB` → `timetables-db` を追加 |
 | 環境変数（Production / Preview 両方） | `ALLOWED_EMAIL_DOMAIN`, `OAUTH_REDIRECT_URI`, `GOOGLE_CLIENT_ID` |
 | シークレット（Production / Preview 両方） | `GOOGLE_CLIENT_SECRET` |
+| シークレット（**Production のみ**） | `ADMIN_EMAILS`（管理画面を見られる人。下の「3-6. 管理画面」参照） |
 
 D1バインディングは `wrangler.toml` に書いてあっても、**Git連携ビルドではダッシュボード側の設定が優先される**ため、
 ダッシュボードでも必ず設定すること（`wrangler.toml` はローカルの `wrangler pages dev`/手動デプロイ用）。
@@ -174,6 +175,41 @@ Pagesプロジェクト → Custom domains から追加する（手動でDNSレ�
 
 ---
 
+### 3-6. 管理画面（`/admin`）
+
+`https://timetables.iku-navi.net/admin` を開くと、管理者だけが登録ユーザーの一覧を見られる。
+表示するのは **人数・メールアドレス・名前・あだ名・学部学科・現在の学年・登録コマ数・登録した学年数・
+登録日・最終ログイン** だけで、時間割の中身（科目名・教室）は出さない（公開範囲を「非公開」にした
+利用者の期待を裏切らないため）。閲覧専用で、削除などの操作はできない。
+
+**管理者の設定**: Cloudflare ダッシュボード → このPagesプロジェクト → Settings → Variables and Secrets で、
+**Production** に `ADMIN_EMAILS` を **Secret**（暗号化）として追加する。値は管理者の大学メールアドレスを
+カンマ区切りで並べたもの（例: `a@senshu-u.jp,b@senshu-u.jp`）。追加後は再デプロイが必要。
+
+- **Preview には設定しない**。プレビュー環境の D1 バインディングが本番と同じDBを指していると、
+  プレビューURL（`*.pages.dev`）からも本番の一覧が見られる経路になってしまうため
+- **未設定・空なら誰も管理画面を見られない**（設定し忘れたときに全員に見える、という事故は起きない）
+- アドレスはリポジトリにもブラウザ側のコードにも書かない
+
+**セキュリティ上の仕組み**（`functions/api/_lib/admin.ts`・`routes/admin.ts`）:
+
+- 管理者かどうかは **サーバー側でだけ** 判定する。画面の出し分けは見た目だけで、データは
+  `/api/admin/*` が管理者と確認できたときにしか返さない
+- 未ログイン・管理者以外には **404** を返し、管理APIがあること自体を知らせない
+- 通常のログインは30日有効だが、管理APIは **ログインから12時間以内** のセッションに限る
+  （共用PCに残ったログインや、漏れた古いセッションで見られないように）。過ぎると再ログインを求める
+- ログイン後の戻り先は `/admin` だけを完全一致で許可（任意のURLへ飛ばすオープンリダイレクトを防ぐ）
+- あだ名などの利用者入力は必ず `textContent` で表示し、HTMLとして解釈させない（XSS対策）
+- ページとAPIの両方に、CSP（自サイト以外のスクリプト・通信を禁止）、埋め込み禁止
+  （`X-Frame-Options: DENY` / `frame-ancestors 'none'`）、キャッシュ禁止、検索エンジン除外、
+  リファラ送信禁止のヘッダを付ける（ページ側は `public/_headers`）
+- 管理APIの呼び出しコードは管理画面専用のJSにだけ含め、利用者向けの画面のJSには入れない
+- 閲覧の記録を Functions のログに出す（`admin_access`: 管理者のユーザーID・日時・接続元IP、
+  `admin_denied`: 管理者でないログイン済みユーザーが管理APIを叩いた記録）。
+  Cloudflare ダッシュボードの Functions → Real-time Logs で確認できる（永続保存はされない）
+
+これらの判定は `tests/admin.test.ts` で固定している。
+
 ## 4. 本番投入前に確認すること（重要）
 
 このサービスは氏名相当の表示名・大学メールアドレス・時間割・交友関係という**個人情報そのもの**を扱う。
@@ -193,6 +229,7 @@ Pagesプロジェクト → Custom domains から追加する（手動でDNSレ�
 - Cookieは `HttpOnly; Secure; SameSite=Lax`。状態変更リクエストは `Origin` ヘッダ検証も併用（多層防御）
 - セッションはJWTではなくDB管理のランダムトークンなので、不正利用が発覚した場合にDBの行を削除すれば
   即座に強制ログアウトできる
+- **管理画面は管理者だけ・閲覧専用・時間割の中身は非表示**（「3-6. 管理画面」参照）
 
 ### 投入前に判断・対応が必要なこと
 
