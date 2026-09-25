@@ -11,6 +11,7 @@
 // 再集計されるだけで、共有の正本を持たない）。
 
 import { api, type Term } from "./api";
+import { createLocationField, type LocationField } from "./location-field";
 import {
   AVAILABLE_COURSE_YEARS, DEFAULT_COURSE_YEAR, filterOfferingsByTerm, groupOfferings, loadCatalog,
   loadDepartmentCatalog, searchOfferings, type CourseOffering, type OfferingTerm,
@@ -189,11 +190,11 @@ export function buildNameForm(
   }
 
   /** 教室入力欄に候補を下書きする。ユーザーが既に何か入力していたら上書きしない */
-  async function fillLocationSuggestion(o: CourseOffering, input: HTMLInputElement): Promise<void> {
+  async function fillLocationSuggestion(o: CourseOffering, field: LocationField): Promise<void> {
     const key = offeringKey(o);
     if (suggestionCache.has(key)) {
       const cached = suggestionCache.get(key) ?? null;
-      if (cached && !input.value) input.value = cached;
+      if (cached && !field.input.value) field.setValue(cached);
       return;
     }
     try {
@@ -204,7 +205,7 @@ export function buildNameForm(
       suggestionCache.set(key, res.location);
       // 問い合わせ中にリストが再描画されて要素がDOMから外れていても、
       // 値を入れておけば後で参照された時のためのキャッシュにはなる（無害）
-      if (res.location && !input.value) input.value = res.location;
+      if (res.location && !field.input.value) field.setValue(res.location);
     } catch {
       // 候補が取得できなくても教室欄は空のまま手入力できるので、追加自体には支障ない
     }
@@ -244,12 +245,12 @@ export function buildNameForm(
           <span class="offering-slots">${escapeHtml(slotsLabel)}</span>
         </div>
         <div class="offering-sub">${escapeHtml(o.instructor ?? "")} ・ ${escapeHtml(deptLabel)}</div>
-        <div class="offering-location-row">
-          <input type="text" class="offering-location-input" maxlength="100" placeholder="教室（任意）">
-        </div>
+        <div class="offering-location-row"></div>
       `;
-      const locationInput = li.querySelector<HTMLInputElement>(".offering-location-input")!;
-      void fillLocationSuggestion(o, locationInput);
+      const locationField = createLocationField({ placeholder: "教室（任意・例: 10101教室・オンライン）" });
+      li.querySelector(".offering-location-row")!.appendChild(locationField.root);
+      const locationInput = locationField.input;
+      void fillLocationSuggestion(o, locationField);
 
       const siblingRow = document.createElement("div");
       siblingRow.className = "offering-sibling-row";

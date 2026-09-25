@@ -417,7 +417,7 @@ for s_node in start_candidates:
 
 ### 5.8 CORS
 
-nginx撤去後、cloudflaredがFlaskに直結する構成になったため、CORSヘッダはFlask側の `after_request` フック（`ikunavi/__init__.py`）で返す。許可オリジンは `https://iku-navi.net` / `https://www.iku-navi.net` / 正規表現 `^https://[a-z0-9.-]+\.pages\.dev$`（Pagesプレビュー環境）。全APIがGETのみ・カスタムヘッダなしの「単純リクエスト」のため、プリフライト（OPTIONS）対応は実装していない。
+nginx撤去後、cloudflaredがFlaskに直結する構成になったため、CORSヘッダはFlask側の `after_request` フック（`ikunavi/__init__.py`）で返す。許可オリジンは `https://iku-navi.net` / `https://www.iku-navi.net` / `https://timetables.iku-navi.net`（時間割共有が教室の選択肢を作るために `/api/all` を読む）/ 正規表現 `^https://[a-z0-9.-]+\.pages\.dev$`（Pagesプレビュー環境）。ローカルでの動作確認用に、環境変数 `IKUNAVI_CORS_EXTRA_ORIGINS`（カンマ区切り）で許可オリジンを足せる。全APIがGETのみ・カスタムヘッダなしの「単純リクエスト」のため、プリフライト（OPTIONS）対応は実装していない。
 
 ---
 

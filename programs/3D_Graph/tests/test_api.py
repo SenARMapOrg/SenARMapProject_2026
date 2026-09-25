@@ -239,3 +239,20 @@ def test_Pagesプレビューのオリジンも許可する(client):
 def test_許可していないオリジンにはCORSヘッダを返さない(client):
     res = client.get("/api/rooms", headers={"Origin": "https://example.com"})
     assert "Access-Control-Allow-Origin" not in res.headers
+
+
+def test_時間割共有からの読み込みを許可する(client):
+    res = client.get("/api/all", headers={"Origin": "https://timetables.iku-navi.net"})
+    assert res.headers["Access-Control-Allow-Origin"] == "https://timetables.iku-navi.net"
+
+
+def test_環境変数で許可オリジンを足せる(client, monkeypatch):
+    monkeypatch.setenv("IKUNAVI_CORS_EXTRA_ORIGINS", "http://127.0.0.1:8127, http://localhost:5173")
+    res = client.get("/api/all", headers={"Origin": "http://127.0.0.1:8127"})
+    assert res.headers["Access-Control-Allow-Origin"] == "http://127.0.0.1:8127"
+
+
+def test_環境変数が無ければローカルのオリジンは許可しない(client, monkeypatch):
+    monkeypatch.delenv("IKUNAVI_CORS_EXTRA_ORIGINS", raising=False)
+    res = client.get("/api/all", headers={"Origin": "http://127.0.0.1:8127"})
+    assert "Access-Control-Allow-Origin" not in res.headers

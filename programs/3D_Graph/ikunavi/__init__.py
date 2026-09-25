@@ -18,7 +18,7 @@ import re
 from flask import Flask, request
 
 from . import cache, naming, payloads
-from .config import BASE_DIR, CORS_ALLOWED_ORIGINS, CORS_ORIGIN_PATTERN
+from .config import BASE_DIR, CORS_ALLOWED_ORIGINS, CORS_ORIGIN_PATTERN, cors_extra_origins
 from .errors import register_error_handler
 from .routes import BLUEPRINTS
 
@@ -29,7 +29,8 @@ def _register_cors(app):
     @app.after_request
     def add_cors_headers(response):
         origin = request.headers.get("Origin", "")
-        if origin in CORS_ALLOWED_ORIGINS or _cors_origin_pattern.match(origin):
+        if (origin in CORS_ALLOWED_ORIGINS or origin in cors_extra_origins()
+                or _cors_origin_pattern.match(origin)):
             response.headers["Access-Control-Allow-Origin"] = origin
             response.headers["Vary"] = "Origin"
         return response
