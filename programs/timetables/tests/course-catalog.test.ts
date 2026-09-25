@@ -4,7 +4,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  groupOfferings, searchOfferings, type CourseCatalogEntry,
+  filterOfferingsByTerm, groupOfferings, searchOfferings, type CourseCatalogEntry,
 } from "../src/course-catalog";
 
 function entry(over: Partial<CourseCatalogEntry> = {}): CourseCatalogEntry {
@@ -78,7 +78,7 @@ describe("searchOfferings", () => {
       .toEqual(["経済史", "経済学"]);
   });
 
-  it("学期では絞り込まない（前期タブを見ながら後期も組めるようにするため）", () => {
+  it("学期では絞り込まない（学期は filterOfferingsByTerm で別に絞る）", () => {
     expect(searchOfferings(offerings, "経済", "", "")).toHaveLength(2);
   });
 
@@ -93,5 +93,35 @@ describe("searchOfferings", () => {
 
   it("条件が空なら全件返す", () => {
     expect(searchOfferings(offerings, "", "", "")).toHaveLength(3);
+  });
+});
+
+describe("filterOfferingsByTerm（開いている学期タブで絞る）", () => {
+  const offerings = groupOfferings([
+    entry({ course_name: "前期だけの科目", term: "spring" }),
+    entry({ course_name: "後期だけの科目", term: "fall" }),
+    entry({ course_name: "通年の科目", term: "both" }),
+    entry({ course_name: "前期にも後期にもある科目", term: "spring", period: 2 }),
+    entry({ course_name: "前期にも後期にもある科目", term: "fall", period: 2 }),
+  ]);
+  const names = (term: "spring" | "fall") => filterOfferingsByTerm(offerings, term)
+    .map((o) => `${o.course_name}(${o.term})`).sort();
+
+  it("前期タブでは前期と通年だけ", () => {
+    expect(names("spring")).toEqual([
+      "前期だけの科目(spring)", "前期にも後期にもある科目(spring)", "通年の科目(both)",
+    ]);
+  });
+
+  it("後期タブでは後期と通年だけ", () => {
+    expect(names("fall")).toEqual([
+      "前期にも後期にもある科目(fall)", "後期だけの科目(fall)", "通年の科目(both)",
+    ]);
+  });
+
+  it("前期にも後期にもある科目は、開いているタブの側の開講だけが残る", () => {
+    const spring = filterOfferingsByTerm(offerings, "spring").filter((o) => o.course_name === "前期にも後期にもある科目");
+    expect(spring).toHaveLength(1);
+    expect(spring[0].term).toBe("spring");
   });
 });
