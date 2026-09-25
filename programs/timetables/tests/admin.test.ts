@@ -3,8 +3,8 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  ADMIN_SESSION_MAX_AGE_MS, isAdminEmail, isSessionFresh, parseAdminEmails, parseDbTimestamp,
-  readCookie, sanitizeNextPath,
+  ADMIN_SECURITY_HEADERS, ADMIN_SESSION_MAX_AGE_MS, isAdminEmail, isSameOriginRequest, isSessionFresh,
+  parseAdminEmails, parseDbTimestamp, readCookie, sanitizeNextPath,
 } from "../functions/api/_lib/admin";
 
 describe("管理者の許可リスト", () => {
@@ -115,5 +115,38 @@ describe("Cookie ヘッダの読み取り（/admin のページ用）", () => {
 
   it("URLエンコードされた値は戻す", () => {
     expect(readCookie("oauth_next=%2Fadmin", "oauth_next")).toBe("/admin");
+  });
+});
+
+describe("管理APIは自サイトのページからのリクエストだけ受け付ける（Fetch Metadata）", () => {
+  it("自サイトのページからの fetch は通す", () => {
+    expect(isSameOriginRequest("same-origin")).toBe(true);
+  });
+
+  it.each([
+    ["別サイトからのリンク・フォーム・画像", "cross-site"],
+    ["同じドメインの別サブドメイン", "same-site"],
+    ["アドレスバーへの直接入力・ブックマーク", "none"],
+  ])("%s（%s）は通さない", (_label, value) => {
+    expect(isSameOriginRequest(value)).toBe(false);
+  });
+
+  it("ヘッダの無いリクエスト（ブラウザ以外）は通す。管理者の Cookie を持たないので判定側で弾かれる", () => {
+    expect(isSameOriginRequest(null)).toBe(true);
+    expect(isSameOriginRequest(undefined)).toBe(true);
+  });
+});
+
+describe("管理画面・管理APIのセキュリティヘッダ", () => {
+  it("埋め込み・キャッシュ・インデックス・外部スクリプトを禁止している", () => {
+    expect(ADMIN_SECURITY_HEADERS["X-Frame-Options"]).toBe("DENY");
+    expect(ADMIN_SECURITY_HEADERS["Cache-Control"]).toContain("no-store");
+    expect(ADMIN_SECURITY_HEADERS["X-Robots-Tag"]).toContain("noindex");
+    const csp = ADMIN_SECURITY_HEADERS["Content-Security-Policy"];
+    expect(csp).toContain("default-src 'none'");
+    expect(csp).toContain("script-src 'self'");
+    expect(csp).toContain("frame-ancestors 'none'");
+    expect(csp).not.toContain("unsafe-inline");
+    expect(csp).not.toContain("unsafe-eval");
   });
 });

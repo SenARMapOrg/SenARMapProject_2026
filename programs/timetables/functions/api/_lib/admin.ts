@@ -77,3 +77,33 @@ export function readCookie(header: string | null | undefined, name: string): str
   }
   return null;
 }
+
+/**
+ * 管理画面のページと管理APIの両方に付けるヘッダ。
+ * （Functions が返す応答には public/_headers が効かないため、コードで付ける）
+ */
+export const ADMIN_SECURITY_HEADERS: Readonly<Record<string, string>> = {
+  "Content-Security-Policy":
+    "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'self'; "
+    + "font-src 'self'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'",
+  "X-Frame-Options": "DENY",
+  "X-Content-Type-Options": "nosniff",
+  "Referrer-Policy": "no-referrer",
+  "X-Robots-Tag": "noindex, nofollow",
+  "Cache-Control": "no-store, max-age=0",
+  "Pragma": "no-cache",
+  // 別サイトのウィンドウから参照されたり、別サイトに読み込まれたりするのを防ぐ（XS-Leaks 対策）
+  "Cross-Origin-Opener-Policy": "same-origin",
+  "Cross-Origin-Resource-Policy": "same-origin",
+  "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+};
+
+/**
+ * 管理APIへのリクエストが、自サイトのページからの fetch かどうか（Fetch Metadata による判定）。
+ * ブラウザは Sec-Fetch-Site を必ず付けるので、別サイトからのリンク・フォーム・画像読み込みなどで
+ * 管理者のブラウザに管理APIを叩かせる攻撃（閲覧記録の水増しや情報の推測）をここで止める。
+ * ヘッダが無いのはブラウザ以外（curl 等）で、その場合は管理者の Cookie を持っていないので通してよい。
+ */
+export function isSameOriginRequest(secFetchSite: string | null | undefined): boolean {
+  return !secFetchSite || secFetchSite === "same-origin";
+}
