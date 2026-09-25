@@ -144,6 +144,9 @@ export async function renderTimetableTab(content: HTMLElement, me: Me): Promise<
     displaySection.hidden = true;
     editGradeTermHint.textContent = `${gradeLabel(currentGrade)}に追加・削除されます:`;
     refreshEditGrid();
+    // 既定で開いている「科目名から追加」のシラバスデータを読み始める
+    // （読み込み済みなら何もしない。タブを手で切り替えていた場合はそのまま）
+    if (!nameForm.root.hidden) nameForm.onShow();
   }
   function exitEditMode(): void {
     editSection.hidden = true;
@@ -357,35 +360,41 @@ export async function renderTimetableTab(content: HTMLElement, me: Me): Promise<
   regHeading.textContent = "科目を追加・削除";
   editSection.appendChild(regHeading);
 
+  // 登録欄は「科目名から追加」を既定にする。シラバスから選べば曜日・時限・教員が埋まるので、
+  // 手入力（時間を指定して追加・削除）より先にこちらを見せた方が速い。
   const regTabs = document.createElement("div");
   regTabs.className = "term-tabs";
-  const slotModeBtn = document.createElement("button");
-  slotModeBtn.className = "term-tab active";
-  slotModeBtn.textContent = "時間を指定して追加・削除";
   const nameModeBtn = document.createElement("button");
-  nameModeBtn.className = "term-tab";
+  nameModeBtn.className = "term-tab active";
   nameModeBtn.textContent = "科目名から追加";
-  regTabs.append(slotModeBtn, nameModeBtn);
+  const slotModeBtn = document.createElement("button");
+  slotModeBtn.className = "term-tab";
+  slotModeBtn.textContent = "時間を指定して追加・削除";
+  regTabs.append(nameModeBtn, slotModeBtn);
   editSection.appendChild(regTabs);
 
   const slotForm = buildSlotForm(() => currentTerm, addSlot, removeSlot);
   const nameForm = buildNameForm(addSlot);
-  nameForm.root.hidden = true;
-  editSection.append(slotForm.root, nameForm.root);
+  slotForm.root.hidden = true;
+  editSection.append(nameForm.root, slotForm.root);
 
-  slotModeBtn.addEventListener("click", () => {
-    slotModeBtn.classList.add("active");
-    nameModeBtn.classList.remove("active");
-    slotForm.root.hidden = false;
-    nameForm.root.hidden = true;
-  });
-  nameModeBtn.addEventListener("click", () => {
+  function showNameForm(): void {
     nameModeBtn.classList.add("active");
     slotModeBtn.classList.remove("active");
     nameForm.root.hidden = false;
     slotForm.root.hidden = true;
-    nameForm.onShow();
-  });
+    nameForm.onShow();   // 初回だけシラバスデータを読み込む
+  }
+
+  function showSlotForm(): void {
+    slotModeBtn.classList.add("active");
+    nameModeBtn.classList.remove("active");
+    slotForm.root.hidden = false;
+    nameForm.root.hidden = true;
+  }
+
+  nameModeBtn.addEventListener("click", showNameForm);
+  slotModeBtn.addEventListener("click", showSlotForm);
 
   // 今日の曜日・現在時刻のハイライトとナビ状況は時間経過で変わるため、定期的に再描画する。
   // このタブから離れて画面から外れたら(要素がDOMから消えたら)自動的に止める。

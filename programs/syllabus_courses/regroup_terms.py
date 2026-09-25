@@ -1,38 +1,29 @@
 #!/usr/bin/env python3
 """既存の courses_raw.jsonl から courses.json を作り直すツール（大学サイトへの再アクセスなし）。
 
-## 直した問題
+学部/学科の集約（同じ科目が複数学科のカリキュラムに入っている場合に departments 配列へまとめる）
+だけを行う。term は生データに入っている値をそのまま使い、ここでは一切推測しない。
 
-これまでの scrape.py は、1つの開講行（同じ<tr>＝同じ科目名・担当教員の行）が「前期」「後期」
-どちらの時限にも同じ曜日・時限で載っている場合（＝通年科目、または前期/後期が別行で並記されて
-いる場合）に、その行の中でだけ前期・後期をペアにするべきところを、それをしていなかった。
-scrape.py の parse_rows() は行ごとの前期/後期/通年を単純に "spring"/"fall" の行としてフラットに
-出力するだけで、「どの前期行とどの後期行が同じ開講由来か」という情報をその時点で捨てていた。
+## 通年(term="both")の扱いと、古い生データについての注意
 
-そのため、それを受け取る timetables アプリ側（course-catalog.ts の groupOfferings()）は
-「科目名・担当教員・曜日・時限が完全一致する前期の行と後期の行があれば通年とみなす」という
-ヒューリスティックで後から通年判定をするしかなく、**たまたま同じ曜日・時限に前期だけ／後期だけで
-別々に開講されている、実際には無関係の2つの科目**まで誤って「通年科目」として1つに統合してしまう
-（時間割に追加すると前期・後期の両方に入ってしまう）バグがあった。
+通年かどうかはサイトの「開講期間」欄に「通年」と書かれているかどうかで決まり、
+scrape.py の parse_rows() がその時点で確定させている（2026-09-25 以降）。
 
-## この修正のアプローチ
+それ以前の scrape.py は「通年」を spring と fall の2行に分解して保存していたため、
+**その頃に取得した courses_raw.jsonl からは通年科目を復元できない**。さらに当時の
+このスクリプトは「同じ科目名・担当教員が連続して並んでいる区間の中で、同じ曜日・時限に
+前期と後期の両方があれば通年とみなす」というヒューリスティックで通年を復元しようとしていたが、
+同じ科目を前期にも後期にも開講しているだけの科目（体育実技や語学など）まで通年に統合してしまい、
+時間割に追加すると前期・後期の両方に入ってしまう不具合の原因になっていた。
 
-courses_raw.jsonl は scrape.py の parse_rows() が1つの<tr>を処理し終わるまで、その行から生まれた
-行（複数曜日・時限を持つ科目や、通年科目の前期/後期ペアを含む）を連続して書き出す実装になっている
-ため、**同じ科目名・担当教員が連続して並んでいる区間は、（ほぼ必ず）同じ元の<tr>由来である**という
-性質がある（scrape.py内のコメント・README「出力ファイル」の節にも、生データから
-dedupe_and_write_with_departments() を再実行すれば大学サイトへの再アクセスなしにcourses.jsonを
-作り直せる、という運用が明記されている）。
-
-この性質を使い、生データを順番通りに読みながら「科目名+担当教員が連続する区間」を1つの元の行と
-みなしてグループ化し、**そのグループの中だけ**で同じ曜日・時限に前期・後期の両方が存在する場合に
-限って term="both" に統合する（グループをまたいだ、たまたまの一致では統合しない）。
+そのためこのスクリプトは推測をやめ、生データに term="both" が1件も無い場合は
+「その生データは修正前のもので通年情報を持っていない」と警告する。正しい通年情報が必要なら
+scrape.py で取り直すこと。
 
 ## 使い方
 
     python regroup_terms.py                       # 全年度分(output/{year}/、および直下)を作り直す
-    python regroup_terms.py --year 2026            # 指定年度だけ作り直す（直下の output/ を使う）
-    python regroup_terms.py --year 2025            # output/2025/ を使う
+    python regroup_terms.py --year 2026            # 指定年度だけ作り直す
 
 出力は各年度の courses.json を直接上書きする（courses_raw.jsonl は読み取り専用、変更しない）。
 """
@@ -46,70 +37,30 @@ from pathlib import Path
 OUT_DIR = Path(__file__).parent / "output"
 
 
-def resolve_both_terms(raw_rows: list[dict]) -> list[dict]:
-    """生データ（出力順のまま）を受け取り、同じ元<tr>由来の区間内でだけ前期・後期を
-    term="both" に統合した行リストを返す。"""
-    # 同じ科目名+担当教員が連続する区間ごとにグループ化する
-    groups: list[list[dict]] = []
-    cur: list[dict] = []
-    cur_key: tuple | None = None
-    for r in raw_rows:
-        key = (r["course_name"], r.get("instructor"))
-        if key != cur_key:
-            if cur:
-                groups.append(cur)
-            cur = [r]
-            cur_key = key
-        else:
-            cur.append(r)
-    if cur:
-        groups.append(cur)
-
-    resolved: list[dict] = []
-    for group in groups:
-        # このグループ内で、同じ (day_of_week, period) に前期・後期の両方があるか調べる
-        slot_terms: dict[tuple[int, int], set[str]] = {}
-        for r in group:
-            slot = (r["day_of_week"], r["period"])
-            slot_terms.setdefault(slot, set()).add(r["term"])
-
-        both_slots = {slot for slot, terms in slot_terms.items() if {"spring", "fall"} <= terms}
-        emitted_both_slots: set[tuple[int, int]] = set()
-        for r in group:
-            slot = (r["day_of_week"], r["period"])
-            if slot in both_slots:
-                if slot in emitted_both_slots:
-                    continue  # 前期側・後期側の2行が来るはずなので、1回だけ出力する
-                emitted_both_slots.add(slot)
-                merged = dict(r)
-                merged["term"] = "both"
-                resolved.append(merged)
-            else:
-                resolved.append(r)
-    return resolved
-
-
 def rebuild_with_departments(raw_path: Path, final_path: Path) -> tuple[int, int]:
-    with raw_path.open(encoding="utf-8") as f:
-        raw_rows = [json.loads(line) for line in f if line.strip()]
+    """courses_raw.jsonl を読み、学部/学科を集約した courses.json を書く。
 
-    resolved_rows = resolve_both_terms(raw_rows)
-
+    戻り値: (出力件数, うち通年の件数)
+    """
     groups: dict[tuple, dict] = {}
-    for obj in resolved_rows:
-        key = (obj["course_name"], obj["day_of_week"], obj["period"], obj["term"], obj["instructor"])
-        dept_pair = (obj["faculty"], obj["department"])
-        if key not in groups:
-            groups[key] = {
-                "course_name": obj["course_name"],
-                "day_of_week": obj["day_of_week"],
-                "period": obj["period"],
-                "term": obj["term"],
-                "room": obj["room"],
-                "instructor": obj["instructor"],
-                "_dept_set": set(),
-            }
-        groups[key]["_dept_set"].add(dept_pair)
+    with raw_path.open(encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            obj = json.loads(line)
+            key = (obj["course_name"], obj["day_of_week"], obj["period"], obj["term"], obj["instructor"])
+            if key not in groups:
+                groups[key] = {
+                    "course_name": obj["course_name"],
+                    "day_of_week": obj["day_of_week"],
+                    "period": obj["period"],
+                    "term": obj["term"],
+                    "room": obj["room"],
+                    "instructor": obj["instructor"],
+                    "_dept_set": set(),
+                }
+            groups[key]["_dept_set"].add((obj["faculty"], obj["department"]))
 
     entries = []
     both_count = 0
@@ -132,6 +83,11 @@ def process_year(out_dir: Path, label: str) -> None:
         return
     n, both = rebuild_with_departments(raw_path, final_path)
     print(f"[done] {label}: {final_path} に {n}件を出力（うち通年 {both}件）")
+    if both == 0:
+        print(f"[warn] {label}: 通年科目が0件です。この生データは 2026-09-25 の修正より前に")
+        print("       取得したもので、通年の情報を持っていない可能性があります")
+        print("       （通年が前期行＋後期行に分解されて保存されているため復元できません）。")
+        print("       正しい通年情報が必要な場合は scrape.py で取り直してください。")
 
 
 def main() -> int:
@@ -144,7 +100,6 @@ def main() -> int:
         process_year(out_dir, str(args.year))
         return 0
 
-    # 直下(最新年度) + サブディレクトリの各年度
     process_year(OUT_DIR, "(直下・最新年度)")
     for sub in sorted(OUT_DIR.iterdir()):
         if sub.is_dir():

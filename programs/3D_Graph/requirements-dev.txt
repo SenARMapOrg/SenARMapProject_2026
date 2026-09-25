@@ -1,5 +1,6 @@
 # テスト用の依存。本番イメージ（deploy_env/python/requirements.txt）に合わせた上で
-# pytest を足したもの。
-#   cd programs/3D_Graph && pip install -r requirements-dev.txt && pytest
+# pytest と、シラバススクレイパーのテストに必要なものを足したもの。
+#   pip install -r programs/3D_Graph/requirements-dev.txt && pytest   （リポジトリ直下で）
 -r ../../deploy_env/python/requirements.txt
+-r ../syllabus_courses/requirements.txt
 pytest

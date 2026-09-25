@@ -47,14 +47,21 @@ programs/timetables/ （時間割共有アプリ）向けに、科目名オー�
 文字列がそのまま書かれている（例: "前期　火曜日　1時限"）ので、実際にはこちらの文字列から
 判定している（kkikancd はあくまで検索フィルタ用）。
 
-**重要**: term="both" は「同じ<tr>（同じ科目名・担当教員の1行）の中で、同じ曜日・時限に前期と
-後期の両方が書かれている場合」にのみ付ける。これは通年科目が1行の中で「通年」と書かれている場合
-と、前期・後期が別々の行として同じ行内に並記されている場合の両方をカバーする。一方、**別々の<tr>
-（別の科目）が、たまたま同じ曜日・時限に前期だけ／後期だけで開講されているケースは "both" にしない**
-（例: 同じ担当教員が同じ科目名で前期・後期にそれぞれ独立した科目を開講しているだけのケース）。
-以前はこの区別をせず、科目名・担当教員・曜日・時限が完全一致する前期の行と後期の行があれば
-無条件で通年とみなしていたため、無関係な2科目を誤って統合し、時間割に追加すると両方の学期に
-入ってしまう不具合があった（2026-09 修正）。
+**重要**: term="both"（通年）は、サイトの「開講期間」欄に **「通年」と書かれている場合だけ** に付ける。
+「前期　月曜日　1時限」「後期　月曜日　1時限」のように前期と後期が並んでいる行は、同じ科目を
+前期にも後期にも開講している（学生はどちらか一方を履修する）という意味なので、**統合せず
+spring と fall の2件のまま出力する**。時間割アプリ側ではこれが前期の開講・後期の開講として
+別々の候補に並び、選んだ方の学期にだけ登録される。
+
+以前はこの区別をしておらず、(a) 科目名・担当教員・曜日・時限が一致する前期の行と後期の行を
+無条件で通年とみなす、(b) 同じ<tr>内に前期・後期が並記されていれば通年とみなす、という
+2段階のヒューリスティックを使っていたため、前期・後期の両方で開講されているだけの科目が
+通年科目として扱われ、時間割に追加すると前期・後期の両方に入ってしまう不具合があった
+（2026-09-25 修正）。
+
+**注意**: この修正より前に取得した `courses_raw.jsonl` は、通年科目も前期行＋後期行に分解された
+状態で保存されており、通年かどうかを後から復元できない。正しい通年情報が必要な場合は
+再取得（再スクレイプ）が必要（`regroup_terms.py` が警告を出す）。
 
 「定時外」「集中」など曜日・時限が固定されない科目（オンデマンド科目・集中講義など）は
 day_of_week / period を持たないため **スキップし、stderr にログ出力する**（--verbose で件数集計も表示）。
@@ -131,10 +138,14 @@ REQUEST_TIMEOUT = 30
 DAY_TO_INDEX = {"月": 0, "火": 1, "水": 2, "木": 3, "金": 4, "土": 5}
 # 日曜日はアプリのスキーマ(0-5=月-土)が対応していないため意図的に含めない → スキップ扱い
 
-TERM_LABEL_TO_VALUES = {
-    "前期": ["spring"],
-    "後期": ["fall"],
-    "通年": ["spring", "fall"],
+# シラバス一覧の「開講期間」表記 → courses.json の term 値。
+# "both"（通年）はサイトに「通年」と書かれている場合**だけ**に付ける。
+# 同じ科目名・担当教員の行に「前期 月曜1時限」「後期 月曜1時限」と並んでいる場合は、
+# 前期開講と後期開講の2つの独立した開講なので、統合せず2件のまま出す。
+TERM_LABEL_TO_TERM = {
+    "前期": "spring",
+    "後期": "fall",
+    "通年": "both",
 }
 
 MAX_PERIOD = 7  # programs/timetables/functions/api/_lib/validate.ts の MAX_PERIOD と合わせる
@@ -249,10 +260,11 @@ def parse_rows(html: str, skip_reasons: SkipReason) -> list[dict]:
         # 稀に複数担当教員が<br>区切りで入っている場合があるため、読める形に連結しておく
         instructor = instructor_cell.get_text(separator=" / ", strip=True) or None
 
-        # まずこの行(=1つの<tr>=1つの開講)が持つ曜日・時限を全部集める。
-        # 「同じ曜日・時限に前期と後期の両方がある」＝この行自身が通年科目である、という
-        # 判定をこの行の中だけで完結させる（他の行の前期/後期とたまたま曜日・時限が一致しても
-        # 混同しないようにするため。詳しくは regroup_terms.py のモジュールdocstring参照）。
+        # この行(=1つの<tr>)が持つ「開講期間・曜日・時限」を、書かれているとおりに全部集める。
+        # 通年科目はサイト側に「通年」と書かれているので、それをそのまま term="both" にする。
+        # 「前期 月曜1時限」「後期 月曜1時限」のように前期・後期が並んでいる行は、
+        # 同じ科目を前期にも後期にも開講している（学生はどちらかを履修する）という意味なので、
+        # 通年に統合せず2件のまま出す。詳しくは冒頭の「学期(term)コードの対応」を参照。
         slots: list[tuple[str, int, int]] = []  # (term_label, day_index, period)
         for line in schedule_cell.get_text(separator="\n", strip=True).split("\n"):
             line = line.strip()
@@ -283,13 +295,14 @@ def parse_rows(html: str, skip_reasons: SkipReason) -> list[dict]:
 
             slots.append((term_label, day_index, period))
 
-        # (曜日, 時限) ごとに、この行の中で前期・後期どちらが出現したかを集計する
-        slot_terms: dict[tuple[int, int], set[str]] = {}
+        # 同じ内容が2回書かれている行が稀にあるため、(学期, 曜日, 時限) で重複だけ除く
+        seen_slots: set[tuple[str, int, int]] = set()
         for term_label, day_index, period in slots:
-            slot_terms.setdefault((day_index, period), set()).update(TERM_LABEL_TO_VALUES[term_label])
-
-        for (day_index, period), term_values in slot_terms.items():
-            term_value = "both" if term_values == {"spring", "fall"} else next(iter(term_values))
+            key = (TERM_LABEL_TO_TERM[term_label], day_index, period)
+            if key in seen_slots:
+                continue
+            seen_slots.add(key)
+            term_value, day_index, period = key
             out.append(
                 {
                     "course_name": course_name,
