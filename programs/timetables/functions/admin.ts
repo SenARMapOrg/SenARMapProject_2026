@@ -13,7 +13,7 @@
 import { ADMIN_SECURITY_HEADERS, readCookie } from "./api/_lib/admin";
 import { ADMIN_PAGE_HTML } from "./api/_lib/admin-page.generated";
 import { recordDenial, requestMeta, resolveAdminAccess } from "./api/_lib/admin-access";
-import { SESSION_COOKIE } from "./api/_lib/session";
+import { SESSION, cookieName, isHttpsUrl } from "./api/_lib/cookie-names";
 import type { Bindings } from "./api/_lib/types";
 
 function redirectToTop(request: Request): Response {
@@ -29,7 +29,7 @@ function redirectToTop(request: Request): Response {
 
 export const onRequest: PagesFunction<Bindings> = async (context) => {
   const { request, env } = context;
-  const sessionId = readCookie(request.headers.get("Cookie"), SESSION_COOKIE);
+  const sessionId = readCookie(request.headers.get("Cookie"), cookieName(SESSION, isHttpsUrl(request.url)));
   const access = await resolveAdminAccess(env.DB, env.ADMIN_EMAILS, sessionId);
 
   if (access.kind === "anonymous") return redirectToTop(request);

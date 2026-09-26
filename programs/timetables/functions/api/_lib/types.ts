@@ -30,7 +30,7 @@ export interface UserRow {
 }
 
 export interface SessionRow {
-  id: string;
+  id: string;         // セッショントークンの SHA-256（Cookie に入る生のトークンではない）
   user_id: number;
   created_at: string;
   expires_at: string;
