@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""画像バッチリネーマー — 左にD&D、右に名前をペーストするだけ"""
+"""画像リネームタブ — 左に画像をドロップ、右に名前をペーストして一括リネーム・一括リスケール
+
+一括リスケールは画像の枚数が多いと時間がかかるため、裏のスレッド（ResizeWorker）で1枚ずつ処理し、
+進み具合をステータスバーに出す。処理中も画面は固まらず、「中止」で途中で止められる。
+"""
 
 import os
 from pathlib import Path
@@ -12,14 +16,74 @@ from PyQt6.QtWidgets import (
     QLabel, QTextEdit, QListWidget, QPushButton,
     QAbstractItemView, QListWidgetItem,
     QMessageBox, QTableWidget, QTableWidgetItem, QHeaderView,
-    QGroupBox, QLineEdit, QFrame,
+    QGroupBox, QLineEdit, QFrame, QProgressBar,
 )
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, QThread, pyqtSignal
 from PyQt6.QtGui import QFont, QColor, QPainter, QKeySequence, QShortcut, QIntValidator
 
 
 IMAGE_EXTS = {".jpg", ".jpeg", ".png", ".gif", ".bmp",
               ".tiff", ".tif", ".webp", ".heic", ".heif"}
+
+
+def resize_target(orig_size: tuple[int, int], new_w: int | None, new_h: int | None) -> tuple[int, int]:
+    """変換後の大きさ。両方指定なら強制変換（縦横比無視）、片方だけならもう一方を縦横比から計算する"""
+    orig_w, orig_h = orig_size
+    if new_w and new_h:
+        return (new_w, new_h)
+    if new_w:
+        return (new_w, max(1, round(orig_h * new_w / orig_w)))
+    if new_h:
+        return (max(1, round(orig_w * new_h / orig_h)), new_h)
+    raise ValueError("幅か高さのどちらかは指定が必要です")
+
+
+def resize_image_file(path: str, new_w: int | None, new_h: int | None) -> tuple[int, int]:
+    """画像を上書きでリスケールする。戻り値は変換後の大きさ。
+
+    いったん同じフォルダの一時ファイルに書き出してから差し替えるので、書き込みの途中で
+    アプリが終了しても、元の画像が壊れた状態で残ることはない。
+    """
+    src = Path(path)
+    tmp = src.with_name(f".{src.stem}.resizing{src.suffix}")
+    try:
+        with Image.open(src) as img:
+            target = resize_target(img.size, new_w, new_h)
+            resized = img.resize(target, Image.LANCZOS)
+            resized.save(tmp, format=img.format)
+        os.replace(tmp, src)
+    finally:
+        if tmp.exists():
+            tmp.unlink()
+    return target
+
+
+class ResizeWorker(QThread):
+    """一括リスケールを裏で進める（画面を固まらせないため）"""
+    progress = pyqtSignal(int, int, str)          # (処理済み枚数, 全体の枚数, 今処理しているファイル名)
+    completed = pyqtSignal(int, list, bool)       # (成功枚数, エラーの一覧, 中止したか)
+
+    def __init__(self, paths: list[str], new_w: int | None, new_h: int | None, parent=None):
+        super().__init__(parent)
+        self._paths = list(paths)
+        self._new_w = new_w
+        self._new_h = new_h
+
+    def run(self):
+        ok, errors = 0, []
+        total = len(self._paths)
+        for i, path in enumerate(self._paths):
+            if self.isInterruptionRequested():
+                self.completed.emit(ok, errors, True)
+                return
+            self.progress.emit(i, total, os.path.basename(path))
+            try:
+                resize_image_file(path, self._new_w, self._new_h)
+                ok += 1
+            except Exception as e:  # noqa: BLE001  1枚失敗しても残りは続ける
+                errors.append(f"{os.path.basename(path)}: {e}")
+        self.progress.emit(total, total, "")
+        self.completed.emit(ok, errors, False)
 
 
 class DropListWidget(QListWidget):
@@ -46,16 +110,20 @@ class DropListWidget(QListWidget):
             event.acceptProposedAction()
 
     def dropEvent(self, event):
+        if self.add_paths([url.toLocalFile() for url in event.mimeData().urls()]):
+            event.acceptProposedAction()
+
+    def add_paths(self, paths: list[str]) -> bool:
+        """画像ファイルを一覧に足す（重複・画像以外は無視）。1件でも足したら True"""
         added = False
-        for url in event.mimeData().urls():
-            path = url.toLocalFile()
+        for path in paths:
             if path not in self._paths and self._is_image(path):
                 self._paths.append(path)
                 self.addItem(QListWidgetItem(os.path.basename(path)))
                 added = True
         if added:
-            event.acceptProposedAction()
             self._notify()
+        return added
 
     # ── empty-state hint ─────────────────────────────────────────────
 
@@ -106,7 +174,9 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.setWindowTitle("画像リネーム")
         self.setMinimumSize(960, 780)
+        self._resize_worker: ResizeWorker | None = None
         self._build_ui()
+        self._build_status_bar()
 
     # ── UI construction ──────────────────────────────────────────────
 
@@ -117,7 +187,7 @@ class MainWindow(QMainWindow):
         layout.setSpacing(12)
         layout.setContentsMargins(16, 16, 16, 16)
 
-        title = QLabel("画像リネーマー")
+        title = QLabel("画像リネーム")
         title.setFont(QFont("", 18, QFont.Weight.Bold))
         layout.addWidget(title)
 
@@ -244,8 +314,10 @@ class MainWindow(QMainWindow):
             }
             QPushButton:hover   { background: #1565C0; }
             QPushButton:pressed { background: #0D47A1; }
+            QPushButton:disabled { background: #BDBDBD; color: #F5F5F5; }
         """)
         btn.clicked.connect(self._do_rename)
+        self._rename_btn = btn
         return btn
 
     def _resize_section(self) -> QGroupBox:
@@ -305,11 +377,40 @@ class MainWindow(QMainWindow):
             }
             QPushButton:hover   { background: #2E7D32; }
             QPushButton:pressed { background: #1B5E20; }
+            QPushButton:disabled { background: #BDBDBD; color: #F5F5F5; }
         """)
         resize_btn.clicked.connect(self._do_resize)
         vbox.addWidget(resize_btn)
+        self._resize_btn = resize_btn
 
         return box
+
+    # ── status bar ───────────────────────────────────────────────────
+
+    def _build_status_bar(self):
+        bar = self.statusBar()
+        self._progress = QProgressBar()
+        self._progress.setFixedWidth(240)
+        self._progress.setTextVisible(True)
+        self._progress.hide()
+        self._cancel_btn = QPushButton("中止")
+        self._cancel_btn.clicked.connect(self._cancel_resize)
+        self._cancel_btn.hide()
+        bar.addPermanentWidget(self._progress)
+        bar.addPermanentWidget(self._cancel_btn)
+        bar.showMessage("画像をドロップしてください")
+
+    def _set_busy(self, busy: bool):
+        """リスケール中は、対象の画像や設定を変えられないようにする（処理中のリストがずれないように）"""
+        for w in (self.drop_list, self.name_edit, self.width_edit, self.height_edit,
+                  self._resize_btn, self._rename_btn):
+            w.setEnabled(not busy)
+        self._progress.setVisible(busy)
+        self._cancel_btn.setVisible(busy)
+        self._cancel_btn.setEnabled(busy)
+
+    def is_resizing(self) -> bool:
+        return self._resize_worker is not None and self._resize_worker.isRunning()
 
     # ── shared dialogs ───────────────────────────────────────────────
 
@@ -370,25 +471,43 @@ class MainWindow(QMainWindow):
         ):
             return
 
-        ok, errors = 0, []
-        for path in paths:
-            try:
-                img = Image.open(path)
-                orig_w, orig_h = img.size
+        self._start_resize(paths, new_w, new_h)
 
-                if new_w and new_h:
-                    target = (new_w, new_h)
-                elif new_w:
-                    target = (new_w, max(1, round(orig_h * new_w / orig_w)))
-                else:
-                    target = (max(1, round(orig_w * new_h / orig_h)), new_h)
+    def _start_resize(self, paths: list[str], new_w: int | None, new_h: int | None):
+        """確認済みのリスケールを裏で始める（画面は固まらない）"""
+        self._progress.setRange(0, len(paths))
+        self._progress.setValue(0)
+        self._set_busy(True)
+        self.statusBar().showMessage(f"リスケールを開始します（{len(paths)} 枚）")
+        worker = ResizeWorker(paths, new_w, new_h, self)
+        worker.progress.connect(self._on_resize_progress)
+        worker.completed.connect(self._on_resize_completed)
+        worker.finished.connect(worker.deleteLater)
+        self._resize_worker = worker
+        worker.start()
 
-                resized = img.resize(target, Image.LANCZOS)
-                resized.save(path)
-                ok += 1
-            except Exception as e:
-                errors.append(f"{os.path.basename(path)}: {e}")
+    def _on_resize_progress(self, done: int, total: int, name: str):
+        self._progress.setValue(done)
+        self._progress.setFormat("%v / %m 枚")
+        if name:
+            self.statusBar().showMessage(f"リスケール中… {done + 1} / {total} 枚目: {name}")
 
+    def _cancel_resize(self):
+        if self.is_resizing():
+            self._resize_worker.requestInterruption()
+            self._cancel_btn.setEnabled(False)
+            self.statusBar().showMessage("中止しています…（処理中の1枚が終わったら止まります）")
+
+    def _on_resize_completed(self, ok: int, errors: list, cancelled: bool):
+        self._resize_worker = None
+        self._set_busy(False)
+        if cancelled:
+            message = f"中止しました（{ok} 枚はリスケール済み）"
+            self.statusBar().showMessage(message)
+            QMessageBox.information(self, "中止", message)
+            return
+        self.statusBar().showMessage(
+            f"{ok} 枚をリスケールしました" + (f"（{len(errors)} 枚は失敗）" if errors else ""))
         self._show_result(ok, errors, f"{ok} 件の画像をリスケールしました。")
 
     # ── rename logic ─────────────────────────────────────────────────
@@ -464,7 +583,25 @@ class MainWindow(QMainWindow):
             except OSError as e:
                 errors.append(f"{os.path.basename(orig_path)}: {e}")
 
+        self.statusBar().showMessage(
+            f"{ok} 件のファイルをリネームしました" + (f"（{len(errors)} 件は失敗）" if errors else ""))
         self._show_result(ok, errors, f"{ok} 件のファイルをリネームしました。")
 
         self.drop_list.clear_all()
         self.name_edit.clear()
+
+    # ── close ────────────────────────────────────────────────────────
+
+    def closeEvent(self, event):
+        # リスケールの途中で閉じたら、処理中の1枚が終わるのを待ってから閉じる
+        # （一時ファイルに書いてから差し替えているので、待たずに終わっても元の画像は壊れない）
+        if self.is_resizing():
+            worker = self._resize_worker
+            # 閉じた後に「中止しました」などのダイアログが出ないよう、通知を受け取らないようにしてから止める
+            worker.progress.disconnect()
+            worker.completed.disconnect()
+            worker.requestInterruption()
+            worker.wait()
+            self._resize_worker = None
+            self._set_busy(False)
+        super().closeEvent(event)
