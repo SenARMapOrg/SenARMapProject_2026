@@ -1,5 +1,4 @@
 import { Hono } from "hono";
-import { getCookie } from "hono/cookie";
 
 import { sanitizeNextPath } from "../admin";
 import {
@@ -10,7 +9,7 @@ import {
   generateCodeVerifier, verifyIdToken,
 } from "../google";
 import {
-  clearSessionCookie, readAndClearOauthCookies, requireAuth, SESSION_COOKIE,
+  clearSessionCookie, readAndClearOauthCookies, readSessionToken, requireAuth,
   setOauthCookies, setSessionCookie,
 } from "../session";
 import type { AppEnv } from "../types";
@@ -87,15 +86,15 @@ authRoutes.get("/callback", async (c) => {
   await resolvePendingInvitesForEmail(c.env.DB, email, user.id);
 
   const session = await createSession(c.env.DB, user.id);
-  setSessionCookie(c, session.id, new Date(session.expires_at));
+  setSessionCookie(c, session.token, new Date(session.expiresAt));
 
   // Cookie に入っている値も改ざんされうるので、戻る直前にもう一度許可リストで確かめる
   return c.redirect(sanitizeNextPath(nextPath) ?? "/");
 });
 
 authRoutes.post("/logout", requireAuth(), async (c) => {
-  const sessionId = getCookie(c, SESSION_COOKIE);
-  if (sessionId) await deleteSession(c.env.DB, sessionId);
+  const sessionToken = readSessionToken(c);
+  if (sessionToken) await deleteSession(c.env.DB, sessionToken);
   clearSessionCookie(c);
   return c.body(null, 204);
 });
