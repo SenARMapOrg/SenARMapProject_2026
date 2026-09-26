@@ -1,7 +1,7 @@
 """CSV読み込み: グローバルID採番・屋外ノード・入口エッジの自動生成・列の正規化"""
 import pandas as pd
 
-from conftest import B1, B2, OUT
+from tiny_campus import B1, B2, OUT
 from ikunavi.config import ANCHOR_EDGE_ID_BASE
 from ikunavi.dataset import load_data
 

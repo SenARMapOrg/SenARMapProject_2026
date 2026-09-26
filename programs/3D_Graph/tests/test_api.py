@@ -1,7 +1,7 @@
 """APIの契約: ステータスコード・レスポンスの形・エラーメッセージ"""
 import json
 
-from conftest import B1, B2, OUT
+from tiny_campus import B1, B2, OUT
 
 
 def get(client, path, **kwargs):

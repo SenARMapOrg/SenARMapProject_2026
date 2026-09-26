@@ -1,7 +1,7 @@
 """経路探索: 候補ノードの列挙・全組み合わせDijkstra・目的エッジへの延長"""
 import pandas as pd
 
-from conftest import B1, B2, OUT
+from tiny_campus import B1, B2, OUT
 from ikunavi.cache import get_graph
 from ikunavi.search import (
     best_route,

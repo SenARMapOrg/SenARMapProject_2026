@@ -148,6 +148,12 @@ Pagesプロジェクト → Custom domains から追加する（手動でDNSレ�
 **プレビュー環境用のDB（`timetables-db-preview`）にも `npm run db:migrate:preview` で同じものを当てること**
 （当て忘れると、プレビューのビルドだけ「サーバー内部エラー」になる）。
 
+**`0009_hash_session_tokens.sql`（セッションのハッシュ化）について**: 中身は `DELETE FROM sessions;` だけで、
+ユーザー・時間割・公開設定・友達関係には一切触れない。適用すると全員が一度ログアウトされ、再ログインすると
+同じGoogleアカウント（`google_sub`）で元のユーザー・データにそのままつながる。デプロイとの順番はどちらが先でも
+エラーにはならない（新しいコードは古い形式のセッションを受け付けないので、先にデプロイしても同じく一度ログアウト
+されるだけ）。古い形式の行を残さないため、本番・プレビューの両方に当てておくこと。
+
 ### 3-4. 科目データ（オートコンプリート用）の更新
 
 `public/courses.json` は `programs/syllabus_courses` の出力を手動でコピーしたものなので、
@@ -291,6 +297,11 @@ IKU NAVI の教室と一致すれば建物番号（`to_bldg` / `from_bldg`）も
 - Cookieは `HttpOnly; Secure; SameSite=Lax`。状態変更リクエストは `Origin` ヘッダ検証も併用（多層防御）
 - セッションはJWTではなくDB管理のランダムトークンなので、不正利用が発覚した場合にDBの行を削除すれば
   即座に強制ログアウトできる
+- DBの `sessions.id` にはトークンそのものではなく **SHA-256ハッシュ** を保存する（`0009_hash_session_tokens.sql`）。
+  DBの中身やバックアップが漏れても、そこからログイン中のCookieを作ることはできない
+- 本番（https）のCookie名には **`__Host-` 接頭辞** を付ける（`__Host-session` など、`functions/api/_lib/cookie-names.ts`）。
+  ブラウザが「Secure・Path=/・Domain指定なし」でしか保存しないため、サブドメインなどからの上書きを防げる。
+  ローカル開発（http://localhost）ではSecure Cookieを保存できないので接頭辞なしの名前を使う
 - **管理画面は管理者だけ・閲覧専用・時間割の中身は非表示**（「3-6. 管理画面」参照）
 
 ### 投入前に判断・対応が必要なこと
@@ -325,7 +336,7 @@ IKU NAVI の教室と一致すれば建物番号（`to_bldg` / `from_bldg`）も
   負荷をかけるため）
 - **`ALLOWED_EMAIL_DOMAIN` の実値確認**: `senshu-u.jp` を仮設定しているが、実際にテストアカウントで
   ログインして意図した通りに制限されるか必ず確認すること
-- **セッション有効期限（30日）が妥当か**: `functions/api/_lib/db.ts` の `SESSION_TTL_MS` で調整できる。
+- **セッション有効期限（30日）が妥当か**: `functions/api/_lib/db/sessions.ts` の `SESSION_TTL_MS` で調整できる。
   個人情報を扱う性質上、共有端末での利用が想定されるなら短くする・明示的ログアウト導線を
   目立たせるなどの検討が要る
 - **OAuth同意画面の公開ステータス**: Google Cloud Console側で「テストモード」のままだと

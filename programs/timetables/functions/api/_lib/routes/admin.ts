@@ -9,12 +9,11 @@
 // 閲覧専用で、データを変更するエンドポイントは置かない。
 
 import { Hono, type Context, type Next } from "hono";
-import { getCookie } from "hono/cookie";
 
 import { ADMIN_SECURITY_HEADERS, isSameOriginRequest } from "../admin";
 import { recordAudit, recordDenial, requestMeta, resolveAdminAccess } from "../admin-access";
 import { getAdminSummary, listRecentAuditLog, listUsersForAdmin } from "../db";
-import { SESSION_COOKIE } from "../session";
+import { readSessionToken } from "../session";
 import type { AppEnv } from "../types";
 
 export const adminRoutes = new Hono<AppEnv>();
@@ -36,7 +35,7 @@ function requireAdmin() {
     // 別サイトから管理者のブラウザ経由で叩かせるリクエストは、判定より前に門前払いする
     if (!isSameOriginRequest(c.req.header("Sec-Fetch-Site"))) return c.json(NOT_FOUND, 404);
 
-    const access = await resolveAdminAccess(c.env.DB, c.env.ADMIN_EMAILS, getCookie(c, SESSION_COOKIE) ?? null);
+    const access = await resolveAdminAccess(c.env.DB, c.env.ADMIN_EMAILS, readSessionToken(c) ?? null);
     const meta = requestMeta(c.req.raw);
 
     if (access.kind === "anonymous") return c.json(NOT_FOUND, 404);

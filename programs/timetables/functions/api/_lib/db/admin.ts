@@ -20,14 +20,6 @@ export interface AdminSummary {
   users_with_entries: number;
 }
 
-export async function getSessionCreatedAt(db: D1Database, sessionId: string): Promise<string | null> {
-  const row = await db
-    .prepare("SELECT created_at FROM sessions WHERE id = ?")
-    .bind(sessionId)
-    .first<{ created_at: string }>();
-  return row?.created_at ?? null;
-}
-
 export async function listUsersForAdmin(db: D1Database): Promise<AdminUserRow[]> {
   const { results } = await db
     .prepare(
