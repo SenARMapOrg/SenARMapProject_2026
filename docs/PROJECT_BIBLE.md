@@ -25,7 +25,7 @@
 
 - **屋内フロアマップSVGが10号館分（`10_1F.svg`〜`10_6F.svg`）しか無い。** `node.csv`/`edge.csv` は1・2・5・7・8号館分も存在するのに、対応する `programs/html/svg/{building}_{floor}F.svg` が無い建物は屋内AR・SVGナビが機能しない（画面上でフロアマップが表示できない）。まずこのギャップを埋めることが体験完成度に直結する。
 - **`name.csv`・`building_name.csv`・`event.csv` が全て空（ヘッダー行のみ）。** 表示名DB・イベントモードという機能自体はコードとして完成しているが、実データが入っていないため恩恵をまだ誰も受けていない。学園祭など次のイベント前に `event.csv` を先行して埋めておくと、機能の初適用がスムーズになる。
-- `edge_image.csv` は999行と大きいが、`Image_Checker` で欠損検出を行い、抜けているエッジ画像（特に新規建物分）を定期的に埋める運用を継続する。
+- `edge_image.csv` は999行と大きいが、IKU NAVI ツールの「画像チェック」タブで欠損検出を行い、抜けているエッジ画像（特に新規建物分）を定期的に埋める運用を継続する。
 
 ### 1.2 静的データ配信への移行（既に方針決定済み・実行フェーズへ）
 
@@ -33,13 +33,13 @@
 
 - **移行の効果**: VPS上の `python` コンテナと CORS 設定が不要になり、2GBサーバーの負荷が下がる。イベント時の同時接続増（現状ピーク100人想定）にも静的配信は強い。
 - **移行のタイミング**: 現状のように「全建物データ投入中でロジックがPython1箇所に集中している方が変更が楽」というフェーズが終わり、経路ロジック（エスカレータ一方向・エレベータ除外・入口ペナルティ・目的エッジ延長など）が安定してから着手するのが合理的。1.1のデータ整備が一段落したタイミングが良い節目になる。
-- 移行後も `/3d` ビューア・検証ツール群（Route_Checker等）はローカルFlask運用のまま残せる設計にしておくとよい（既にその前提で計画されている）。
+- 移行後も `/3d` ビューア・検証ツール群（IKU NAVI ツールの「ルート検証」タブ等）はローカルFlask運用のまま残せる設計にしておくとよい（既にその前提で計画されている）。
 
 ### 1.3 テスト・CI（導入済み。残っている宿題）
 
 回帰テストと GitHub Actions は導入済み（8.4節参照）。まだ手が付いていないのは次の点。
 
-- `Route_Checker` が持つ異常検出ロジック（`SAME_FLOOR_DETOUR` / `FLOOR_OVERSHOOT` / `FLOOR_REVERSAL` / `UNEXPECTED_BUILDING`）は、GUIツールとしてだけでなく **pytest化してCIに組み込む**と、データ追加やロジック変更のたびに手動チェックしなくて済む。全教室ペアの経路検証は数百〜数千パターンあるが、CIで自動実行できれば「新しい建物を足したら知らないうちに変な迂回ルートが生まれていた」という事故を防げる。
+- 「ルート検証」タブ（旧 Route_Checker）が持つ異常検出ロジック（`SAME_FLOOR_DETOUR` / `FLOOR_OVERSHOOT` / `FLOOR_REVERSAL` / `UNEXPECTED_BUILDING`）は、GUIツールとしてだけでなく **pytest化してCIに組み込む**と、データ追加やロジック変更のたびに手動チェックしなくて済む。全教室ペアの経路検証は数百〜数千パターンあるが、CIで自動実行できれば「新しい建物を足したら知らないうちに変な迂回ルートが生まれていた」という事故を防げる。
 - ナビ画面のJS（`programs/html/navi/script/`）にはテストランナーが無く、HTMLとの噛み合わせ（必要なID・関数の有無・読み込み順）を静的に照合しているだけ。実際の操作の回帰はまだ人手で見ている。
 - Cloudflare Pages のデプロイはダッシュボード側の設定で走るため、GitHub Actions のテスト結果ではブロックできない（VPS側のDockerイメージはブロックできる）。
 
@@ -86,12 +86,7 @@ SenARMapProject_2026/
 │   ├── 3D_Graph/        # Flaskバックエンド (app.py + ikunavi/) + 3D経路ビューア (templates/index.html)
 │   ├── html/             # Cloudflare Pages 公開ルート（トップページ・navi・blog・SVG等）
 │   ├── Website/          # プロジェクト紹介LP（学内発表用、Pagesでは非公開）
-│   ├── Map_Editor/       # ノード・エッジ・経路写真の統合編集GUI（PyQt6）
-│   ├── Image_Checker/    # CDN上のエッジ画像の存在検証GUI（PyQt6）
-│   ├── Route_Checker/    # 全教室ペア経路の異常検出GUI（PyQt6）
-│   ├── Image_Renamer/    # 画像一括リネーム/リサイズGUI（PyQt6）
-│   ├── SVG_Pointer/      # SVG座標取得ツール（PyQt5）
-│   └── Human_Remover/    # YOLOv8による人物匿名化バッチツール（PyQt6）
+│   └── IKU_NAVI_Tools/   # データ作成・検証用デスクトップアプリ（PyQt6。7つのツールをタブで切り替える。7章）
 ├── data/                 # CSV/JSON データ（ノード・エッジ・食堂・画像マッピング・名前DB等）
 ├── docs/                 # 設計ドキュメント（本ファイルを含む）
 ├── deploy_env/           # 本番Docker Swarm構成 + Cloudflare Pagesビルド + (不採用の)k8s構成
@@ -151,23 +146,24 @@ SenARMapProject_2026/
 ### 3.3 データパイプライン（新しい建物・経路データを追加する作業の全体像）
 
 ```
-① SVG_Pointer で既存フロアマップSVG上の座標を取得
-        ↓（もしくは統合版の Map_Editor 単体で完結）
-② Map_Editor でノード・エッジをCSVに入力しつつ、経路上の写真を撮影
+（①〜⑥はいずれも IKU NAVI ツール（programs/IKU_NAVI_Tools）のタブ）
+① 「SVG座標取得」で既存フロアマップSVG上の座標を取得
+        ↓（もしくは「マップ編集」単体で完結）
+② 「マップ編集」でノード・エッジをCSVに入力しつつ、経路上の写真を撮影
         ↓
-③ Human_Remover で撮影写真から通行人を自動匿名化（ぼかし/モザイク/インペイント）
+③ 「人物ぼかし」で撮影写真から通行人を自動匿名化（ぼかし/モザイク/インペイント）
         ↓
 ④ 写真をリネームして Cloudflare R2 CDN に手動アップロード
-   （Image_Renamer で命名規則に一括整形）
+   （「画像リネーム」で命名規則に一括整形）
         ↓
-⑤ Image_Checker でCDN上の画像が全エッジ分揃っているか検証
+⑤ 「画像チェック」でCDN上の画像が全エッジ分揃っているか検証
         ↓
-⑥ Route_Checker で全教室ペアの経路に異常（想定外の建物・フロア経由等）がないか検証
+⑥ 「ルート検証」で全教室ペアの経路に異常（想定外の建物・フロア経由等）がないか検証
         ↓
 ⑦ 本番反映（gunicornコンテナ再起動でCSVキャッシュを更新）
 ```
 
-※現行の `Map_Editor` はノード・エッジ入力とエッジ写真撮影（`captured_photos/` への保存 + `edge_image.csv` 登録）を1画面に統合したツールで、旧来 `SVG_Pointer` → 手動CSV編集 → `Image_Renamer` に分かれていた作業を代替する目的で作られた（詳細は7章）。CDNへのアップロード自体は依然として手動。
+※「マップ編集」はノード・エッジ入力とエッジ写真撮影（`captured_photos/` への保存 + `edge_image.csv` 登録）を1画面に統合したツールで、旧来「SVG座標取得」→ 手動CSV編集 →「画像リネーム」に分かれていた作業を代替する目的で作られた（詳細は7章）。CDNへのアップロード自体は依然として手動。
 
 ---
 
@@ -217,7 +213,7 @@ data/
 | `building` | int | 建物ID |
 | `floor` | int | 階数 |
 | `type` | int | 1=通常ノード, 2=出入り口 |
-| `svg_x, svg_y` | float | （任意）SVGフロアマップ上のピクセル座標。Map_Editorが自動付与 |
+| `svg_x, svg_y` | float | （任意）SVGフロアマップ上のピクセル座標。「マップ編集」タブが自動付与 |
 
 ### 4.5 `{building_id}_bldg/edge.csv`
 
@@ -483,9 +479,11 @@ CSS変数（`:root`）でカラーパレット・フォント・イージング�
 
 ## 7. 開発・検証ツール群
 
-いずれもデータ投入・品質検証を支援するデスクトップGUIツールで、`programs/{ツール名}/` 配下に個別の `requirements.txt` を持つ。
+いずれもデータ投入・品質検証を支援するデスクトップGUIツール。以前は `programs/{ツール名}/` に別々のプログラムとして置いていたが、2026-09-26 に **IKU NAVI ツール（`programs/IKU_NAVI_Tools/`）** という1つのアプリにまとめ、画面上部のタブで切り替えて使う形にした（`cd programs/IKU_NAVI_Tools && pip install -r requirements.txt && python main.py`）。各ツールは `iku_tools/<名前>/window.py` の `MainWindow` がタブの中身になっており、共通部品は `iku_tools/common/` にある。詳しくは `programs/IKU_NAVI_Tools/README.md`。
 
-### 7.1 Map_Editor（PyQt6）
+以下の見出しの括弧内は旧プログラム名。
+
+### 7.1 マップ編集タブ（旧 Map_Editor）
 
 SVGフロアマップ上でクリック操作によりノード・エッジ（`{building}_bldg/node.csv`・`edge.csv`）を直感的に編集し、あわせて廊下・階段等の経路写真をカメラ撮影して `edge_image.csv` に登録できる統合データ入力GUI。旧来 `SVG_Pointer`（座標取得）→手動CSV編集→`Image_Renamer`（写真リネーム）に分かれていた作業を1画面に統合したもの。
 
@@ -496,7 +494,7 @@ SVGフロアマップ上でクリック操作によりノード・エッジ（`{
 - 保存後は Flask の再起動が必要（キャッシュ機構のため）。
 - 依存: `PyQt6>=6.4.0`, `opencv-python>=4.8.0`, `numpy>=1.24.0`
 
-### 7.2 Image_Checker（PyQt6）
+### 7.2 画像チェックタブ（旧 Image_Checker）
 
 `/api/graph` の全エッジ（両方向に展開）に対し、案内画像が `edge_image.csv` に登録され、かつCDN上に実在するかをGUI上で一括検証・可視化するツール。
 
@@ -505,7 +503,7 @@ SVGフロアマップ上でクリック操作によりノード・エッジ（`{
 - **出力**: カードグリッドUI（緑=OK/赤=欠損/グレー=未登録）。`ExportDialog` で欠損・未登録一覧をテキスト表（CJK文字幅考慮）としてクリップボードコピーまたはファイル保存。
 - 依存: `PyQt6>=6.4.0`, `requests>=2.31.0`
 
-### 7.3 Route_Checker（PyQt6）
+### 7.3 ルート検証タブ（旧 Route_Checker）
 
 全教室ペア間の最短経路（`/api/route`）に対し、地理的に不合理な迂回がないかをルールベースで自動検出するツール。
 
@@ -519,17 +517,17 @@ SVGフロアマップ上でクリック操作によりノード・エッジ（`{
 - **UI**: フィルタ（状態/号館/教室名部分一致）、ソート可能テーブル、行ダブルクリックで詳細ダイアログ（ノード別テーブル・異常説明・生JSON表示）、CSV出力（`utf-8-sig`、フィルタ無視で全件）。
 - 依存: `PyQt6>=6.4.0`, `requests>=2.31.0`
 
-### 7.4 Image_Renamer（PyQt6）
+### 7.4 画像リネームタブ（旧 Image_Renamer）
 
 ドラッグ&ドロップした画像ファイルと、スプレッドシートからペーストした名前リスト（1行1ファイル名）を**行番号（インデックス）で対応付けて**一括リネームするツール。あわせて画像の一括リサイズ（縦横比維持 or 強制変換、`PIL` LANCZOSフィルタ）も可能。プレビューテーブルで名前不足（黄）・重複（赤）を警告表示してから実行する安全設計。
 依存: `PyQt6`, `Pillow`
 
-### 7.5 SVG_Pointer（PyQt5）
+### 7.5 SVG座標取得タブ（旧 SVG_Pointer。PyQt5 から PyQt6 に移植）
 
 SVGファイル（フロアマップ）を表示し、クリック位置のSVG内部座標（`svg_x, svg_y`）を取得、タブ区切りテキストとしてクリップボードに自動コピーする座標収集補助ツール（スプレッドシートの2列にそのままペースト可能）。Map_Editor統合前の旧ワークフローで使われていたツール。
 依存: `PyQt5>=5.15.0`
 
-### 7.6 Human_Remover（PyQt6）
+### 7.6 人物ぼかしタブ（旧 Human_Remover）
 
 YOLOv8セグメンテーションモデル（`yolov8n-seg.pt` 同梱）で写真内の人物（COCOクラス0）を検出し、「ぼかし（GaussianBlur）」「モザイク（ピクセレート）」「消去（`cv2.inpaint`, INPAINT_TELEA）」のいずれかで匿名化するCDNアップロード前のプライバシー保護バッチツール。セグメンテーションマスクがあれば優先使用、なければバウンディングボックスで代用。`ProcessWorker`（QThread）でバッチ処理、進捗をシグナルでリアルタイム反映。
 依存: `PyQt6>=6.4.0`, `opencv-python>=4.8.0`, `ultralytics>=8.0.0`, `numpy>=1.24.0`
@@ -715,7 +713,7 @@ import re
 from flask import Flask, request
 
 from . import cache, naming, payloads
-from .config import BASE_DIR, CORS_ALLOWED_ORIGINS, CORS_ORIGIN_PATTERN
+from .config import BASE_DIR, CORS_ALLOWED_ORIGINS, CORS_ORIGIN_PATTERN, cors_extra_origins
 from .errors import register_error_handler
 from .routes import BLUEPRINTS
 
@@ -726,7 +724,8 @@ def _register_cors(app):
     @app.after_request
     def add_cors_headers(response):
         origin = request.headers.get("Origin", "")
-        if origin in CORS_ALLOWED_ORIGINS or _cors_origin_pattern.match(origin):
+        if (origin in CORS_ALLOWED_ORIGINS or origin in cors_extra_origins()
+                or _cors_origin_pattern.match(origin)):
             response.headers["Access-Control-Allow-Origin"] = origin
             response.headers["Vary"] = "Origin"
         return response
@@ -765,7 +764,7 @@ import os
 
 import pandas as pd
 
-from .config import CAFETERIA_CSV, EVENT_CSV, GLOBAL_NODE_OFFSET, ID_OFFSET
+from .config import GLOBAL_NODE_OFFSET, ID_OFFSET, data_path
 from .dataset import load_data
 from .graph import build_graph
 from .naming import TOILET_NAMES, display_name, get_ignore_set
@@ -946,10 +945,11 @@ def _build_event_index():
     同じ title の行が複数あれば候補を統合する（複数箇所で開催する屋台など）。
     """
     index, events_list, seen_titles = {}, [], set()
-    if not os.path.exists(EVENT_CSV):
+    event_csv = data_path("event.csv")
+    if not os.path.exists(event_csv):
         return index, events_list
 
-    df = pd.read_csv(EVENT_CSV, dtype=str).fillna("")
+    df = pd.read_csv(event_csv, dtype=str).fillna("")
     df.columns = df.columns.str.strip()
     nodes_df, edges_df = get_data()
     node_floor = {int(r["id"]): int(r["floor"]) for _, r in nodes_df.iterrows()}
@@ -995,8 +995,9 @@ def get_cafeteria_list():
     global _cafeteria_list
     if _cafeteria_list is None:
         result = []
-        if os.path.exists(CAFETERIA_CSV):
-            df = pd.read_csv(CAFETERIA_CSV, dtype=str).fillna("")
+        path = data_path("cafeteria_edge.csv")
+        if os.path.exists(path):
+            df = pd.read_csv(path, dtype=str).fillna("")
             for _, row in df.iterrows():
                 name = row.get("name", "").strip()
                 if not name:
@@ -1037,24 +1038,32 @@ def clear_caches():
 """データファイルのパスと、経路探索・描画で使う定数。
 
 ここにある値はデータの意味そのものに関わるため、変更するときは
-data/ 配下のCSVの作り方（programs/Map_Editor）と合わせて見直すこと。
+data/ 配下のCSVの作り方（programs/IKU_NAVI_Tools の「マップ編集」タブ）と合わせて見直すこと。
 """
 import os
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DATA_DIR = os.path.join(BASE_DIR, "../../data")
+DEFAULT_DATA_DIR = os.path.join(BASE_DIR, "../../data")
 
-BUILDINGS_JSON    = os.path.join(DATA_DIR, "buildings.json")
-ANCHORS_CSV       = os.path.join(DATA_DIR, "anchors.csv")
-CONNECT_EDGE_CSV  = os.path.join(DATA_DIR, "connect_edge.csv")
-GLOBAL_NODE_CSV   = os.path.join(DATA_DIR, "global_node.csv")
-GLOBAL_EDGE_CSV   = os.path.join(DATA_DIR, "global_edge.csv")
-EDGE_IMAGE_CSV    = os.path.join(DATA_DIR, "edge_image.csv")
-CAFETERIA_CSV     = os.path.join(DATA_DIR, "cafeteria_edge.csv")
-NAME_CSV          = os.path.join(DATA_DIR, "name.csv")
-BUILDING_NAME_CSV = os.path.join(DATA_DIR, "building_name.csv")
-EVENT_CSV         = os.path.join(DATA_DIR, "event.csv")
-IGNORE_CSV        = os.path.join(DATA_DIR, "ignore.csv")
+# 環境変数 IKUNAVI_DATA_DIR を設定すると、リポジトリの data/ ではなくそちらを読む。
+# テスト（programs/3D_Graph/tests）や、別のデータセットで動きを確かめたいときに使う。
+# パスは読み込みのたびに解決するので、実行中に切り替えても次の読み込みから反映される
+# （キャッシュ済みのデータは ikunavi.clear_all_caches() で捨てること）。
+DATA_DIR_ENV = "IKUNAVI_DATA_DIR"
+
+
+def data_dir():
+    return os.environ.get(DATA_DIR_ENV) or DEFAULT_DATA_DIR
+
+
+def data_path(name):
+    """data/ 配下のファイルの絶対パス"""
+    return os.path.join(data_dir(), name)
+
+
+def building_dir(building):
+    """data/{building}_bldg/"""
+    return data_path(f"{int(building)}_bldg")
 
 CDN_BASE = "https://cdn.iku-navi.net"
 
@@ -1083,7 +1092,18 @@ BUILDING_COLORS = [
 CORS_ALLOWED_ORIGINS = {
     "https://iku-navi.net",
     "https://www.iku-navi.net",
+    # 時間割共有（programs/timetables）が、教室の選択肢を作るために /api/all を読む
+    "https://timetables.iku-navi.net",
 }
+
+
+def cors_extra_origins():
+    """環境変数 IKUNAVI_CORS_EXTRA_ORIGINS（カンマ区切り）で許可オリジンを足す。
+    ローカルで時間割共有（wrangler pages dev）からこのAPIを読んで動作確認するとき用。本番では設定しない。"""
+    raw = os.environ.get("IKUNAVI_CORS_EXTRA_ORIGINS", "")
+    return {o.strip() for o in raw.split(",") if o.strip()}
+
+
 CORS_ORIGIN_PATTERN = r"^https://[a-z0-9.-]+\.pages\.dev$"  # Pages プレビュー用
 ```
 
@@ -1103,13 +1123,10 @@ import pandas as pd
 
 from .config import (
     ANCHOR_EDGE_ID_BASE,
-    ANCHORS_CSV,
-    CONNECT_EDGE_CSV,
-    DATA_DIR,
-    GLOBAL_EDGE_CSV,
-    GLOBAL_NODE_CSV,
     GLOBAL_NODE_OFFSET,
     ID_OFFSET,
+    data_dir,
+    data_path,
 )
 from .transform import apply_transform, resolved_transform_config
 
@@ -1124,7 +1141,7 @@ def _read_csv(path, **kwargs):
 def _load_building_frames(config):
     """data/{N}_bldg/ を全て読み、ローカルID→グローバルID変換と座標変換をかける"""
     nodes, edges = [], []
-    for bldg_dir in sorted(glob.glob(os.path.join(DATA_DIR, "*_bldg"))):
+    for bldg_dir in sorted(glob.glob(os.path.join(data_dir(), "*_bldg"))):
         m = re.match(r'(\d+)_bldg', os.path.basename(bldg_dir))
         if not m:
             continue
@@ -1152,17 +1169,19 @@ def _load_building_frames(config):
 
 def _load_connect_edges():
     """建物間接続CSV: グローバルIDで記述、存在する場合のみ読み込む"""
-    if not os.path.exists(CONNECT_EDGE_CSV):
+    path = data_path("connect_edge.csv")
+    if not os.path.exists(path):
         return None
-    conn_df = _read_csv(CONNECT_EDGE_CSV)
+    conn_df = _read_csv(path)
     return conn_df if not conn_df.empty else None
 
 
 def _load_global_nodes():
     """屋外ノード (global_node.csv) — building=0 として追加。戻り値: (DataFrame|None, 元のID集合)"""
-    if not os.path.exists(GLOBAL_NODE_CSV):
+    path = data_path("global_node.csv")
+    if not os.path.exists(path):
         return None, set()
-    gn_raw = _read_csv(GLOBAL_NODE_CSV).dropna(subset=["id", "x", "y", "z"])
+    gn_raw = _read_csv(path).dropna(subset=["id", "x", "y", "z"])
     if gn_raw.empty:
         return None, set()
 
@@ -1178,9 +1197,10 @@ def _load_global_nodes():
 
 def _load_global_edges(global_node_ids):
     """屋外エッジ (global_edge.csv) — from/to の小さいIDはグローバルノードローカルID"""
-    if not os.path.exists(GLOBAL_EDGE_CSV):
+    path = data_path("global_edge.csv")
+    if not os.path.exists(path):
         return None
-    ge_raw = _read_csv(GLOBAL_EDGE_CSV).dropna(subset=["id", "from", "to"])
+    ge_raw = _read_csv(path).dropna(subset=["id", "from", "to"])
     if ge_raw.empty:
         return None
 
@@ -1200,9 +1220,10 @@ def _load_global_edges(global_node_ids):
 
 def _build_anchor_edges():
     """anchors.csv から、グローバルノードとローカルノードを繋ぐエッジを生成する"""
-    if not os.path.exists(ANCHORS_CSV):
+    path = data_path("anchors.csv")
+    if not os.path.exists(path):
         return None
-    anchors_df = _read_csv(ANCHORS_CSV)
+    anchors_df = _read_csv(path)
     if anchors_df.empty:
         return None
 
@@ -1233,7 +1254,7 @@ def _normalize(nodes_combined, edges_combined):
     valid_ids = set(nodes_combined["id"])
     edges_combined = edges_combined[
         edges_combined["from"].isin(valid_ids) & edges_combined["to"].isin(valid_ids)
-    ]
+    ].copy()   # 以降の列の書き換えが元のDataFrameのスライスにならないようにする
 
     edges_combined["name"] = edges_combined["name"].fillna("").astype(str)
     # 空行によりfloat化したtype列を整数に正規化 ("1.0" → "1" となるよう)
@@ -1315,8 +1336,9 @@ import pandas as pd
 
 from .config import ENTRANCE_PENALTY
 
-# 上りエスカレータ(5)・下りエスカレータ(6)は一方向のみ
-DIRECTED_EDGE_TYPES = {"5", "6"}
+# 一方向にしか通れないエッジ種別（下の分岐で個別に向きを決める）
+ESCALATOR_UP_EDGE_TYPE = "5"
+ESCALATOR_DOWN_EDGE_TYPE = "6"
 ELEVATOR_EDGE_TYPE = "4"
 ENTRANCE_EDGE_TYPE = "7"
 
@@ -1367,20 +1389,19 @@ def build_graph(nodes_df, edges_df, use_elevator=True):
         u, v = int(row["from"]), int(row["to"])
         edge_attrs = _edge_attrs(row, edge_type)
 
-        if edge_type == "5":
+        if edge_type == ESCALATOR_UP_EDGE_TYPE:
             # 上りESC: z が低い→高い方向のみ通行可
             lo, hi = (u, v) if G.nodes[u]["z"] <= G.nodes[v]["z"] else (v, u)
             G.add_edge(lo, hi, **edge_attrs)
-        elif edge_type == "6":
+        elif edge_type == ESCALATOR_DOWN_EDGE_TYPE:
             # 下りESC: z が高い→低い方向のみ通行可
             hi, lo = (u, v) if G.nodes[u]["z"] >= G.nodes[v]["z"] else (v, u)
             G.add_edge(hi, lo, **edge_attrs)
         else:
+            # それ以外は双方向。逆方向(v→u)は進行方向が反転するため、right/leftも入れ替える
             G.add_edge(u, v, **edge_attrs)
-            if edge_type not in DIRECTED_EDGE_TYPES:
-                # 逆方向(v→u)は進行方向が反転するため、right/leftも入れ替えて渡す
-                reversed_attrs = dict(edge_attrs, right=edge_attrs["left"], left=edge_attrs["right"])
-                G.add_edge(v, u, **reversed_attrs)
+            reversed_attrs = dict(edge_attrs, right=edge_attrs["left"], left=edge_attrs["right"])
+            G.add_edge(v, u, **reversed_attrs)
     return G
 ```
 
@@ -1397,7 +1418,7 @@ import os
 
 import pandas as pd
 
-from .config import BUILDING_NAME_CSV, IGNORE_CSV, NAME_CSV
+from .config import data_path
 
 # トイレは name.csv に表示名を持たず、種別ごとに固定のラベルを使う
 TOILET_LABEL = {"M_Toilet": "男子トイレ", "F_Toilet": "女子トイレ", "C_Toilet": "多目的トイレ"}
@@ -1430,8 +1451,9 @@ def get_name_map():
     global _name_map
     if _name_map is None:
         name_map = {}
-        if os.path.exists(NAME_CSV):
-            for _, row in _read_text_csv(NAME_CSV).iterrows():
+        path = data_path("name.csv")
+        if os.path.exists(path):
+            for _, row in _read_text_csv(path).iterrows():
                 name    = str(row.get("name", "")).strip()
                 display = str(row.get("display_name", "")).strip()
                 bldg    = str(row.get("building", "")).strip()
@@ -1451,8 +1473,9 @@ def get_building_name_map():
     global _building_name_map
     if _building_name_map is None:
         name_map = {}
-        if os.path.exists(BUILDING_NAME_CSV):
-            for _, row in _read_text_csv(BUILDING_NAME_CSV).iterrows():
+        path = data_path("building_name.csv")
+        if os.path.exists(path):
+            for _, row in _read_text_csv(path).iterrows():
                 bldg    = str(row.get("building", "")).strip()
                 display = str(row.get("display_name", "")).strip()
                 if not bldg or not display:
@@ -1472,8 +1495,9 @@ def get_ignore_set():
     global _ignore_set
     if _ignore_set is None:
         ignore_set = set()
-        if os.path.exists(IGNORE_CSV):
-            for _, row in _read_text_csv(IGNORE_CSV).iterrows():
+        path = data_path("ignore.csv")
+        if os.path.exists(path):
+            for _, row in _read_text_csv(path).iterrows():
                 name = str(row.get("id", "")).strip()
                 if name:
                     ignore_set.add(name)
@@ -1849,13 +1873,14 @@ import os
 
 import pandas as pd
 
-from .config import ANCHORS_CSV, BUILDINGS_JSON, DATA_DIR, GLOBAL_NODE_CSV
+from .config import building_dir, data_path
 
 
 def load_transform_config():
     """buildings.json に手書きされた変換パラメータを読む（無ければ空）"""
-    if os.path.exists(BUILDINGS_JSON):
-        with open(BUILDINGS_JSON) as f:
+    path = data_path("buildings.json")
+    if os.path.exists(path):
+        with open(path) as f:
             return json.load(f)
     return {}
 
@@ -1867,16 +1892,18 @@ def calc_transforms_from_anchors():
     1点アンカー: 平行移動のみ自動計算、rot_deg は buildings.json から取得（なければ 0）。
     tz_offset が buildings.json にあれば加算する。
     """
-    if not os.path.exists(GLOBAL_NODE_CSV) or not os.path.exists(ANCHORS_CSV):
+    global_node_csv = data_path("global_node.csv")
+    anchors_csv = data_path("anchors.csv")
+    if not os.path.exists(global_node_csv) or not os.path.exists(anchors_csv):
         return {}
 
-    gn = pd.read_csv(GLOBAL_NODE_CSV)
+    gn = pd.read_csv(global_node_csv)
     gn.columns = gn.columns.str.strip()
     if gn.empty:
         return {}
     gn = gn.set_index("id")
 
-    anchors = pd.read_csv(ANCHORS_CSV)
+    anchors = pd.read_csv(anchors_csv)
     anchors.columns = anchors.columns.str.strip()
     if anchors.empty:
         return {}
@@ -1890,8 +1917,7 @@ def calc_transforms_from_anchors():
         bldg_cfg = config.get(str(int(bldg_id)), {})
         r0 = group.iloc[0]
 
-        bldg_dir = os.path.join(DATA_DIR, f"{int(bldg_id)}_bldg")
-        local_nodes = pd.read_csv(os.path.join(bldg_dir, "node.csv"))
+        local_nodes = pd.read_csv(os.path.join(building_dir(bldg_id), "node.csv"))
         local_nodes.columns = local_nodes.columns.str.strip()
         local_nodes = local_nodes.set_index("id")
 
@@ -2214,7 +2240,7 @@ import os
 import pandas as pd
 from flask import Blueprint, jsonify
 
-from ..config import CDN_BASE, EDGE_IMAGE_CSV
+from ..config import CDN_BASE, data_path
 
 bp = Blueprint("images", __name__)
 
@@ -2225,9 +2251,10 @@ def api_edge_images():
     エッジ画像マップを返す。
     返却形式: { "1000001_1000002": "https://cdn.iku-navi.net/1000001_to_1000002.jpg", ... }
     """
-    if not os.path.exists(EDGE_IMAGE_CSV):
+    edge_image_csv = data_path("edge_image.csv")
+    if not os.path.exists(edge_image_csv):
         return jsonify({})
-    df = pd.read_csv(EDGE_IMAGE_CSV)
+    df = pd.read_csv(edge_image_csv)
     df.columns = df.columns.str.strip()
     df = df.dropna(subset=["from", "to"])
     result = {}
@@ -2510,719 +2537,7 @@ def api_graph():
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
   <script src="https://cdn.plot.ly/plotly-2.30.0.min.js"></script>
-  <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-    :root {
-      --bg:          #07111d;
-      --surface:     #0c1b2d;
-      --surface-hi:  #12243e;
-      --surface-2:   #162d4a;
-      --border:      #1e3450;
-      --border-hi:   #2e4e78;
-      --text:        #d4e8f8;
-      --text-sub:    #6a9abf;
-      --text-muted:  #3a5878;
-      --accent:      #00c0ee;
-      --accent-dim:  rgba(0, 192, 238, 0.12);
-      --accent-glow: rgba(0, 192, 238, 0.25);
-      --amber:       #f0a030;
-      --amber-dim:   rgba(240, 160, 48, 0.12);
-      --green:       #00d498;
-      --green-dim:   rgba(0, 212, 152, 0.10);
-      --red:         #f03858;
-      --red-dim:     rgba(240, 56, 88, 0.12);
-      --gold:        #f2c437;
-      --gold-dim:    rgba(242, 196, 55, 0.12);
-      --header-h:    52px;
-      --peek-h:      64px;
-      --sheet-r:     20px;
-      --font:        'Outfit', 'Noto Sans JP', system-ui, sans-serif;
-      --font-mono:   'DM Mono', 'Courier New', monospace;
-      --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
-      --ease-out:    cubic-bezier(0.16, 1, 0.3, 1);
-    }
-
-    html, body { height: 100%; }
-    body {
-      font-family: var(--font);
-      background: var(--bg);
-      color: var(--text);
-      height: 100dvh;
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-    }
-
-    /* ============================================================
-       HEADER
-    ============================================================ */
-    header {
-      background: var(--surface);
-      border-bottom: 1px solid var(--border);
-      padding: 0 18px;
-      height: var(--header-h);
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      flex-shrink: 0;
-      z-index: 10;
-      position: relative;
-    }
-    header::after {
-      content: '';
-      position: absolute;
-      bottom: 0; left: 0; right: 0;
-      height: 1px;
-      background: linear-gradient(90deg, transparent, var(--accent) 30%, var(--accent) 70%, transparent);
-      opacity: 0.35;
-    }
-
-    .header-icon {
-      width: 28px; height: 28px;
-      background: var(--accent-dim);
-      border: 1px solid rgba(0,192,238,0.3);
-      border-radius: 7px;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 14px;
-      flex-shrink: 0;
-    }
-    .header-title-wrap { display: flex; flex-direction: column; gap: 2px; }
-    header h1 {
-      font-size: 0.92rem;
-      font-weight: 700;
-      letter-spacing: 0.04em;
-      color: var(--text);
-    }
-    header .sub {
-      font-size: 0.62rem;
-      color: var(--text-muted);
-      letter-spacing: 0.06em;
-      font-family: var(--font-mono);
-    }
-
-    /* ============================================================
-       MAIN LAYOUT
-    ============================================================ */
-    .main-layout {
-      display: flex;
-      flex: 1;
-      overflow: hidden;
-      position: relative;
-    }
-
-    /* ============================================================
-       SIDEBAR
-    ============================================================ */
-    .sidebar {
-      width: 280px;
-      background: var(--surface);
-      border-right: 1px solid var(--border);
-      display: flex;
-      flex-direction: column;
-      flex-shrink: 0;
-      overflow: hidden;
-    }
-
-    .sheet-drag-handle { display: none; }
-
-    .sheet-scroll-area {
-      flex: 1;
-      overflow-y: auto;
-      -webkit-overflow-scrolling: touch;
-      scrollbar-width: thin;
-      scrollbar-color: var(--border-hi) transparent;
-    }
-    .sheet-scroll-area::-webkit-scrollbar { width: 3px; }
-    .sheet-scroll-area::-webkit-scrollbar-track { background: transparent; }
-    .sheet-scroll-area::-webkit-scrollbar-thumb { background: var(--border-hi); border-radius: 2px; }
-
-    /* ============================================================
-       TABS
-    ============================================================ */
-    .tab-bar {
-      display: flex;
-      border-bottom: 1px solid var(--border);
-      flex-shrink: 0;
-      position: relative;
-      background: var(--surface);
-    }
-    .tab {
-      flex: 1;
-      padding: 11px 2px 10px;
-      font-size: 0.70rem;
-      font-weight: 600;
-      text-align: center;
-      cursor: pointer;
-      color: var(--text-muted);
-      border-bottom: 2px solid transparent;
-      transition: color 0.2s, border-color 0.2s;
-      user-select: none;
-      -webkit-tap-highlight-color: transparent;
-      letter-spacing: 0.02em;
-    }
-    .tab.active {
-      color: var(--accent);
-      border-bottom-color: var(--accent);
-    }
-    .tab:hover:not(.active) { color: var(--text-sub); }
-
-    .tab-panel { display: none; }
-    .tab-panel.active { display: block; }
-
-    /* ============================================================
-       PANELS
-    ============================================================ */
-    .panel {
-      padding: 14px 16px;
-      border-bottom: 1px solid var(--border);
-    }
-    .panel h2 {
-      font-size: 0.60rem;
-      text-transform: uppercase;
-      letter-spacing: 0.14em;
-      color: var(--text-muted);
-      margin-bottom: 12px;
-      font-family: var(--font-mono);
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-    .panel h2::before {
-      content: '';
-      width: 14px; height: 1px;
-      background: var(--accent);
-      opacity: 0.6;
-    }
-
-    /* ============================================================
-       LABELS & INPUTS
-    ============================================================ */
-    label {
-      display: block;
-      font-size: 0.72rem;
-      color: var(--text-sub);
-      margin-bottom: 4px;
-      letter-spacing: 0.02em;
-    }
-
-    select, input[type=text] {
-      width: 100%;
-      background: var(--surface-hi);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      color: var(--text);
-      padding: 9px 12px;
-      font-size: 1rem;
-      font-family: var(--font);
-      margin-bottom: 10px;
-      outline: none;
-      transition: border-color 0.15s, box-shadow 0.15s;
-      -webkit-appearance: none;
-      appearance: none;
-    }
-    select {
-      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath fill='%236a9abf' d='M0 0l5 6 5-6z'/%3E%3C/svg%3E");
-      background-repeat: no-repeat;
-      background-position: right 12px center;
-      padding-right: 30px;
-      cursor: pointer;
-    }
-    select:focus, input[type=text]:focus {
-      border-color: rgba(0, 192, 238, 0.5);
-      box-shadow: 0 0 0 3px var(--accent-dim);
-    }
-    input[type=text]::placeholder { color: var(--text-muted); }
-
-    /* ============================================================
-       BUTTONS
-    ============================================================ */
-    .btn {
-      display: block;
-      width: 100%;
-      padding: 11px;
-      border: none;
-      border-radius: 9px;
-      font-size: 0.85rem;
-      font-weight: 700;
-      font-family: var(--font);
-      cursor: pointer;
-      transition: opacity 0.15s, transform 0.1s, box-shadow 0.15s;
-      letter-spacing: 0.04em;
-      -webkit-tap-highlight-color: transparent;
-    }
-    .btn:active { transform: scale(0.97); }
-
-    .btn-primary {
-      background: linear-gradient(135deg, #00c0ee, #0098c8);
-      color: #07111d;
-      font-weight: 700;
-      box-shadow: 0 2px 12px rgba(0, 192, 238, 0.3);
-    }
-    .btn-primary:hover {
-      box-shadow: 0 4px 20px rgba(0, 192, 238, 0.45);
-      opacity: 0.95;
-    }
-
-    .btn-secondary {
-      background: transparent;
-      color: var(--text-sub);
-      border: 1px solid var(--border-hi);
-      margin-top: 8px;
-    }
-    .btn-secondary:hover {
-      border-color: var(--accent);
-      color: var(--accent);
-      background: var(--accent-dim);
-    }
-
-    /* ============================================================
-       CHECKBOX ROW
-    ============================================================ */
-    .checkbox-row {
-      display: flex;
-      align-items: center;
-      gap: 9px;
-      font-size: 0.80rem;
-      color: var(--text-sub);
-      margin-bottom: 12px;
-      cursor: pointer;
-      -webkit-tap-highlight-color: transparent;
-    }
-    .checkbox-row input[type=checkbox] {
-      width: 16px; height: 16px;
-      margin: 0;
-      cursor: pointer;
-      flex-shrink: 0;
-      accent-color: var(--accent);
-    }
-
-    /* ============================================================
-       AUTOCOMPLETE
-    ============================================================ */
-    .autocomplete-wrap { position: relative; margin-bottom: 10px; }
-    .autocomplete-wrap input { margin-bottom: 0; }
-
-    .ac-dropdown {
-      position: absolute;
-      top: calc(100% + 2px);
-      left: 0; right: 0;
-      background: var(--surface-2);
-      border: 1px solid var(--border-hi);
-      border-radius: 10px;
-      max-height: 200px;
-      overflow-y: auto;
-      z-index: 300;
-      display: none;
-      box-shadow: 0 8px 24px rgba(0,0,0,0.4);
-      scrollbar-width: thin;
-      scrollbar-color: var(--border-hi) transparent;
-    }
-
-    .room-option {
-      padding: 10px 12px;
-      font-size: 0.84rem;
-      cursor: pointer;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      min-height: 44px;
-      border-bottom: 1px solid var(--border);
-      transition: background 0.1s;
-    }
-    .room-option:last-child { border-bottom: none; }
-    .room-option:hover, .room-option.ac-active {
-      background: var(--accent-dim);
-      color: var(--accent);
-    }
-    .room-option .room-meta {
-      font-size: 0.68rem;
-      font-family: var(--font-mono);
-      color: var(--text-muted);
-      flex-shrink: 0;
-      margin-left: 8px;
-    }
-    .room-option:hover .room-meta,
-    .room-option.ac-active .room-meta { color: var(--accent); opacity: 0.7; }
-
-    /* ============================================================
-       ROOM BADGE
-    ============================================================ */
-    .room-badge {
-      display: none;
-      margin-bottom: 10px;
-      font-size: 0.76rem;
-      padding: 6px 10px;
-      background: var(--accent-dim);
-      border: 1px solid rgba(0,192,238,0.3);
-      border-radius: 7px;
-      color: var(--accent);
-      word-break: break-all;
-    }
-
-    /* ============================================================
-       RESULT BOXES
-    ============================================================ */
-    #result-box, #room-result-box, #toilet-result-box {
-      margin-top: 10px;
-      padding: 10px 12px;
-      border-radius: 9px;
-      font-size: 0.80rem;
-      line-height: 1.8;
-      display: none;
-      font-family: var(--font);
-    }
-    .success {
-      background: var(--green-dim);
-      border: 1px solid rgba(0, 212, 152, 0.3);
-      color: #88f0cc;
-    }
-    .success b { color: var(--green); font-weight: 600; }
-    .error {
-      background: var(--red-dim);
-      border: 1px solid rgba(240, 56, 88, 0.3);
-      color: #f08098;
-    }
-
-    /* Distance value highlight */
-    .success br + b {
-      font-family: var(--font-mono);
-    }
-
-    /* ============================================================
-       LEGEND & STATS
-    ============================================================ */
-    .legend-item {
-      display: flex;
-      align-items: center;
-      gap: 9px;
-      font-size: 0.82rem;
-      margin-bottom: 7px;
-      color: var(--text-sub);
-    }
-    .legend-dot {
-      width: 10px; height: 10px;
-      border-radius: 50%;
-      flex-shrink: 0;
-      box-shadow: 0 0 6px currentColor;
-    }
-
-    .stat-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      font-size: 0.80rem;
-      padding: 7px 0;
-      border-bottom: 1px solid var(--border);
-      color: var(--text-muted);
-    }
-    .stat-row:last-child { border-bottom: none; }
-    .stat-row span:last-child {
-      color: var(--text);
-      font-weight: 600;
-      font-family: var(--font-mono);
-      font-size: 0.88rem;
-    }
-
-    /* ============================================================
-       3D MAP
-    ============================================================ */
-    #map-container {
-      flex: 1;
-      position: relative;
-      background: var(--bg);
-      min-width: 0;
-    }
-    #map { width: 100%; height: 100%; touch-action: none; }
-
-    .map-hint {
-      position: absolute;
-      bottom: 14px; right: 14px;
-      background: rgba(12, 27, 45, 0.88);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 6px 10px;
-      font-size: 0.66rem;
-      font-family: var(--font-mono);
-      color: var(--text-muted);
-      pointer-events: none;
-      user-select: none;
-      backdrop-filter: blur(8px);
-      letter-spacing: 0.02em;
-    }
-    .map-hint .hint-desktop { display: inline; }
-    .map-hint .hint-mobile  { display: none; }
-
-    /* ============================================================
-       MOBILE STYLES  (≤ 767px)
-    ============================================================ */
-    @media (max-width: 767px) {
-      header { padding: 0 14px; }
-      header h1  { font-size: 0.86rem; }
-      header .sub { display: none; }
-
-      .main-layout {
-        flex-direction: column;
-        overflow: hidden;
-      }
-
-      #map-container {
-        position: absolute;
-        inset: 0;
-        z-index: 0;
-      }
-
-      /* ---- BOTTOM SHEET ---- */
-      .sidebar {
-        position: absolute;
-        left: 0; right: 0; bottom: 0;
-        width: 100%;
-        height: var(--peek-h);
-        max-height: 84vh;
-        border-right: none;
-        border-top: 1px solid var(--border-hi);
-        border-radius: var(--sheet-r) var(--sheet-r) 0 0;
-        z-index: 100;
-        overflow: hidden;
-        transition: height 0.38s var(--ease-out);
-        padding-bottom: env(safe-area-inset-bottom, 0px);
-        background: rgba(10, 22, 36, 0.92);
-        backdrop-filter: blur(16px) saturate(1.4);
-        -webkit-backdrop-filter: blur(16px) saturate(1.4);
-      }
-
-      .sidebar.sheet-open { height: 78vh; }
-
-      .sheet-drag-handle {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        height: 20px;
-        flex-shrink: 0;
-        cursor: grab;
-        touch-action: none;
-      }
-      .sheet-drag-handle::after {
-        content: '';
-        display: block;
-        width: 34px; height: 3px;
-        background: var(--border-hi);
-        border-radius: 2px;
-        transition: background 0.15s;
-      }
-      .sidebar.sheet-open .sheet-drag-handle::after { background: var(--accent); opacity: 0.5; }
-
-      .tab-bar {
-        height: 44px;
-        flex-shrink: 0;
-        align-items: center;
-        border-bottom-color: transparent;
-      }
-      .sidebar.sheet-open .tab-bar { border-bottom-color: var(--border); }
-      .tab { font-size: 0.72rem; padding: 8px 2px; }
-
-      .sheet-scroll-area {
-        flex: 1;
-        overflow-y: auto;
-        overscroll-behavior: contain;
-        -webkit-overflow-scrolling: touch;
-      }
-
-      .map-hint {
-        bottom: calc(var(--peek-h) + 10px);
-        right: 10px;
-        font-size: 0.62rem;
-      }
-      .map-hint .hint-desktop { display: none; }
-      .map-hint .hint-mobile  { display: inline; }
-
-      .room-option { min-height: 48px; }
-
-      #map-container.sheet-open-backdrop::after {
-        content: '';
-        position: absolute;
-        inset: 0;
-        z-index: 50;
-        background: transparent;
-      }
-    }
-
-    @media (max-width: 360px) {
-      .tab { font-size: 0.58rem; }
-      header h1 { font-size: 0.78rem; }
-    }
-
-
-    /* トップへ戻るボタン（モバイルのみ） */
-    #scroll-top-btn {
-      display: none;
-      position: absolute;
-      right: 14px;
-      bottom: calc(14px + env(safe-area-inset-bottom, 0px));
-      z-index: 200;
-      width: 42px; height: 42px;
-      border-radius: 50%;
-      background: rgba(0, 192, 238, 0.18);
-      border: 1px solid rgba(0, 192, 238, 0.45);
-      color: var(--accent);
-      font-size: 1.1rem;
-      font-weight: 700;
-      cursor: pointer;
-      backdrop-filter: blur(10px);
-      -webkit-backdrop-filter: blur(10px);
-      box-shadow: 0 2px 12px rgba(0, 192, 238, 0.2);
-      transition: opacity 0.25s var(--ease-out), transform 0.25s var(--ease-out),
-                  background 0.15s, box-shadow 0.15s;
-      opacity: 0;
-      pointer-events: none;
-      transform: translateY(10px);
-      align-items: center;
-      justify-content: center;
-      -webkit-tap-highlight-color: transparent;
-    }
-    #scroll-top-btn.visible {
-      opacity: 1;
-      pointer-events: auto;
-      transform: translateY(0);
-    }
-    #scroll-top-btn:active {
-      transform: scale(0.9);
-      background: rgba(0, 192, 238, 0.32);
-    }
-    @media (max-width: 767px) {
-      #scroll-top-btn { display: flex; }
-    }
-
-    /* マップ右上のツールボタン群 */
-    #map-tools {
-      position: absolute;
-      top: 10px; right: 10px;
-      z-index: 5;
-      display: flex; flex-direction: column; gap: 6px;
-      align-items: flex-end;
-    }
-    .map-tool {
-      background: rgba(12, 27, 45, 0.88);
-      border: 1px solid var(--border-hi);
-      color: var(--text-sub);
-      padding: 7px 12px;
-      border-radius: 8px;
-      font-size: 0.72rem;
-      font-family: var(--font-mono);
-      font-weight: 500;
-      cursor: pointer;
-      letter-spacing: 0.04em;
-      backdrop-filter: blur(8px);
-      transition: border-color 0.15s, color 0.15s;
-    }
-    .map-tool:hover {
-      border-color: var(--accent);
-      color: var(--accent);
-    }
-    #zoom-btns { display: flex; gap: 6px; }
-    #zoom-btns .map-tool {
-      width: 34px; padding: 7px 0;
-      font-size: 0.85rem; line-height: 1;
-      text-align: center;
-    }
-    #zoom-route-btn { display: none; }
-    #zoom-route-btn.available { display: block; }
-    #zoom-route-btn.zoomed {
-      color: var(--gold);
-      border-color: rgba(242, 196, 55, 0.5);
-      background: var(--gold-dim);
-    }
-
-    /* ノードピッカー（3Dクリックで出発→目的を選択） */
-    #pick-panel {
-      position: absolute; top: 10px; left: 10px; z-index: 5;
-      max-width: min(300px, calc(100% - 130px));
-      background: rgba(12, 27, 45, 0.88);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 8px 10px;
-      backdrop-filter: blur(8px);
-      font-size: 0.68rem;
-      color: var(--text-muted);
-      display: flex; flex-direction: column; gap: 6px;
-    }
-    .pick-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-    .pick-chip {
-      font-family: var(--font-mono);
-      font-size: 0.66rem;
-      padding: 2px 8px;
-      border-radius: 6px;
-      border: 1px solid var(--border-hi);
-      color: var(--text);
-      background: var(--surface-hi);
-    }
-    .pick-chip.start { border-color: rgba(0, 212, 152, 0.5); color: var(--green); }
-    .pick-chip.goal  { border-color: rgba(242, 196, 55, 0.5); color: var(--gold); }
-    .pick-chip.empty { color: var(--text-muted); border-style: dashed; background: transparent; }
-    #pick-clear {
-      margin-left: auto;
-      background: none; border: none; cursor: pointer;
-      color: var(--text-muted); font-size: 0.78rem; padding: 0 2px;
-      line-height: 1;
-    }
-    #pick-clear:hover { color: var(--red); }
-
-    /* 経路サマリー（フロア遷移リボン） */
-    .journey { margin-top: 10px; }
-    .journey-strip {
-      display: flex; width: 100%; height: 22px;
-      border-radius: 6px; overflow: hidden;
-      border: 1px solid var(--border);
-    }
-    .journey-seg {
-      min-width: 24px;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 0.58rem; font-family: var(--font-mono);
-      color: #07111d; font-weight: 700;
-      white-space: nowrap; overflow: hidden;
-    }
-    .journey-meta {
-      display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px;
-    }
-    .meta-chip {
-      font-size: 0.62rem; font-family: var(--font-mono);
-      padding: 2px 8px; border-radius: 10px;
-      border: 1px solid var(--border-hi); color: var(--text-sub);
-      background: var(--surface-hi);
-    }
-    .journey-error { margin-top: 8px; font-size: 0.66rem; color: var(--red); }
-
-    /* 検索中インジケータ */
-    #busy {
-      position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
-      z-index: 6; display: none;
-      background: rgba(12, 27, 45, 0.92);
-      border: 1px solid var(--border-hi);
-      color: var(--text-sub); border-radius: 20px; padding: 5px 14px;
-      font-size: 0.7rem; font-family: var(--font-mono);
-      backdrop-filter: blur(8px);
-    }
-    #busy.show { display: block; }
-
-    /* 起動失敗画面 */
-    #boot-error {
-      position: absolute; inset: 0; z-index: 20;
-      display: none; flex-direction: column;
-      align-items: center; justify-content: center; gap: 10px;
-      background: var(--bg); color: var(--text-sub);
-      text-align: center; padding: 24px;
-    }
-    #boot-error.show { display: flex; }
-    #boot-error .be-title { font-size: 0.95rem; font-weight: 700; color: var(--text); }
-    #boot-error .be-desc  { font-size: 0.78rem; line-height: 1.8; }
-    #boot-error button {
-      margin-top: 6px; padding: 9px 22px;
-      border: 1px solid var(--border-hi);
-      background: var(--accent-dim); color: var(--accent);
-      border-radius: 8px; font-size: 0.8rem; font-weight: 600; cursor: pointer;
-    }
-    #boot-error button:hover { border-color: var(--accent); }
-  </style>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
 </head>
 <body>
 
@@ -3447,7 +2762,7 @@ def api_graph():
 
     <div id="boot-error">
       <div class="be-title">グラフデータを読み込めませんでした</div>
-      <div class="be-desc">Flask が起動しているか、/api/graph が応答するか確認してください。</div>
+      <div class="be-desc">app.py が起動しているか、/api/graph が応答するか確認してください。</div>
       <button onclick="location.reload()">再読み込み</button>
     </div>
 
@@ -3459,1112 +2774,9 @@ def api_graph():
 
 </div><!-- /.main-layout -->
 
-<script>
-// ============================================================
-//  Globals
-// ============================================================
-const Z_SCALE   = 3.0;  // 高さ方向の倍率（建物を厚く見せる）
-let graphData   = null;
-let currentPath = null;
-let startEdge   = null;
-let destEdge    = null;
-let filterBuilding = 0;
-let filterFloor    = 0;
-let acStart       = null;
-let acGoal        = null;
-let acToiletStart = null;
-
-let edgeByPair  = null;  // "from-to" → エッジ（種別の逆引き用）
-let pickStart   = null;  // 3Dクリックで選択中の出発ノードID
-let pickGoal    = null;  // 3Dクリックで選択中の目的ノードID
-let routeZoomed = false; // 「ルートを拡大」中か
-
-// フロアカラーパレット (1F〜8F)
-const FLOOR_COLORS = [
-  "#FF8C42", "#06D6A0", "#118AB2", "#FFD166",
-  "#EF476F", "#9B5DE5", "#00BBF9", "#F15BB5",
-];
-function floorColor(f) {
-  return FLOOR_COLORS[(Math.max(f, 1) - 1) % FLOOR_COLORS.length];
-}
-
-// ============================================================
-//  Boot
-// ============================================================
-(async () => {
-  try {
-    const res = await fetch("/api/graph");
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    graphData = await res.json();
-  } catch {
-    document.getElementById("boot-error").classList.add("show");
-    return;
-  }
-  graphData.nodes.forEach(n => { n.z *= Z_SCALE; });
-  graphData.edges.forEach(e => { e.z0 *= Z_SCALE; e.z1 *= Z_SCALE; });
-
-  // エッジ種別の逆引き索引（経路サマリーで使用）
-  edgeByPair = new Map();
-  graphData.edges.forEach(e => {
-    edgeByPair.set(`${e.from}-${e.to}`, e);
-    edgeByPair.set(`${e.to}-${e.from}`, e);
-  });
-
-  buildLegend();
-  updateStats();
-  buildFloorFilter();
-  renderMap();
-  initNodePicker();
-  initMapResize();
-  initPinchZoom();
-  prefetchRooms();
-
-  acStart = new RoomAutocomplete({
-    inputId: "start-room-input", dropdownId: "start-room-dropdown",
-    badgeId: "start-room-badge", buildingId: "start-building",
-  });
-  acGoal = new RoomAutocomplete({
-    inputId: "goal-room-input", dropdownId: "goal-room-dropdown",
-    badgeId: "goal-room-badge", buildingId: "goal-building",
-  });
-  acToiletStart = new RoomAutocomplete({
-    inputId: "toilet-start-input", dropdownId: "toilet-start-dropdown",
-    badgeId: "toilet-start-badge", buildingId: "toilet-start-building",
-  });
-
-  initSheet();
-  initScrollTopBtn();
-})();
-
-async function prefetchRooms() {
-  try {
-    const res = await fetch("/api/rooms");
-    const all = await res.json();
-    document.getElementById("stat-rooms").textContent = new Set(all.map(r => r.room)).size;
-  } catch { /* 統計表示のみなので失敗しても続行 */ }
-}
-
-// ============================================================
-//  Sheet (mobile bottom sheet)
-// ============================================================
-function isMobile() { return window.innerWidth <= 767; }
-
-function openSheet() {
-  if (!isMobile()) return;
-  document.getElementById("sidebar").classList.add("sheet-open");
-  document.getElementById("map-container").classList.add("sheet-open-backdrop");
-}
-function closeSheet() {
-  document.getElementById("sidebar").classList.remove("sheet-open");
-  document.getElementById("map-container").classList.remove("sheet-open-backdrop");
-}
-function toggleSheet(open) {
-  if (open) openSheet(); else closeSheet();
-}
-
-function initSheet() {
-  const handle = document.getElementById("sheet-handle");
-  const sidebar = document.getElementById("sidebar");
-  const mapEl   = document.getElementById("map-container");
-
-  mapEl.addEventListener("pointerdown", (e) => {
-    if (isMobile() && mapEl.classList.contains("sheet-open-backdrop")) {
-      closeSheet();
-    }
-  });
-
-  let dragStartY = 0;
-  let sheetOpenAtStart = false;
-
-  handle.addEventListener("touchstart", (e) => {
-    dragStartY = e.touches[0].clientY;
-    sheetOpenAtStart = sidebar.classList.contains("sheet-open");
-    e.preventDefault();
-  }, { passive: false });
-
-  handle.addEventListener("touchmove", (e) => {
-    e.preventDefault();
-  }, { passive: false });
-
-  handle.addEventListener("touchend", (e) => {
-    const dy = e.changedTouches[0].clientY - dragStartY;
-    if (dy < -20) openSheet();
-    else if (dy > 20) closeSheet();
-    else toggleSheet(!sheetOpenAtStart);
-  });
-
-  handle.addEventListener("click", () => {
-    if (isMobile()) toggleSheet(!sidebar.classList.contains("sheet-open"));
-  });
-}
-
-// ============================================================
-//  Tab switching
-// ============================================================
-function switchTab(name) {
-  document.querySelectorAll(".tab").forEach(t =>
-    t.classList.toggle("active", t.dataset.tab === name));
-  document.querySelectorAll(".tab-panel").forEach(p => p.classList.remove("active"));
-  document.getElementById("tab-" + name).classList.add("active");
-
-  if (isMobile()) openSheet();
-}
-
-// ============================================================
-//  Legend & Stats
-// ============================================================
-function buildLegend() {
-  const container = document.getElementById("legend-items");
-  container.innerHTML = "";
-  const floors = [...new Set(graphData.nodes.filter(n=>n.building!==0).map(n=>n.floor))].sort((a,b)=>a-b);
-  floors.forEach(f => {
-    const div = document.createElement("div");
-    div.className = "legend-item";
-    const color = floorColor(f);
-    div.innerHTML = `<div class="legend-dot" style="background:${color};color:${color}"></div><span>${f}F</span>`;
-    container.appendChild(div);
-  });
-}
-function updateStats() {
-  const buildings = new Set(graphData.nodes.map(n => n.building));
-  document.getElementById("stat-nodes").textContent     = graphData.nodes.length;
-  document.getElementById("stat-edges").textContent     = graphData.edges.length;
-  document.getElementById("stat-buildings").textContent = buildings.size;
-}
-
-// ============================================================
-//  RoomAutocomplete
-// ============================================================
-class RoomAutocomplete {
-  constructor({ inputId, dropdownId, badgeId, buildingId }) {
-    this.input       = document.getElementById(inputId);
-    this.dropdown    = document.getElementById(dropdownId);
-    this.badge       = document.getElementById(badgeId);
-    this.buildingSel = document.getElementById(buildingId);
-    this.roomList    = [];
-    this.acIndex     = -1;
-    this.selected    = null;
-
-    this.input.addEventListener("input",   () => this._onInput());
-    this.input.addEventListener("blur",    () => setTimeout(() => this._hide(), 200));
-    this.input.addEventListener("keydown", (e) => this._onKeydown(e));
-
-    this.input.addEventListener("focus", () => {
-      if (isMobile()) {
-        openSheet();
-        setTimeout(() => this.input.scrollIntoView({ behavior: "smooth", block: "center" }), 300);
-      }
-    });
-  }
-
-  onBuildingChange() {
-    this.selected = null;
-    this.input.value = "";
-    this.badge.style.display = "none";
-    this._hide();
-  }
-
-  async _onInput() {
-    const q        = this.input.value.trim();
-    const building = parseInt(this.buildingSel.value) || 0;
-    this.selected  = null;
-    this.badge.style.display = "none";
-    if (!q) { this._hide(); return; }
-    const url = `/api/rooms?q=${encodeURIComponent(q)}` + (building ? `&building=${building}` : "");
-    const res = await fetch(url);
-    this.roomList = await res.json();
-    this.acIndex  = -1;
-    this._render();
-  }
-
-  _render() {
-    this.dropdown.innerHTML = "";
-    if (!this.roomList.length) { this._hide(); return; }
-    this.roomList.forEach((r, i) => {
-      const div = document.createElement("div");
-      div.className = "room-option";
-      div.innerHTML = `<span>${r.room}</span><span class="room-meta">B${r.building}·${r.floor}F</span>`;
-      div.addEventListener("pointerdown", (e) => { e.preventDefault(); this._select(i); });
-      this.dropdown.appendChild(div);
-    });
-    this.dropdown.style.display = "block";
-  }
-
-  _select(i) {
-    if (i < 0 || i >= this.roomList.length) return;
-    this.selected    = this.roomList[i];
-    this.input.value = this.selected.room;
-    this.badge.textContent = `✓ ${this.selected.room}（Building ${this.selected.building} / ${this.selected.floor}F）`;
-    this.badge.style.display = "block";
-    this._hide();
-    this.input.blur();
-  }
-
-  _hide() { this.dropdown.style.display = "none"; }
-
-  _onKeydown(e) {
-    const items = this.dropdown.querySelectorAll(".room-option");
-    if      (e.key === "ArrowDown") this.acIndex = Math.min(this.acIndex + 1, items.length - 1);
-    else if (e.key === "ArrowUp")   this.acIndex = Math.max(this.acIndex - 1, 0);
-    else if (e.key === "Enter") {
-      if (this.acIndex >= 0) { this._select(this.acIndex); e.preventDefault(); }
-      return;
-    } else { return; }
-    items.forEach((el, i) => el.classList.toggle("ac-active", i === this.acIndex));
-    e.preventDefault();
-  }
-
-  reset() {
-    this.selected = null;
-    this.input.value = "";
-    this.badge.style.display = "none";
-    this._hide();
-  }
-}
-
-// ============================================================
-//  APIから返った経路データのz値にZ_SCALEを適用
-// ============================================================
-function scalePathZ(data) {
-  if (!data || data.error) return data;
-  (data.path_coords || []).forEach(n => { n.z *= Z_SCALE; });
-  (data.path_edges  || []).forEach(e => { e.z0 *= Z_SCALE; e.z1 *= Z_SCALE; });
-  ['start_edge','destination_edge','from_edge','toilet_edge'].forEach(k => {
-    if (data[k]) { data[k].z0 *= Z_SCALE; data[k].z1 *= Z_SCALE; }
-  });
-  return data;
-}
-
-// ============================================================
-//  Navigate: 教室 → 教室
-// ============================================================
-async function navigateToRoom() {
-  const box = document.getElementById("room-result-box");
-  box.style.display = "none";
-
-  if (!acStart.selected) {
-    showResult(box, "error", "出発教室を選択してください"); return;
-  }
-  if (!acGoal.selected) {
-    showResult(box, "error", "目的教室を選択してください"); return;
-  }
-
-  const { room: sRoom, building: sBuilding } = acStart.selected;
-  const { room: gRoom, building: gBuilding } = acGoal.selected;
-  const useElevatorRoom = document.getElementById("chk-elevator-room").checked ? "1" : "0";
-
-  const url = `/api/navigate_to_room` +
-    `?room=${encodeURIComponent(gRoom)}&building=${gBuilding}` +
-    `&start_room=${encodeURIComponent(sRoom)}&start_building=${sBuilding}` +
-    `&use_elevator=${useElevatorRoom}`;
-
-  let data;
-  setBusy(true);
-  try {
-    data = scalePathZ(await fetch(url).then(r => r.json()));
-  } catch {
-    showResult(box, "error", "サーバーに接続できません。app.py が起動しているか確認してください。");
-    return;
-  } finally {
-    setBusy(false);
-  }
-
-  if (data.error) {
-    showResult(box, "error", data.error);
-    currentPath = null; startEdge = null; destEdge = null;
-  } else {
-    currentPath = data;
-    startEdge   = data.start_edge       || null;
-    destEdge    = data.destination_edge || null;
-    showResult(box, "success",
-      `<b>出発:</b> ${sRoom}（Building ${sBuilding}）<br>` +
-      `<b>目的地:</b> ${gRoom}（Building ${gBuilding}）` +
-      buildJourneyHTML(data)
-    );
-  }
-  renderMap();
-}
-
-// ============================================================
-//  Navigate: ノード → ノード
-// ============================================================
-async function findPathByNode() {
-  const start = parseInt(document.getElementById("sel-start").value);
-  const goal  = parseInt(document.getElementById("sel-goal").value);
-  const box   = document.getElementById("result-box");
-  box.style.display = "none";
-
-  const useElevatorNode = document.getElementById("chk-elevator-node").checked ? "1" : "0";
-
-  let data;
-  setBusy(true);
-  try {
-    data = scalePathZ(await fetch(`/api/shortest_path?start=${start}&goal=${goal}&use_elevator=${useElevatorNode}`).then(r => r.json()));
-  } catch {
-    showResult(box, "error", "サーバーに接続できません。app.py が起動しているか確認してください。");
-    return;
-  } finally {
-    setBusy(false);
-  }
-
-  if (data.error) {
-    showResult(box, "error", data.error);
-    currentPath = null; startEdge = null; destEdge = null;
-  } else {
-    currentPath = data;
-    startEdge = null; destEdge = null;
-    showResult(box, "success",
-      `<b>出発:</b> Node ${start}　<b>目的:</b> Node ${goal}` +
-      buildJourneyHTML(data)
-    );
-  }
-  renderMap();
-}
-
-// ============================================================
-//  最寄りトイレ検索
-// ============================================================
-async function findNearestToilet() {
-  const box = document.getElementById("toilet-result-box");
-  box.style.display = "none";
-
-  if (!acToiletStart.selected) {
-    showResult(box, "error", "現在地の教室を選択してください"); return;
-  }
-
-  const { room, building } = acToiletStart.selected;
-  const type        = document.getElementById("toilet-type").value;
-  const useElevator = document.getElementById("chk-elevator-toilet").checked ? "1" : "0";
-
-  const url = `/api/nearest_toilet` +
-    `?from_room=${encodeURIComponent(room)}&from_building=${building}` +
-    `&type=${type}&use_elevator=${useElevator}`;
-
-  let data;
-  setBusy(true);
-  try {
-    data = scalePathZ(await fetch(url).then(r => r.json()));
-  } catch {
-    showResult(box, "error", "サーバーに接続できません。app.py が起動しているか確認してください。");
-    return;
-  } finally {
-    setBusy(false);
-  }
-
-  if (data.error) {
-    showResult(box, "error", data.error);
-    currentPath = null; startEdge = null; destEdge = null;
-  } else {
-    currentPath = data;
-    startEdge   = data.from_edge    || null;
-    destEdge    = data.toilet_edge  || null;
-    showResult(box, "success",
-      `<b>出発:</b> ${room}（Building ${building}）<br>` +
-      `<b>最寄り:</b> ${data.toilet_label}（Building ${data.toilet_building} / ${data.toilet_floor}F）` +
-      buildJourneyHTML(data)
-    );
-  }
-  renderMap();
-}
-
-function clearPath() {
-  currentPath = null; startEdge = null; destEdge = null;
-  pickStart = null; pickGoal = null;
-  updatePickPanel();
-  if (routeZoomed) resetRouteZoom();
-  acStart?.reset(); acGoal?.reset(); acToiletStart?.reset();
-  document.getElementById("room-result-box").style.display   = "none";
-  document.getElementById("result-box").style.display        = "none";
-  document.getElementById("toilet-result-box").style.display = "none";
-  renderMap();
-}
-
-function setBusy(on) {
-  document.getElementById("busy").classList.toggle("show", on);
-}
-
-function showResult(el, type, html) {
-  el.className = type;
-  el.innerHTML = html;
-  el.style.display = "block";
-}
-
-// ============================================================
-//  Filter
-// ============================================================
-function applyFilter() {
-  filterBuilding = parseInt(document.getElementById("filter-building").value);
-  filterFloor    = parseInt(document.getElementById("filter-floor").value);
-  renderMap();
-}
-
-function buildFloorFilter() {
-  const sel = document.getElementById("filter-floor");
-  const floors = [...new Set(
-    graphData.nodes.filter(n => n.building !== 0).map(n => n.floor)
-  )].sort((a, b) => a - b);
-  floors.forEach(f => {
-    const o = document.createElement("option");
-    o.value = f;
-    o.textContent = `${f}F`;
-    sel.appendChild(o);
-  });
-}
-
-// ============================================================
-//  座標変換・バウンディングボックス計算
-// ============================================================
-function getLocalCoords(x, y, cfg) {
-  const theta = (cfg?.rot_deg || 0) * Math.PI / 180;
-  const tx = cfg?.tx || 0;
-  const ty = cfg?.ty || 0;
-  const dx = x - tx;
-  const dy = y - ty;
-  const cos = Math.cos(theta), sin = Math.sin(theta);
-  const lx = cos * dx + sin * dy;
-  const ly = -sin * dx + cos * dy;
-  return { lx, ly };
-}
-
-function getGlobalCoords(lx, ly, cfg) {
-  const theta = (cfg?.rot_deg || 0) * Math.PI / 180;
-  const tx = cfg?.tx || 0;
-  const ty = cfg?.ty || 0;
-  const cos = Math.cos(theta), sin = Math.sin(theta);
-  const x = cos * lx - sin * ly + tx;
-  const y = sin * lx + cos * ly + ty;
-  return { x, y };
-}
-
-function computeBuildingBounds(nodes) {
-  const byBuilding = {};
-  nodes.forEach(n => {
-    (byBuilding[n.building] = byBuilding[n.building] || []).push(n);
-  });
-
-  const bounds = {};
-  Object.entries(byBuilding).forEach(([b, bNodes]) => {
-    const cfg = graphData.config?.[b] || {};
-
-    const localNodes = bNodes.map(n => {
-      const { lx, ly } = getLocalCoords(n.x, n.y, cfg);
-      return { ...n, lx, ly };
-    });
-
-    const lxs = localNodes.map(n => n.lx);
-    const lys = localNodes.map(n => n.ly);
-    const zs  = localNodes.map(n => n.z);
-
-    const rangeXY = Math.max(Math.max(...lxs) - Math.min(...lxs), Math.max(...lys) - Math.min(...lys));
-    const padXY = Math.max(rangeXY * 0.04, 1);
-
-    let minLx = Math.min(...lxs);
-    let maxLx = Math.max(...lxs);
-    let minLy = Math.min(...lys);
-    let maxLy = Math.max(...lys);
-
-    const doorways = localNodes.filter(n => String(n.type) === "2");
-
-    let lx0 = minLx - padXY;
-    let lx1 = maxLx + padXY;
-    let ly0 = minLy - padXY;
-    let ly1 = maxLy + padXY;
-
-    if (doorways.length > 0) {
-      const doorMinLx = Math.min(...doorways.map(n => n.lx));
-      const doorMaxLx = Math.max(...doorways.map(n => n.lx));
-      const doorMinLy = Math.min(...doorways.map(n => n.ly));
-      const doorMaxLy = Math.max(...doorways.map(n => n.ly));
-
-      const EPS = 0.001;
-      if (doorMinLx <= minLx + EPS) lx0 = doorMinLx;
-      if (doorMaxLx >= maxLx - EPS) lx1 = doorMaxLx;
-      if (doorMinLy <= minLy + EPS) ly0 = doorMinLy;
-      if (doorMaxLy >= maxLy - EPS) ly1 = doorMaxLy;
-    }
-
-    const c0 = getGlobalCoords(lx0, ly0, cfg);
-    const c1 = getGlobalCoords(lx1, ly0, cfg);
-    const c2 = getGlobalCoords(lx1, ly1, cfg);
-    const c3 = getGlobalCoords(lx0, ly1, cfg);
-    const center = getGlobalCoords((lx0+lx1)/2, (ly0+ly1)/2, cfg);
-
-    bounds[b] = { c0, c1, c2, c3, center, zs };
-  });
-
-  return bounds;
-}
-
-// ============================================================
-//  案1: 建物バウンディングボックス
-// ============================================================
-function buildBuildingBoxTraces(nodes, bounds) {
-  const traces = [];
-  const byBuilding = {};
-  nodes.forEach(n => { (byBuilding[n.building] = byBuilding[n.building] || []).push(n); });
-
-  Object.entries(byBuilding).forEach(([b, bNodes]) => {
-    const color = graphData.building_colors[(parseInt(b) - 1) % graphData.building_colors.length];
-    const bData = bounds[b];
-    if (!bData) return;
-    const { c0, c1, c2, c3, center, zs } = bData;
-
-    const z0 = Math.min(...zs) - 0.5, z1 = Math.max(...zs) + 0.5;
-
-    // 塗りつぶし面(mesh3d)は使わずワイヤーフレームのみ描画する。塗りつぶしメッシュは
-    // Plotlyの3Dピッキングで背後のノードマーカーより手前と判定されクリックを奪ってしまい
-    // (hoverinfoの設定では回避できない)、建物に囲まれたノードが選択できなくなるため。
-    const ex = [c0.x, c1.x, null, c1.x, c2.x, null, c2.x, c3.x, null, c3.x, c0.x, null,
-                c0.x, c1.x, null, c1.x, c2.x, null, c2.x, c3.x, null, c3.x, c0.x, null,
-                c0.x, c0.x, null, c1.x, c1.x, null, c2.x, c2.x, null, c3.x, c3.x, null];
-    const ey = [c0.y, c1.y, null, c1.y, c2.y, null, c2.y, c3.y, null, c3.y, c0.y, null,
-                c0.y, c1.y, null, c1.y, c2.y, null, c2.y, c3.y, null, c3.y, c0.y, null,
-                c0.y, c0.y, null, c1.y, c1.y, null, c2.y, c2.y, null, c3.y, c3.y, null];
-    const ez = [z0,z0,null, z0,z0,null, z0,z0,null, z0,z0,null,
-                z1,z1,null, z1,z1,null, z1,z1,null, z1,z1,null,
-                z0,z1,null, z0,z1,null, z0,z1,null, z0,z1,null];
-    traces.push({
-      type:"scatter3d", mode:"lines", x:ex, y:ey, z:ez,
-      line:{color, width:1.5}, hoverinfo:"skip", showlegend:false,
-    });
-
-    traces.push({
-      type:"scatter3d", mode:"text",
-      x:[center.x], y:[center.y], z:[z1+0.4],
-      text:[`B${b}`],
-      textfont:{color, size:14, family:"Arial Black"},
-      hoverinfo:"skip", showlegend:false,
-    });
-  });
-  return traces;
-}
-
-// ============================================================
-//  案2: フロア床面
-// ============================================================
-function buildFloorPlaneTraces(nodes, bounds) {
-  const byKey = {};
-  nodes.forEach(n => {
-    const k = `${n.building}_${n.floor}`;
-    if (!byKey[k]) byKey[k] = { building:n.building, floor:n.floor, ns:[] };
-    byKey[k].ns.push(n);
-  });
-
-  const traces = [];
-  Object.values(byKey).forEach(({ building, floor, ns }) => {
-    const color = floorColor(floor);
-    const zVal = ns.reduce((s, n) => s + n.z, 0) / ns.length;
-
-    const bData = bounds[building];
-    if (!bData) return;
-    const { c0, c1, c2, c3 } = bData;
-
-    // 塗りつぶし面(mesh3d)は使わずワイヤーフレームのみ描画する。塗りつぶしメッシュは
-    // 各フロアのノードとちょうど同じ高さに広がるため、Plotlyの3Dピッキングで
-    // ノードマーカーより手前と判定されクリックを奪ってしまうことがあるため。
-    traces.push({
-      type:"scatter3d", mode:"lines",
-      x:[c0.x, c1.x, c2.x, c3.x, c0.x], y:[c0.y, c1.y, c2.y, c3.y, c0.y],
-      z:[zVal,zVal,zVal,zVal,zVal],
-      line:{color, width:1, dash:"dot"},
-      opacity:0.5,
-      hoverinfo:"skip", showlegend:false,
-    });
-
-    traces.push({
-      type:"scatter3d", mode:"text",
-      x:[c1.x], y:[c0.y], z:[zVal],
-      text:[`${floor}F`],
-      textfont:{color, size:9},
-      hoverinfo:"skip", showlegend:false,
-    });
-  });
-  return traces;
-}
-
-// ============================================================
-//  Render 3D map
-// ============================================================
-function buildPathEdgeSet() {
-  const s = new Set();
-  if (!currentPath) return s;
-  currentPath.path_edges.forEach(e => { s.add(`${e.from}-${e.to}`); s.add(`${e.to}-${e.from}`); });
-  return s;
-}
-function sameEdge(a, b) {
-  return a && b && ((a.from===b.from && a.to===b.to)||(a.from===b.to && a.to===b.from));
-}
-
-function renderMap() {
-  const indoorNodes = graphData.nodes.filter(n =>
-    n.building !== 0 &&
-    (!filterBuilding || n.building === filterBuilding) &&
-    (!filterFloor    || n.floor    === filterFloor));
-  const nodes   = indoorNodes;
-  const nodeIds = new Set(nodes.map(n => n.id));
-  const edges   = (filterBuilding || filterFloor)
-    ? graphData.edges.filter(e => nodeIds.has(e.from) && nodeIds.has(e.to)) : graphData.edges;
-
-  const dimmed = !!currentPath;  // ルート表示中は背景要素を淡くしてパスを際立たせる
-
-  const traces = [];
-  const bounds = computeBuildingBounds(nodes);
-  traces.push(...buildFloorPlaneTraces(nodes, bounds));
-  traces.push(...buildBuildingBoxTraces(nodes, bounds));
-
-  // --- 屋外ノード・エッジ (building=0) ---
-  const outdoorNodes   = graphData.nodes.filter(n => n.building === 0);
-  const outdoorNodeIds = new Set(outdoorNodes.map(n => n.id));
-  const outdoorEdges   = graphData.edges.filter(e =>
-    outdoorNodeIds.has(e.from) || outdoorNodeIds.has(e.to));
-  const outdoorEdgeIds = new Set(outdoorEdges.map(e => e.id));
-
-  if (!filterBuilding && !filterFloor) {
-    if (outdoorEdges.length) {
-      const ox=[],oy=[],oz=[];
-      outdoorEdges.forEach(e=>{ox.push(e.x0,e.x1,null);oy.push(e.y0,e.y1,null);oz.push(e.z0,e.z1,null);});
-      traces.push({ type:"scatter3d", mode:"lines", x:ox, y:oy, z:oz,
-        line:{color:"#5AFF5A", width:3, dash:"dot"}, hoverinfo:"skip",
-        opacity: dimmed ? 0.25 : 1,
-        name:"屋外通路", showlegend:true });
-    }
-    if (outdoorNodes.length) {
-      traces.push({ type:"scatter3d", mode:"markers",
-        x:outdoorNodes.map(n=>n.x), y:outdoorNodes.map(n=>n.y), z:outdoorNodes.map(n=>n.z),
-        customdata:outdoorNodes.map(n=>n.id),
-        marker:{size:7, color:"#5AFF5A", opacity: dimmed ? 0.3 : 0.9, symbol:"square",
-                line:{color:"#fff", width:1}},
-        text:outdoorNodes.map(n=>n.label), hovertemplate:"%{text}<extra></extra>",
-        name:"屋外ノード", showlegend:true });
-    }
-  }
-  const pathEdgeSet = buildPathEdgeSet();
-  const pathNodeSet = new Set(currentPath ? currentPath.path : []);
-
-  // 屋外エッジは上で専用トレースとして描画済みなので除外（二重描画防止）
-  const normalEdges = edges.filter(e =>
-    !outdoorEdgeIds.has(e.id) &&
-    !pathEdgeSet.has(`${e.from}-${e.to}`) && !pathEdgeSet.has(`${e.to}-${e.from}`) &&
-    !sameEdge(e, destEdge) && !sameEdge(e, startEdge));
-
-  const edgesByFloor = {};
-  normalEdges.filter(e => String(e.type) === "1").forEach(e => {
-    (edgesByFloor[e.floor] = edgesByFloor[e.floor] || []).push(e);
-  });
-  Object.entries(edgesByFloor).forEach(([f, fEdges]) => {
-    const color = floorColor(parseInt(f));
-    const ex=[],ey=[],ez=[];
-    fEdges.forEach(e=>{ex.push(e.x0,e.x1,null);ey.push(e.y0,e.y1,null);ez.push(e.z0,e.z1,null);});
-    traces.push({ type:"scatter3d", mode:"lines", x:ex, y:ey, z:ez,
-      line:{color, width:3}, opacity: dimmed ? 0.22 : 1,
-      hoverinfo:"skip", name:`${f}F 通路`, showlegend:false });
-  });
-
-  [["2","#FFB347","階段"], ["3","#00CED1","エスカレーター"], ["4","#DA70D6","EV"], ["5","#00FF88","上りESC"], ["6","#FF4500","下りESC"]].forEach(([t, color, label]) => {
-    const typeEdges = normalEdges.filter(e => String(e.type) === t);
-    if (!typeEdges.length) return;
-    const ex=[],ey=[],ez=[];
-    typeEdges.forEach(e=>{ex.push(e.x0,e.x1,null);ey.push(e.y0,e.y1,null);ez.push(e.z0,e.z1,null);});
-    traces.push({ type:"scatter3d", mode:"lines", x:ex, y:ey, z:ez,
-      line:{color, width:5}, opacity: dimmed ? 0.25 : 1,
-      hoverinfo:"skip", name:label, showlegend:false });
-  });
-
-  const byFloor = {};
-  nodes.forEach(n => { (byFloor[n.floor] = byFloor[n.floor] || []).push(n); });
-  Object.entries(byFloor).forEach(([f, fNodes]) => {
-    const color   = floorColor(parseInt(f));
-    const regular = fNodes.filter(n => !pathNodeSet.has(n.id) && n.type !== 2);
-    const entries = fNodes.filter(n => !pathNodeSet.has(n.id) && n.type === 2);
-    if (regular.length) {
-      traces.push({ type:"scatter3d", mode:"markers",
-        x:regular.map(n=>n.x), y:regular.map(n=>n.y), z:regular.map(n=>n.z),
-        customdata:regular.map(n=>n.id),
-        marker:{size:5, color, opacity: dimmed ? 0.25 : 0.9, symbol:"circle", line:{color:"rgba(0,0,0,0.3)",width:.5}},
-        text:regular.map(n=>n.label), hovertemplate:"%{text}<extra></extra>",
-        name:`${f}F`, showlegend:true });
-    }
-    if (entries.length) {
-      traces.push({ type:"scatter3d", mode:"markers",
-        x:entries.map(n=>n.x), y:entries.map(n=>n.y), z:entries.map(n=>n.z),
-        customdata:entries.map(n=>n.id),
-        marker:{size:10, color, opacity: dimmed ? 0.3 : 1, symbol:"diamond", line:{color:"#fff",width:1}},
-        text:entries.map(n=>n.label), hovertemplate:"%{text}<extra></extra>",
-        name:`${f}F 出入口`, showlegend:true });
-    }
-  });
-
-  if (currentPath?.path_edges.length) {
-    const px=[],py=[],pz=[];
-    currentPath.path_edges.forEach(e=>{px.push(e.x0,e.x1,null);py.push(e.y0,e.y1,null);pz.push(e.z0,e.z1,null);});
-    traces.push({ type:"scatter3d", mode:"lines", x:px, y:py, z:pz,
-      line:{color:"#ffd700",width:6}, hoverinfo:"skip", name:"最短経路" });
-  }
-
-  if (startEdge) {
-    traces.push({ type:"scatter3d", mode:"lines",
-      x:[startEdge.x0,startEdge.x1], y:[startEdge.y0,startEdge.y1], z:[startEdge.z0,startEdge.z1],
-      line:{color:"#4ade80",width:10},
-      hovertemplate:`出発: ${startEdge.name}<extra></extra>`,
-      name:`出発: ${acStart?.selected?.room||startEdge.name}` });
-  }
-
-  if (destEdge) {
-    traces.push({ type:"scatter3d", mode:"lines",
-      x:[destEdge.x0,destEdge.x1], y:[destEdge.y0,destEdge.y1], z:[destEdge.z0,destEdge.z1],
-      line:{color:"#ff6b2b",width:10},
-      hovertemplate:`目的地: ${destEdge.name}<extra></extra>`,
-      name:`目的地: ${acGoal?.selected?.room||destEdge.name}` });
-  }
-
-  if (currentPath?.path_coords.length) {
-    const pn = currentPath.path_coords;
-    traces.push({ type:"scatter3d", mode:"markers+text",
-      x:pn.map(n=>n.x), y:pn.map(n=>n.y), z:pn.map(n=>n.z),
-      marker:{size:10, color:"#ffd700", symbol:"diamond", line:{color:"#fff",width:1}},
-      text:pn.map((n,i)=>i===0?"START":i===pn.length-1?"GOAL":String(i)),
-      textposition:"top center", textfont:{color:"#ffd700",size:11},
-      hovertemplate:"Node %{text}<extra></extra>", name:"経路ノード" });
-  }
-
-  // 3Dクリックで選択中のノードを強調表示
-  if (pickStart != null || pickGoal != null) {
-    const picked = [];
-    const ps = graphData.nodes.find(n => n.id === pickStart);
-    const pg = graphData.nodes.find(n => n.id === pickGoal);
-    if (ps) picked.push({ ...ps, c: "#00d498", t: "出発" });
-    if (pg) picked.push({ ...pg, c: "#f2c437", t: "目的" });
-    if (picked.length) {
-      traces.push({ type:"scatter3d", mode:"markers+text",
-        x:picked.map(n=>n.x), y:picked.map(n=>n.y), z:picked.map(n=>n.z),
-        marker:{size:12, color:picked.map(n=>n.c), symbol:"circle", line:{color:"#fff", width:2}},
-        text:picked.map(n=>n.t), textposition:"top center",
-        textfont:{color:"#fff", size:10},
-        hoverinfo:"skip", showlegend:false });
-    }
-  }
-
-  const layout = {
-    paper_bgcolor:"#07111d", plot_bgcolor:"#07111d",
-    margin:{l:0,r:0,t:0,b:0},
-    scene:{
-      bgcolor:"#07111d",
-      xaxis:axisStyle("X"), yaxis:{...axisStyle("Y"), autorange:"reversed"}, zaxis:axisStyle("階"),
-      camera:{eye:{x:1.8,y:1.8,z:1.4}},
-      aspectmode:"data",
-    },
-    legend:{
-      x:.01, y:.99,
-      bgcolor:"rgba(10,20,34,.85)", bordercolor:"#1e3450", borderwidth:1,
-      font:{color:"#d4e8f8",size:11},
-    },
-    uirevision:"keep",
-  };
-  Plotly.react("map", traces, layout, { responsive:true });
-
-  // 「ルートを拡大」ボタンの表示状態を同期
-  const zoomBtn = document.getElementById("zoom-route-btn");
-  zoomBtn.classList.toggle("available", !!(currentPath?.path_coords?.length));
-  if (routeZoomed) {
-    if (currentPath?.path_coords?.length) applyRouteZoom();
-    else resetRouteZoom();
-  }
-}
-
-function axisStyle(title) {
-  return {
-    title:{text:title,font:{color:"#3a5878",size:11}},
-    gridcolor:"#122030", linecolor:"#1e3450",
-    tickcolor:"#3a5878", tickfont:{color:"#3a5878",size:9},
-    backgroundcolor:"#07111d", showbackground:true, zerolinecolor:"#1e3450",
-  };
-}
-
-// #map-container のサイズが変わるたび（初期レイアウト確定・サイドバー開閉・
-// ウィンドウリサイズ・フォント読み込み後のリフローなど）にPlotlyの
-// WebGLキャンバスを追従させる。初回描画時にコンテナサイズがまだ確定して
-// おらず、reloadを繰り返さないと3Dグラフが表示されない問題への対策。
-function initMapResize() {
-  const mapContainer = document.getElementById("map-container");
-  const mapEl = document.getElementById("map");
-  const observer = new ResizeObserver(() => {
-    Plotly.Plots.resize(mapEl);
-  });
-  observer.observe(mapContainer);
-}
-
-// ============================================================
-//  トップへ戻るボタン（モバイル）
-// ============================================================
-function initScrollTopBtn() {
-  const btn        = document.getElementById("scroll-top-btn");
-  const scrollArea = document.querySelector(".sheet-scroll-area");
-
-  scrollArea.addEventListener("scroll", () => {
-    btn.classList.toggle("visible", scrollArea.scrollTop > 120);
-  }, { passive: true });
-
-  btn.addEventListener("click", () => {
-    scrollArea.scrollTo({ top: 0, behavior: "smooth" });
-  });
-}
-
-// ============================================================
-//  ノードピッカー — 3D上のノードをクリックして経路を作成
-//  1回目のクリック = 出発、2回目 = 目的（そのまま経路探索）
-//  3回目は新しい出発として選び直し。Esc または ✕ で解除。
-// ============================================================
-function initNodePicker() {
-  const gd = document.getElementById("map");
-  gd.on("plotly_click", ev => {
-    const p = ev.points && ev.points[0];
-    if (!p || p.customdata == null) return;
-    onNodePicked(Number(p.customdata));
-  });
-  addEventListener("keydown", e => { if (e.key === "Escape") clearPick(); });
-}
-
-function onNodePicked(id) {
-  if (pickStart == null || pickGoal != null) {
-    // 未選択、または経路確定済み → 新しい出発として選び直し
-    pickStart = id;
-    pickGoal  = null;
-    currentPath = null; startEdge = null; destEdge = null;
-    document.getElementById("pick-journey").innerHTML = "";
-    renderMap();
-  } else if (id !== pickStart) {
-    pickGoal = id;
-    routeFromPick();
-  }
-  updatePickPanel();
-}
-
-async function routeFromPick() {
-  const useElevator = document.getElementById("chk-elevator-node").checked ? "1" : "0";
-  const journeyEl   = document.getElementById("pick-journey");
-  setBusy(true);
-  try {
-    const data = scalePathZ(await fetch(
-      `/api/shortest_path?start=${pickStart}&goal=${pickGoal}&use_elevator=${useElevator}`
-    ).then(r => r.json()));
-    if (data.error) {
-      journeyEl.innerHTML = `<div class="journey-error">${data.error}</div>`;
-      currentPath = null; startEdge = null; destEdge = null;
-    } else {
-      currentPath = data; startEdge = null; destEdge = null;
-      journeyEl.innerHTML = buildJourneyHTML(data);
-    }
-  } catch {
-    journeyEl.innerHTML = `<div class="journey-error">サーバーに接続できません</div>`;
-  } finally {
-    setBusy(false);
-    renderMap();
-  }
-}
-
-function updatePickPanel() {
-  const s = document.getElementById("pick-start-chip");
-  const g = document.getElementById("pick-goal-chip");
-  s.textContent = pickStart != null ? `出発: ${pickStart}` : "出発: 未選択";
-  g.textContent = pickGoal  != null ? `目的: ${pickGoal}`  : "目的: 未選択";
-  s.className = "pick-chip" + (pickStart != null ? " start" : " empty");
-  g.className = "pick-chip" + (pickGoal  != null ? " goal"  : " empty");
-}
-
-function clearPick() {
-  const hadRoute = pickGoal != null && currentPath != null;
-  pickStart = null; pickGoal = null;
-  document.getElementById("pick-journey").innerHTML = "";
-  updatePickPanel();
-  if (hadRoute) {
-    currentPath = null; startEdge = null; destEdge = null;
-    if (routeZoomed) resetRouteZoom();
-  }
-  renderMap();
-}
-
-// ============================================================
-//  経路サマリー — フロア遷移を距離比例の色帯（リボン）で表示
-// ============================================================
-function buildJourneyHTML(data) {
-  const coords = data.path_coords || [];
-  const edges  = data.path_edges  || [];
-  if (coords.length < 2) return "";
-
-  // 連続する (building, floor) 区間ごとに距離を集計
-  const segs = [];
-  coords.forEach((n, i) => {
-    const key = `${n.building}_${n.floor}`;
-    if (!segs.length || segs[segs.length - 1].key !== key) {
-      segs.push({ key, building: n.building, floor: n.floor, dist: 0 });
-    }
-    if (i < edges.length) segs[segs.length - 1].dist += edges[i].length || 0;
-  });
-
-  const total    = edges.reduce((s, e) => s + (e.length || 0), 0);
-  const colors   = graphData.building_colors || [];
-  const segColor = b => b === 0 ? "#5AFF5A" : colors[(b - 1) % colors.length];
-  const segLabel = s => s.building === 0 ? "屋外" : `${s.building}-${s.floor}F`;
-
-  const strip = segs.map(s =>
-    `<div class="journey-seg" style="flex:${Math.max(s.dist, total * 0.05) || 1} 1 0;` +
-    `background:${segColor(s.building)};" title="${segLabel(s)} ${s.dist.toFixed(0)}m">${segLabel(s)}</div>`
-  ).join("");
-
-  // 階段・EV などの内訳（グラフのエッジ種別から逆引き）
-  const TYPE_LABEL = { "2": "階段", "3": "エスカレーター", "4": "EV", "5": "上りESC", "6": "下りESC", "7": "入口" };
-  const typeDist = {};
-  edges.forEach(e => {
-    const g = edgeByPair && edgeByPair.get(`${e.from}-${e.to}`);
-    if (!g) return;
-    const t = String(g.type);
-    if (TYPE_LABEL[t]) typeDist[t] = (typeDist[t] || 0) + (e.length || 0);
-  });
-
-  const chips = [`<span class="meta-chip">合計 ${total.toFixed(0)}m ・ ${coords.length}ノード</span>`];
-  Object.entries(typeDist).forEach(([t, d]) => {
-    chips.push(`<span class="meta-chip">${TYPE_LABEL[t]} ${d.toFixed(0)}m</span>`);
-  });
-
-  return `<div class="journey">
-    <div class="journey-strip">${strip}</div>
-    <div class="journey-meta">${chips.join("")}</div>
-  </div>`;
-}
-
-// ============================================================
-//  ルートを拡大 — 経路の範囲にシーンをクロップして注視する
-// ============================================================
-function applyRouteZoom() {
-  const cs = currentPath?.path_coords;
-  if (!cs?.length) return;
-  const pad = a => {
-    const mn = Math.min(...a), mx = Math.max(...a);
-    const p = Math.max((mx - mn) * 0.15, 6);
-    return [mn - p, mx + p];
-  };
-  const [x0, x1] = pad(cs.map(n => n.x));
-  const [y0, y1] = pad(cs.map(n => n.y));
-  const [z0, z1] = pad(cs.map(n => n.z));
-  Plotly.relayout("map", {
-    "scene.xaxis.autorange": false, "scene.xaxis.range": [x0, x1],
-    "scene.yaxis.autorange": false, "scene.yaxis.range": [y1, y0],  // Y軸は反転表示
-    "scene.zaxis.autorange": false, "scene.zaxis.range": [z0, z1],
-  });
-}
-
-function toggleRouteZoom() {
-  if (routeZoomed) { resetRouteZoom(); return; }
-  if (!currentPath?.path_coords?.length) return;
-  applyRouteZoom();
-  routeZoomed = true;
-  const b = document.getElementById("zoom-route-btn");
-  b.textContent = "全体に戻す";
-  b.classList.add("zoomed");
-}
-
-function resetRouteZoom() {
-  Plotly.relayout("map", {
-    "scene.xaxis.autorange": true,
-    "scene.yaxis.autorange": "reversed",
-    "scene.zaxis.autorange": true,
-  });
-  routeZoomed = false;
-  const b = document.getElementById("zoom-route-btn");
-  b.textContent = "ルートを拡大";
-  b.classList.remove("zoomed");
-}
-
-// ============================================================
-//  カメラズーム — ＋/−ボタン と 2本指ピンチ（タブレット対応）
-//  Plotly gl3d のタッチ操作は回転しか効かないため、ピンチは
-//  キャプチャ段階で横取りしてカメラの注視点との距離を直接変える。
-// ============================================================
-const ZOOM_DIST_MIN = 0.25;  // 注視点へ寄れる最小距離（最大ズームイン）
-const ZOOM_DIST_MAX = 12;    // 引ける最大距離（最大ズームアウト）
-
-// 現在のカメラ状態を取得（回転中の内部状態を優先し、無ければレイアウト値）
-function getLiveCamera() {
-  const gd = document.getElementById("map");
-  const scene = gd._fullLayout?.scene?._scene;
-  if (scene?.getCamera) return scene.getCamera();
-  return gd.layout?.scene?.camera || { eye: { x: 1.8, y: 1.8, z: 1.4 } };
-}
-
-// factor < 1 で拡大（注視点へ近づく）、> 1 で縮小
-function zoomCamera(factor, baseCam) {
-  const cam    = baseCam || getLiveCamera();
-  const center = cam.center || { x: 0, y: 0, z: 0 };
-  const eye    = cam.eye;
-  const dx = eye.x - center.x, dy = eye.y - center.y, dz = eye.z - center.z;
-  const dist = Math.hypot(dx, dy, dz);
-  if (!dist) return;
-  const newDist = Math.max(ZOOM_DIST_MIN, Math.min(dist * factor, ZOOM_DIST_MAX));
-  const s = newDist / dist;
-  Plotly.relayout("map", {
-    "scene.camera": {
-      eye:    { x: center.x + dx * s, y: center.y + dy * s, z: center.z + dz * s },
-      center: { ...center },
-      up:     cam.up || { x: 0, y: 0, z: 1 },
-    },
-  });
-}
-
-function initPinchZoom() {
-  const mapEl = document.getElementById("map");
-  let pinch    = null;   // { d0, cam0 } ピンチ開始時の指間距離とカメラ
-  let blocking = false;  // ピンチ中〜全指が離れるまで Plotly へのタッチ伝播を止める
-
-  const touchDist = t => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
-  const block = e => { e.preventDefault(); e.stopPropagation(); };
-
-  // capture:true — Plotly がキャンバスで受け取る前に横取りする
-  mapEl.addEventListener("touchstart", e => {
-    if (e.touches.length >= 2) {
-      pinch    = { d0: touchDist(e.touches), cam0: getLiveCamera() };
-      blocking = true;
-      block(e);
-    } else if (blocking) {
-      block(e);
-    }
-  }, { capture: true, passive: false });
-
-  mapEl.addEventListener("touchmove", e => {
-    if (pinch && e.touches.length >= 2) {
-      const d = touchDist(e.touches);
-      if (d >= 1) zoomCamera(pinch.d0 / d, pinch.cam0);
-      block(e);
-    } else if (blocking) {
-      block(e);
-    }
-  }, { capture: true, passive: false });
-
-  const endTouch = e => {
-    if (!blocking) return;
-    if (e.touches.length < 2)   pinch = null;
-    if (e.touches.length === 0) blocking = false;  // 全指が離れたら通常操作へ復帰
-  };
-  mapEl.addEventListener("touchend",    endTouch, { capture: true });
-  mapEl.addEventListener("touchcancel", endTouch, { capture: true });
-}
-
-// ============================================================
-//  俯瞰ビュー
-// ============================================================
-function setTopView() {
-  Plotly.relayout("map", {
-    "scene.camera": {
-      eye:    { x: 0, y: 0, z: 2.5 },
-      up:     { x: 0, y: 1, z: 0 },
-      center: { x: 0, y: 0, z: 0 },
-    }
-  });
-}
-
-</script>
+<script src="{{ url_for('static', filename='script.js') }}"></script>
 </body>
 </html>
-
 ```
 
 ### 10.2 フロントエンド
@@ -4697,6 +2909,16 @@ function setTopView() {
         </div>
         <span class="card-cta">記事を読む <span aria-hidden="true" class="card-arrow">↗</span></span>
       </a>
+
+      <a href="https://timetables.iku-navi.net/" class="card card-timetable">
+        <span class="card-label">Timetable</span>
+        <div class="card-body">
+          <span class="card-glyph" aria-hidden="true">▦</span>
+          <h2 class="card-heading">時間割共有</h2>
+          <p class="card-text">シラバスから科目を選んで時間割を作り、友達と共有できます。次の教室へのナビもここから開けます。</p>
+        </div>
+        <span class="card-cta">時間割を開く <span aria-hidden="true" class="card-arrow">↗</span></span>
+      </a>
     </nav>
 
     <section class="info" aria-label="IKU NAVIについて">
@@ -4747,7 +2969,6 @@ function setTopView() {
 
 </body>
 </html>
-
 ```
 
 ### `programs/html/404.html`
@@ -4759,77 +2980,7 @@ function setTopView() {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>404 - ページが見つかりません</title>
-    <style>
-        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', Meiryo, sans-serif;
-            min-height: 100vh;
-            background: #f7f8fc;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        .card {
-            background: #fff;
-            border-radius: 20px;
-            padding: 3.5rem 3rem;
-            max-width: 480px;
-            width: calc(100% - 3rem);
-            text-align: center;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
-        }
-        .code {
-            font-size: 7rem;
-            font-weight: 900;
-            line-height: 1;
-            letter-spacing: -3px;
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-        .accent {
-            display: block;
-            width: 48px;
-            height: 4px;
-            background: linear-gradient(90deg, #667eea, #764ba2);
-            border-radius: 2px;
-            margin: 1.25rem auto 0;
-        }
-        .title {
-            margin-top: 1.25rem;
-            font-size: 1.25rem;
-            font-weight: 700;
-            color: #1a202c;
-        }
-        .desc {
-            margin-top: 0.75rem;
-            font-size: 0.9rem;
-            color: #718096;
-            line-height: 1.9;
-        }
-        .btn {
-            display: inline-block;
-            margin-top: 2rem;
-            padding: 0.7rem 2.25rem;
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            color: #fff;
-            font-size: 0.875rem;
-            font-weight: 600;
-            text-decoration: none;
-            border-radius: 100px;
-            letter-spacing: 0.05em;
-            transition: opacity 0.15s ease, transform 0.15s ease;
-            box-shadow: 0 4px 14px rgba(102, 126, 234, 0.35);
-        }
-        .btn:hover { opacity: 0.88; transform: translateY(-1px); }
-        @media (max-width: 480px) {
-            .card { padding: 2rem 1.5rem; border-radius: 16px; }
-            .code { font-size: 4.5rem; letter-spacing: -2px; }
-            .title { font-size: 1.1rem; }
-            .desc { font-size: 0.85rem; }
-        }
-    </style>
+    <link rel="stylesheet" href="404.css">
 </head>
 <body>
     <div class="card">
@@ -4844,7 +2995,6 @@ function setTopView() {
     </div>
 </body>
 </html>
-
 ```
 
 ### `programs/html/style.css`
@@ -5017,6 +3167,7 @@ body {
 
 .card:nth-child(1) { animation-delay: 0.12s; }
 .card:nth-child(2) { animation-delay: 0.22s; }
+.card:nth-child(3) { animation-delay: 0.32s; }
 
 .card:hover {
   transform: translateY(-5px) scale(1.03);
@@ -5044,6 +3195,19 @@ body {
 }
 .card-blog:hover {
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.10);
+}
+
+/* — timetable card (dark) — 2列表示のときは下段いっぱいに広げる */
+.card-timetable {
+  background: var(--dark);
+  color: var(--white);
+  box-shadow: 0 4px 24px rgba(15, 23, 42, 0.25);
+}
+.card-timetable:hover {
+  box-shadow: 0 16px 40px rgba(15, 23, 42, 0.35);
+}
+@media (min-width: 520px) {
+  .card-timetable { grid-column: 1 / -1; }
 }
 
 /* — card internals — */
@@ -5291,7 +3455,6 @@ body {
 # ブログは検索エンジンにインデックスさせない
 /blog/*
   X-Robots-Tag: noindex
-
 ```
 
 ### `programs/html/_redirects`
@@ -5305,7 +3468,6 @@ body {
 /redirect/* https://api.iku-navi.net/redirect/:splat 301
 /3d/* https://api.iku-navi.net/3d/:splat 301
 /3d https://api.iku-navi.net/3d/ 301
-
 ```
 
 ### `programs/html/robots.txt`
@@ -5315,7 +3477,6 @@ User-agent: *
 Allow: /
 
 Sitemap: https://iku-navi.net/sitemap.xml
-
 ```
 
 ### `programs/html/sitemap.xml`
@@ -8304,548 +6465,7 @@ function arReleaseHardware() {
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-  <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-    :root {
-      --void:      #080F1A;
-      --navy:      #0F2035;
-      --deep:      #162840;
-      --cyan:      #00B8E6;
-      --teal:      #00D4AA;
-      --ice:       #EEF6FF;
-      --fog:       #8AAABF;
-      --faint:     #4A6A80;
-      --border:    rgba(0,184,230,0.18);
-      --border-lo: rgba(0,184,230,0.10);
-    }
-
-    html { scroll-behavior: smooth; }
-
-    body {
-      background: var(--void);
-      color: var(--fog);
-      font-family: 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', sans-serif;
-      font-size: 16px;
-      line-height: 1.75;
-      -webkit-font-smoothing: antialiased;
-      overflow-x: hidden;
-    }
-
-    /* ── NAVIGATION ── */
-    .nav {
-      position: fixed;
-      top: 0; left: 0; right: 0;
-      z-index: 200;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 0 2rem;
-      height: 60px;
-      background: rgba(8,15,26,0.88);
-      backdrop-filter: blur(14px);
-      -webkit-backdrop-filter: blur(14px);
-      border-bottom: 1px solid var(--border-lo);
-    }
-
-    .nav-logo {
-      font-family: 'Space Grotesk', sans-serif;
-      font-size: 1.2rem;
-      font-weight: 700;
-      color: var(--ice);
-      text-decoration: none;
-      letter-spacing: 0.04em;
-    }
-    .nav-logo em { color: var(--cyan); font-style: normal; }
-
-    .nav-menu {
-      display: flex;
-      align-items: center;
-      gap: 0.25rem;
-      list-style: none;
-    }
-    .nav-menu a {
-      color: var(--fog);
-      text-decoration: none;
-      font-size: 0.875rem;
-      padding: 0.4rem 0.75rem;
-      border-radius: 4px;
-      transition: color 0.2s, background 0.2s;
-    }
-    .nav-menu a:hover { color: var(--ice); background: rgba(255,255,255,0.06); }
-    .nav-menu a.active { color: var(--cyan); }
-
-    .nav-cta-link {
-      margin-left: 0.5rem;
-      background: var(--cyan) !important;
-      color: var(--void) !important;
-      font-weight: 600 !important;
-    }
-    .nav-cta-link:hover { background: var(--teal) !important; }
-
-    .nav-burger {
-      display: none;
-      flex-direction: column;
-      gap: 5px;
-      cursor: pointer;
-      padding: 6px;
-      border: none;
-      background: transparent;
-    }
-    .nav-burger span {
-      display: block;
-      width: 22px;
-      height: 2px;
-      background: var(--ice);
-      border-radius: 2px;
-      transition: transform 0.3s, opacity 0.3s;
-    }
-
-    /* ── HERO ── */
-    .hero {
-      position: relative;
-      min-height: 100svh;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      text-align: center;
-      padding: 80px 1.5rem 5rem;
-      overflow: hidden;
-    }
-
-    .hero-bg {
-      position: absolute;
-      inset: 0;
-      width: 100%;
-      height: 100%;
-    }
-
-    .hero-fade {
-      position: absolute;
-      inset: 0;
-      background: radial-gradient(ellipse 70% 60% at 50% 50%, rgba(8,15,26,0.2) 0%, rgba(8,15,26,0.93) 72%);
-    }
-
-    .hero-body {
-      position: relative;
-      z-index: 2;
-      max-width: 760px;
-    }
-
-    .hero-eyebrow {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 0.72rem;
-      letter-spacing: 0.18em;
-      color: var(--cyan);
-      text-transform: uppercase;
-      margin-bottom: 1.5rem;
-      opacity: 0;
-      transform: translateY(12px);
-      animation: fadeUp 0.8s 0.2s forwards;
-    }
-
-    .hero-title {
-      font-family: 'Space Grotesk', sans-serif;
-      font-size: clamp(4rem, 14vw, 9rem);
-      font-weight: 700;
-      color: var(--ice);
-      letter-spacing: -0.025em;
-      line-height: 0.88;
-      margin-bottom: 0.3rem;
-      opacity: 0;
-      transform: translateY(16px);
-      animation: fadeUp 0.8s 0.35s forwards;
-    }
-
-    .hero-tagline {
-      font-family: 'Space Grotesk', sans-serif;
-      font-size: clamp(0.85rem, 2.5vw, 1.2rem);
-      font-weight: 400;
-      color: var(--cyan);
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-      margin-bottom: 1.75rem;
-      opacity: 0;
-      animation: fadeUp 0.8s 0.5s forwards;
-    }
-
-    .hero-desc {
-      font-size: clamp(0.9rem, 2vw, 1.05rem);
-      color: var(--fog);
-      max-width: 520px;
-      margin: 0 auto 2.5rem;
-      line-height: 1.85;
-      opacity: 0;
-      animation: fadeUp 0.8s 0.65s forwards;
-    }
-
-    .hero-ctas {
-      display: flex;
-      gap: 0.875rem;
-      justify-content: center;
-      flex-wrap: wrap;
-      opacity: 0;
-      animation: fadeUp 0.8s 0.8s forwards;
-    }
-
-    .btn {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.45rem;
-      font-family: 'Space Grotesk', sans-serif;
-      font-size: 0.9rem;
-      font-weight: 600;
-      padding: 0.7rem 1.6rem;
-      border-radius: 6px;
-      text-decoration: none;
-      transition: background 0.2s, border-color 0.2s, transform 0.2s, box-shadow 0.2s;
-    }
-    .btn:hover { transform: translateY(-2px); }
-
-    .btn-fill { background: var(--cyan); color: var(--void); }
-    .btn-fill:hover { background: var(--teal); box-shadow: 0 4px 20px rgba(0,184,230,0.35); }
-
-    .btn-ghost { border: 1px solid var(--border); color: var(--ice); }
-    .btn-ghost:hover { border-color: var(--cyan); background: rgba(0,184,230,0.08); }
-
-    .hero-scroll-hint {
-      position: absolute;
-      bottom: 2rem;
-      left: 50%;
-      transform: translateX(-50%);
-      opacity: 0;
-      animation: fadeIn 1s 1.5s forwards;
-    }
-    .scroll-bar {
-      width: 1px;
-      height: 44px;
-      background: linear-gradient(to bottom, var(--cyan), transparent);
-      animation: barPulse 2.2s ease-in-out infinite;
-    }
-
-    @keyframes fadeUp { to { opacity: 1; transform: none; } }
-    @keyframes fadeIn { to { opacity: 0.6; } }
-    @keyframes barPulse {
-      0%, 100% { opacity: 0.4; }
-      50% { opacity: 1; }
-    }
-
-    /* ── LAYOUT ── */
-    .section { padding: 6rem 1.5rem; }
-    .wrap { max-width: 1100px; margin: 0 auto; }
-
-    .sec-eye {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 0.68rem;
-      letter-spacing: 0.22em;
-      color: var(--cyan);
-      text-transform: uppercase;
-      margin-bottom: 0.6rem;
-    }
-    .sec-title {
-      font-family: 'Space Grotesk', sans-serif;
-      font-size: clamp(1.7rem, 4vw, 2.4rem);
-      font-weight: 700;
-      color: var(--ice);
-      line-height: 1.2;
-      margin-bottom: 0.875rem;
-    }
-    .sec-lead {
-      font-size: 0.975rem;
-      color: var(--fog);
-      max-width: 500px;
-      line-height: 1.85;
-      margin-bottom: 3rem;
-    }
-
-    /* ── FEATURES ── */
-    .features-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
-      gap: 1.25rem;
-    }
-
-    .feat-card {
-      background: var(--navy);
-      border: 1px solid var(--border-lo);
-      border-radius: 12px;
-      padding: 2rem 1.75rem;
-      transition: border-color 0.25s, transform 0.25s, box-shadow 0.25s;
-    }
-    .feat-card:hover {
-      border-color: var(--cyan);
-      transform: translateY(-4px);
-      box-shadow: 0 8px 32px rgba(0,184,230,0.1);
-    }
-
-    .feat-icon {
-      width: 44px;
-      height: 44px;
-      color: var(--cyan);
-      margin-bottom: 1.25rem;
-    }
-    .feat-name {
-      font-family: 'Space Grotesk', sans-serif;
-      font-size: 1.05rem;
-      font-weight: 600;
-      color: var(--ice);
-      margin-bottom: 0.5rem;
-    }
-    .feat-text {
-      font-size: 0.875rem;
-      line-height: 1.75;
-      color: var(--fog);
-    }
-
-    /* ── TECH STACK ── */
-    .tech-section {
-      background: var(--navy);
-      border-top: 1px solid var(--border-lo);
-      border-bottom: 1px solid var(--border-lo);
-    }
-
-    .stack-rows { display: flex; flex-direction: column; gap: 1rem; }
-
-    .stack-row {
-      display: flex;
-      align-items: flex-start;
-      gap: 1.5rem;
-      background: rgba(8,15,26,0.5);
-      border: 1px solid var(--border-lo);
-      border-left: 3px solid var(--cyan);
-      border-radius: 0 8px 8px 0;
-      padding: 1.25rem 1.5rem;
-    }
-    .stack-label {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 0.68rem;
-      letter-spacing: 0.14em;
-      color: var(--cyan);
-      text-transform: uppercase;
-      white-space: nowrap;
-      padding-top: 0.15rem;
-      min-width: 88px;
-    }
-    .stack-chips { display: flex; flex-wrap: wrap; gap: 0.5rem; }
-    .chip {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 0.78rem;
-      color: var(--ice);
-      background: rgba(0,184,230,0.08);
-      border: 1px solid rgba(0,184,230,0.22);
-      padding: 0.2rem 0.65rem;
-      border-radius: 4px;
-      white-space: nowrap;
-    }
-
-    /* ── ROADMAP ── */
-    .roadmap-track { list-style: none; }
-
-    .rm-item {
-      display: flex;
-      gap: 1.25rem;
-    }
-    .rm-item:not(:last-child) { padding-bottom: 2.5rem; }
-
-    .rm-spine {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      flex-shrink: 0;
-      width: 18px;
-    }
-    .rm-dot {
-      width: 12px;
-      height: 12px;
-      border-radius: 50%;
-      border: 2px solid var(--faint);
-      background: var(--void);
-      flex-shrink: 0;
-      margin-top: 3px;
-    }
-    .rm-stem {
-      width: 2px;
-      flex: 1;
-      background: var(--border-lo);
-      margin-top: 5px;
-    }
-
-    .rm-item.is-done .rm-dot { border-color: var(--teal); background: var(--teal); }
-    .rm-item.is-now .rm-dot {
-      border-color: var(--cyan);
-      background: var(--cyan);
-      animation: nowPulse 2.2s ease-in-out infinite;
-    }
-    @keyframes nowPulse {
-      0%, 100% { box-shadow: 0 0 0 4px rgba(0,184,230,0.18); }
-      50%       { box-shadow: 0 0 0 8px rgba(0,184,230,0.07); }
-    }
-
-    .rm-date {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 0.7rem;
-      letter-spacing: 0.1em;
-      color: var(--faint);
-      margin-bottom: 0.2rem;
-    }
-    .rm-item.is-done .rm-date,
-    .rm-item.is-now  .rm-date { color: var(--cyan); }
-
-    .rm-title {
-      font-family: 'Space Grotesk', sans-serif;
-      font-size: 1rem;
-      font-weight: 600;
-      color: var(--ice);
-      margin-bottom: 0.25rem;
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      flex-wrap: wrap;
-    }
-    .rm-item.is-now .rm-title { color: var(--cyan); }
-
-    .badge-now {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 0.6rem;
-      letter-spacing: 0.08em;
-      background: var(--cyan);
-      color: var(--void);
-      padding: 0.1rem 0.45rem;
-      border-radius: 3px;
-      font-weight: 700;
-    }
-    .rm-detail { font-size: 0.875rem; color: var(--fog); line-height: 1.6; }
-
-    /* ── TEAM ── */
-    .team-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
-      gap: 1rem;
-    }
-    .team-card {
-      background: var(--navy);
-      border: 1px solid var(--border-lo);
-      border-radius: 10px;
-      padding: 1.5rem 1rem 1.25rem;
-      text-align: center;
-      transition: border-color 0.25s, transform 0.25s;
-    }
-    .team-card:hover { border-color: var(--cyan); transform: translateY(-3px); }
-    .team-card.is-lead {
-      border-color: rgba(0,184,230,0.4);
-      background: linear-gradient(160deg, var(--navy), rgba(0,184,230,0.07));
-    }
-    .avatar {
-      width: 52px;
-      height: 52px;
-      border-radius: 50%;
-      background: var(--deep);
-      border: 2px solid var(--border);
-      margin: 0 auto 0.75rem;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-family: 'Space Grotesk', sans-serif;
-      font-size: 1.05rem;
-      font-weight: 700;
-      color: var(--cyan);
-    }
-    .team-name {
-      font-family: 'Space Grotesk', sans-serif;
-      font-size: 0.9rem;
-      font-weight: 600;
-      color: var(--ice);
-      margin-bottom: 0.2rem;
-    }
-    .team-role { font-size: 0.75rem; color: var(--fog); }
-    .team-role-lead {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 0.68rem;
-      color: var(--cyan);
-      letter-spacing: 0.08em;
-    }
-
-    /* ── FOOTER ── */
-    .footer {
-      background: var(--navy);
-      border-top: 1px solid var(--border-lo);
-      padding: 3.5rem 1.5rem;
-    }
-    .footer-inner {
-      max-width: 1100px;
-      margin: 0 auto;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 1.75rem;
-      text-align: center;
-    }
-    .footer-logo {
-      font-family: 'Space Grotesk', sans-serif;
-      font-size: 1.4rem;
-      font-weight: 700;
-      color: var(--ice);
-    }
-    .footer-logo em { color: var(--cyan); font-style: normal; }
-    .footer-org { font-size: 0.8rem; color: var(--faint); line-height: 1.6; }
-    .footer-links {
-      display: flex;
-      gap: 2rem;
-      flex-wrap: wrap;
-      justify-content: center;
-      list-style: none;
-    }
-    .footer-links a {
-      display: flex;
-      align-items: center;
-      gap: 0.4rem;
-      color: var(--fog);
-      text-decoration: none;
-      font-size: 0.85rem;
-      transition: color 0.2s;
-    }
-    .footer-links a:hover { color: var(--cyan); }
-    .footer-copy { font-size: 0.75rem; color: var(--faint); }
-
-    /* ── SCROLL REVEAL ── */
-    .reveal {
-      opacity: 0;
-      transform: translateY(20px);
-      transition: opacity 0.55s ease, transform 0.55s ease;
-    }
-    .reveal.in { opacity: 1; transform: none; }
-
-    /* ── RESPONSIVE ── */
-    @media (max-width: 768px) {
-      .nav { padding: 0 1rem; }
-      .nav-menu { display: none; }
-      .nav-burger { display: flex; }
-      .nav-menu.is-open {
-        display: flex;
-        flex-direction: column;
-        position: fixed;
-        top: 60px; left: 0; right: 0; bottom: 0;
-        background: rgba(8,15,26,0.97);
-        align-items: center;
-        justify-content: center;
-        gap: 0.5rem;
-        z-index: 199;
-      }
-      .nav-menu.is-open a { font-size: 1.2rem; padding: 0.75rem 1.5rem; }
-      .section { padding: 4rem 1.25rem; }
-      .stack-row { flex-direction: column; gap: 0.625rem; }
-      .stack-label { min-width: unset; }
-    }
-
-    @media (prefers-reduced-motion: reduce) {
-      *, *::before, *::after {
-        animation-duration: 0.01ms !important;
-        transition-duration: 0.01ms !important;
-      }
-      .reveal { opacity: 1; transform: none; }
-    }
-  </style>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
@@ -9229,48 +6849,9 @@ function arReleaseHardware() {
     </div>
   </footer>
 
-  <script>
-    // Hamburger
-    const burger = document.getElementById('navBurger');
-    const menu  = document.getElementById('navMenu');
-    burger.addEventListener('click', () => {
-      const open = menu.classList.toggle('is-open');
-      burger.setAttribute('aria-expanded', open);
-      document.body.style.overflow = open ? 'hidden' : '';
-    });
-    menu.querySelectorAll('a').forEach(a => {
-      a.addEventListener('click', () => {
-        menu.classList.remove('is-open');
-        burger.setAttribute('aria-expanded', 'false');
-        document.body.style.overflow = '';
-      });
-    });
-
-    // Scroll reveal
-    const io = new IntersectionObserver(entries => {
-      entries.forEach(e => {
-        if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); }
-      });
-    }, { threshold: 0.08 });
-    document.querySelectorAll('.reveal').forEach(el => io.observe(el));
-
-    // Nav active link
-    const secIds = ['features','tech','roadmap','team'];
-    const navLinks = document.querySelectorAll('.nav-menu a[href^="#"]');
-    window.addEventListener('scroll', () => {
-      let active = '';
-      secIds.forEach(id => {
-        const el = document.getElementById(id);
-        if (el && window.scrollY >= el.offsetTop - 100) active = id;
-      });
-      navLinks.forEach(a => {
-        a.classList.toggle('active', a.getAttribute('href') === '#' + active);
-      });
-    }, { passive: true });
-  </script>
+  <script src="script.js"></script>
 </body>
 </html>
-
 ```
 
 ### `programs/html/blog/build.py`
@@ -9486,7 +7067,6 @@ def main():
 
 if __name__ == "__main__":
     main()
-
 ```
 
 ### `programs/html/blog/index.html`
@@ -9528,71 +7108,9 @@ if __name__ == "__main__":
         <a href="../index.html">← IKU NAVI トップへ</a>
     </footer>
 
-    <script>
-        async function loadPosts() {
-            const grid = document.getElementById('post-grid');
-            try {
-                const res = await fetch('posts.json');
-                const posts = await res.json();
-
-                if (posts.length === 0) {
-                    grid.innerHTML = `
-                        <div class="empty-state">
-                            <strong>まだ記事がありません</strong>
-                            <p>posts/*.md を作成して build.py を実行してください。</p>
-                        </div>`;
-                    return;
-                }
-
-                grid.innerHTML = posts.map(post => {
-                    const thumbHtml = post.thumbnail
-                        ? `<img class="post-card-thumb" src="${escHtml(post.thumbnail)}" alt="${escHtml(post.title)}">`
-                        : '';
-                    const authorHtml = post.author
-                        ? `<span class="post-author">${escHtml(post.author)}</span>`
-                        : '';
-                    return `
-                        <a class="post-card" href="${escHtml(post.path)}">
-                            ${thumbHtml}
-                            <div class="post-card-body">
-                                <div class="post-card-meta">
-                                    <time datetime="${escHtml(post.date)}">${formatDateJa(post.date)}</time>
-                                    ${authorHtml}
-                                </div>
-                                <div class="post-card-title">${escHtml(post.title)}</div>
-                                <div class="post-card-excerpt">${escHtml(post.excerpt)}</div>
-                                <div class="post-card-more">続きを読む →</div>
-                            </div>
-                        </a>`;
-                }).join('');
-            } catch (e) {
-                grid.innerHTML = `
-                    <div class="empty-state">
-                        <strong>記事を読み込めませんでした</strong>
-                        <p>build.py を実行して posts.json を生成してください。</p>
-                    </div>`;
-            }
-        }
-
-        function formatDateJa(str) {
-            const m = str.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-            if (!m) return str;
-            return `${m[1]}年${parseInt(m[2])}月${parseInt(m[3])}日`;
-        }
-
-        function escHtml(s) {
-            return String(s ?? '')
-                .replace(/&/g, '&amp;')
-                .replace(/</g, '&lt;')
-                .replace(/>/g, '&gt;')
-                .replace(/"/g, '&quot;');
-        }
-
-        loadPosts();
-    </script>
+    <script src="script.js"></script>
 </body>
 </html>
-
 ```
 
 ### `programs/html/blog/style.css`
@@ -9941,58 +7459,347 @@ a:hover {
     .post-meta { padding: 20px 24px 0; }
     .post-body { padding: 24px 24px 36px; }
 }
-
 ```
 
-### 10.3 開発・検証ツール群
+### 10.3 開発・検証ツール群（IKU NAVI ツール）
 
-#### Map_Editor
+2026-09-26 に、別々のプログラムだった7つのツール（Map_Editor・events・Route_Checker・Image_Checker・Image_Renamer・Human_Remover・SVG_Pointer）と共通部品（gui_common）を `programs/IKU_NAVI_Tools/` にまとめた。
 
-### `programs/gui_common/__init__.py`
+#### アプリ本体
+
+### `programs/IKU_NAVI_Tools/main.py`
 
 ```python
-"""IKU NAVI のデスクトップツール（PyQt6）が共有するモジュール。
+#!/usr/bin/env python3
+"""IKU NAVI ツール — データ作成・検証用デスクトップアプリの起動スクリプト
 
-各ツールは自分のディレクトリから `python main.py` のように起動されるため、
-このパッケージを import する前に親ディレクトリ（programs/）を sys.path に足す:
+    cd programs/IKU_NAVI_Tools
+    pip install -r requirements.txt
+    python main.py                 # 前回開いていたタブで起動
+    python main.py route_checker   # 指定したタブで起動
 
-    import sys
-    from pathlib import Path
-    sys.path.append(str(Path(__file__).resolve().parents[1]))
-
-    from gui_common.theme import ACCENT, base_stylesheet
+タブ: map_editor / events / route_checker / image_checker / image_renamer / human_remover / svg_pointer
 """
+
+import sys
+
+from PyQt6.QtWidgets import QApplication
+
+from iku_tools.app import TOOL_KEYS, ToolsWindow
+
+
+def main() -> int:
+    initial = sys.argv[1] if len(sys.argv) > 1 else None
+    if initial is not None and initial not in TOOL_KEYS:
+        print(f"不明なタブです: {initial}\n使えるタブ: {', '.join(TOOL_KEYS)}", file=sys.stderr)
+        return 2
+
+    app = QApplication(sys.argv)
+    app.setStyle("Fusion")
+    app.setApplicationName("IKU NAVI ツール")
+    window = ToolsWindow(initial_tool=initial)
+    window.show()
+    return app.exec()
+
+
+if __name__ == "__main__":
+    sys.exit(main())
 ```
 
-### `programs/gui_common/paths.py`
+### `programs/IKU_NAVI_Tools/requirements.txt`
+
+```text
+# IKU NAVI ツール（全タブ分）
+PyQt6>=6.4.0
+requests>=2.31.0      # ルート検証・画像チェック
+Pillow                # 画像リネーム
+numpy>=1.24.0         # マップ編集（カメラ）・人物ぼかし
+opencv-python>=4.8.0  # マップ編集（カメラ）・人物ぼかし
+ultralytics>=8.0.0    # 人物ぼかし（重い。入っていなくても他のタブは使える）
+```
+
+### `programs/IKU_NAVI_Tools/README.md`
+
+````markdown
+# IKU NAVI ツール
+
+IKU NAVI のデータ作成・検証に使うデスクトップアプリ（PyQt6）。以前は別々のプログラムだった7つのツールを、
+1つのアプリにまとめ、画面上部のタブで切り替えて使う。
+
+## 起動方法
+
+```bash
+cd programs/IKU_NAVI_Tools
+pip install -r requirements.txt
+python main.py                 # 前回開いていたタブで起動
+python main.py route_checker   # 指定したタブで起動
+```
+
+## タブ一覧
+
+| タブ | 引数名 | 内容 | 旧プログラム |
+|---|---|---|---|
+| マップ編集 | `map_editor` | SVGフロアマップ上でノード・エッジを入力し、経路写真を撮影する（[詳しい使い方](iku_tools/map_editor/README.md)） | `programs/Map_Editor` |
+| イベント設定 | `events` | イベントモードの検索候補（`data/event.csv`）を編集する（[詳しい使い方](iku_tools/events/README.md)） | `programs/events` |
+| ルート検証 | `route_checker` | 全教室ペア間のルートを経路探索APIから取得し、異常を検出する | `programs/Route_Checker` |
+| 画像チェック | `image_checker` | CDN 上の経路写真がエッジごとに揃っているかを確認する | `programs/Image_Checker` |
+| 画像リネーム | `image_renamer` | 経路写真を一括でリネーム・リサイズする | `programs/Image_Renamer` |
+| 人物ぼかし | `human_remover` | YOLOv8 で経路写真の人物を検出し、ぼかし・モザイクで匿名化する | `programs/Human_Remover` |
+| SVG座標取得 | `svg_pointer` | SVGをクリックして座標を取得し、クリップボードにコピーする | `programs/SVG_Pointer`（PyQt5 から移植） |
+
+ルート検証・画像チェックは経路探索API（`programs/3D_Graph`、既定は `http://localhost:5001`）を使うので、
+先に `cd programs/3D_Graph && python app.py` で起動しておく。
+
+## 使い勝手について
+
+- **タブは最初に開いたときに読み込む。** 起動が速く、人物ぼかしのように重いライブラリ（OpenCV・ultralytics）が
+  必要なタブがあっても、それが入っていない環境で他のタブは使える。読み込めなかったタブには、原因と
+  対処（`pip install -r requirements.txt` など）が表示される
+- **閉じるときは各タブに確認する。** マップ編集・イベント設定に未保存の変更があれば、それぞれの確認が出る。
+  そこでキャンセルすると、アプリは閉じずにそのタブに切り替わる
+- 最後に開いていたタブとウィンドウの大きさは次回に引き継ぐ
+- ウィンドウのタイトルには、開いているタブの状態（編集中の建物など）が出る
+
+## 構成
+
+```
+IKU_NAVI_Tools/
+├── main.py              # 起動スクリプト
+├── requirements.txt     # 全タブ分の依存
+├── iku_tools/
+│   ├── app.py           # タブで各ツールを切り替えるメインウィンドウ（タブの並びは TOOLS）
+│   ├── common/          # 各ツールが共有する部品（データの場所・APIアクセス・配色・表示名）
+│   ├── map_editor/      # 各ツール。どれも window.py の MainWindow がタブの中身になる
+│   ├── events/
+│   ├── route_checker/
+│   ├── image_checker/
+│   ├── image_renamer/
+│   ├── human_remover/   # yolov8n-seg.pt を置くとそれを使う（無ければ初回に自動ダウンロード。Git 管理外）
+│   └── svg_pointer/
+└── tests/               # pytest（PyQt6 が入っていない環境では自動でスキップ）
+```
+
+### ツールを追加するには
+
+1. `iku_tools/<名前>/window.py` に、引数なしで作れる `MainWindow`（`QMainWindow`）を置く
+2. 必要なライブラリが入っているかを事前に調べたい場合は、同じファイルに `missing_dependencies()`
+   （足りないパッケージ名のリストを返す関数）を置く
+3. `iku_tools/app.py` の `TOOLS` に1行足す
+
+各ツールは互いに import しない。共通で使うものは `common/` に置く。
+
+## テスト
+
+```bash
+# リポジトリ直下で（他のテストと一緒に実行される）
+pytest programs/IKU_NAVI_Tools/tests
+```
+
+全タブが読み込めること、タブの切り替え・前回のタブの復元、読み込めないタブがあっても他が使えること、
+未保存のタブがあるときに閉じないこと、SVG座標取得の基本操作を確認している。
+````
+
+### `programs/IKU_NAVI_Tools/iku_tools/__init__.py`
 
 ```python
-"""リポジトリ内のデータ・素材ディレクトリの位置。
-
-ツールごとに `Path(__file__).resolve().parents[2]` を書いていると、ファイルを
-サブディレクトリへ移した時に静かに壊れるため、ここ一箇所で解決する。
-"""
-from pathlib import Path
-
-REPO_ROOT = Path(__file__).resolve().parents[2]
-
-DATA_DIR  = REPO_ROOT / "data"
-SVG_DIR   = REPO_ROOT / "programs" / "html" / "svg"
-PHOTO_DIR = REPO_ROOT / "captured_photos"
-
-BUILDING_NAME_CSV = DATA_DIR / "building_name.csv"
-EVENT_CSV         = DATA_DIR / "event.csv"
-GLOBAL_NODE_CSV   = DATA_DIR / "global_node.csv"
-GLOBAL_EDGE_CSV   = DATA_DIR / "global_edge.csv"
-EDGE_IMAGE_CSV    = DATA_DIR / "edge_image.csv"
-
-
-def building_dir(building) -> Path:
-    """data/{building}_bldg/"""
-    return DATA_DIR / f"{building}_bldg"
+"""IKU NAVI のデータ作成・検証用デスクトップツール（PyQt6）。起動は ../main.py。"""
 ```
 
-### `programs/gui_common/api.py`
+### `programs/IKU_NAVI_Tools/iku_tools/app.py`
+
+```python
+"""ツール群をタブで切り替えて使うメインウィンドウ。
+
+各ツールは、もともと単独のアプリとして作られた QMainWindow（各サブパッケージの window.MainWindow）を
+そのままタブの中に埋め込んでいる。ツール同士は互いに依存せず、共通部品は common/ にまとめている。
+
+- タブは最初に開いたときに読み込む。起動が速くなり、人物ぼかしのように重いライブラリ
+  （OpenCV・ultralytics）が必要なツールがあっても、入っていない環境で他のツールは使える
+- 読み込みに失敗したタブには、原因と対処（pip install のコマンドなど）を表示する
+- 閉じるときは、読み込み済みの各ツールに閉じてよいかを確認する（未保存の変更がある場合の確認など）
+- 最後に開いていたタブとウィンドウの大きさを覚えておく
+"""
+
+from __future__ import annotations
+
+import importlib
+import traceback
+from dataclasses import dataclass
+
+from PyQt6.QtCore import QSettings, Qt
+from PyQt6.QtWidgets import (
+    QLabel,
+    QMainWindow,
+    QPlainTextEdit,
+    QTabWidget,
+    QVBoxLayout,
+    QWidget,
+)
+
+APP_TITLE = "IKU NAVI ツール"
+
+
+@dataclass(frozen=True)
+class ToolSpec:
+    key: str           # サブパッケージ名（iku_tools.<key>.window に MainWindow がある）
+    label: str         # タブに表示する名前
+    description: str   # タブにマウスを乗せたときの説明
+
+
+# タブの並び。データを作る流れ（地図の入力 → イベント → 検証 → 写真）の順にしている
+TOOLS: tuple[ToolSpec, ...] = (
+    ToolSpec("map_editor", "マップ編集", "SVGフロアマップ上でノード・エッジ・経路写真を入力する"),
+    ToolSpec("events", "イベント設定", "イベントモードの検索候補（data/event.csv）を編集する"),
+    ToolSpec("route_checker", "ルート検証", "全教室ペア間のルートを取得して異常を検出する"),
+    ToolSpec("image_checker", "画像チェック", "CDN 上の経路写真の有無をエッジごとに確認する"),
+    ToolSpec("image_renamer", "画像リネーム", "経路写真を一括でリネーム・リサイズする"),
+    ToolSpec("human_remover", "人物ぼかし", "経路写真に写った人物を検出してぼかす"),
+    ToolSpec("svg_pointer", "SVG座標取得", "SVGをクリックして座標を取得する"),
+)
+
+TOOL_KEYS = tuple(t.key for t in TOOLS)
+
+
+def load_tool_window(key: str) -> QMainWindow:
+    """ツールの MainWindow を作る。必要なライブラリが無ければ ImportError"""
+    module = importlib.import_module(f"iku_tools.{key}.window")
+    missing = getattr(module, "missing_dependencies", lambda: [])()
+    if missing:
+        raise ModuleNotFoundError(
+            "このツールに必要なライブラリが入っていません: " + ", ".join(missing),
+            name=missing[0],
+        )
+    return module.MainWindow()
+
+
+def _error_page(spec: ToolSpec, err: BaseException) -> QWidget:
+    page = QWidget()
+    layout = QVBoxLayout(page)
+    layout.setContentsMargins(24, 24, 24, 24)
+    if isinstance(err, ImportError):
+        missing = getattr(err, "name", None) or "（不明）"
+        title = f"「{spec.label}」を開くのに必要なライブラリが入っていません（{missing}）"
+        hint = ("programs/IKU_NAVI_Tools で次を実行してから、このアプリを起動し直してください:\n\n"
+                "    pip install -r requirements.txt")
+    else:
+        title = f"「{spec.label}」を開けませんでした"
+        hint = "下のエラー内容を開発メンバーに共有してください。"
+    head = QLabel(title)
+    head.setStyleSheet("font-size:16px; font-weight:bold;")
+    head.setWordWrap(True)
+    body = QLabel(hint)
+    body.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+    detail = QPlainTextEdit("".join(traceback.format_exception(err)))
+    detail.setReadOnly(True)
+    layout.addWidget(head)
+    layout.addWidget(body)
+    layout.addWidget(detail, 1)
+    return page
+
+
+class ToolsWindow(QMainWindow):
+
+    def __init__(self, initial_tool: str | None = None, settings: QSettings | None = None):
+        super().__init__()
+        # 最後に開いていたタブ・ウィンドウの大きさの保存先（テストでは一時ファイルに差し替える）
+        self._settings = settings or QSettings("SenARMap", "IKU_NAVI_Tools")
+        self._pages: list[QWidget] = []                 # 各タブの入れ物
+        self._windows: dict[int, QMainWindow] = {}      # 読み込み済みのツール（タブ番号 → ウィンドウ）
+
+        self.setWindowTitle(APP_TITLE)
+        self.resize(1440, 900)
+        geometry = self._settings.value("geometry")
+        if geometry is not None:
+            self.restoreGeometry(geometry)
+
+        self._tabs = QTabWidget()
+        self._tabs.setDocumentMode(True)
+        self._tabs.setTabPosition(QTabWidget.TabPosition.North)
+        # タブを押しやすい大きさにする（タブバーにだけ効かせ、各ツールの中のタブには影響させない）
+        self._tabs.tabBar().setStyleSheet("QTabBar::tab { padding: 8px 18px; font-size: 13px; }")
+        for i, spec in enumerate(TOOLS):
+            page = QWidget()
+            QVBoxLayout(page).setContentsMargins(0, 0, 0, 0)
+            self._pages.append(page)
+            self._tabs.addTab(page, spec.label)
+            self._tabs.setTabToolTip(i, spec.description)
+        self._tabs.currentChanged.connect(self._on_tab_changed)
+        self.setCentralWidget(self._tabs)
+
+        start = initial_tool or str(self._settings.value("last_tool", TOOLS[0].key))
+        index = TOOL_KEYS.index(start) if start in TOOL_KEYS else 0
+        if index == self._tabs.currentIndex():
+            self._on_tab_changed(index)   # 0番目なら currentChanged が発火しないので自分で呼ぶ
+        else:
+            self._tabs.setCurrentIndex(index)
+
+    # ------------------------------------------------------------------ タブ
+
+    def _ensure_loaded(self, index: int) -> None:
+        page = self._pages[index]
+        if index in self._windows or page.layout().count() > 0:
+            return
+        spec = TOOLS[index]
+        try:
+            window = load_tool_window(spec.key)
+        except Exception as err:  # noqa: BLE001  どのツールが壊れても他のタブは使えるようにする
+            page.layout().addWidget(_error_page(spec, err))
+            return
+        # 単独アプリとして作られたウィンドウを、タブの中の部品として扱う
+        window.setWindowFlags(Qt.WindowType.Widget)
+        window.windowTitleChanged.connect(lambda _t, i=index: self._refresh_title(i))
+        page.layout().addWidget(window)
+        self._windows[index] = window
+
+    def _on_tab_changed(self, index: int) -> None:
+        if index < 0:
+            return
+        self._ensure_loaded(index)
+        self._settings.setValue("last_tool", TOOLS[index].key)
+        self._refresh_title(index)
+
+    def _refresh_title(self, index: int) -> None:
+        """ウィンドウのタイトルに、開いているツールのタイトル（編集中の建物名など）を出す"""
+        if index != self._tabs.currentIndex():
+            return
+        window = self._windows.get(index)
+        tool_title = window.windowTitle() if window else TOOLS[index].label
+        self.setWindowTitle(f"{tool_title} — {APP_TITLE}")
+
+    def current_tool_key(self) -> str:
+        return TOOLS[self._tabs.currentIndex()].key
+
+    def tool_window(self, key: str) -> QMainWindow | None:
+        """読み込み済みのツールのウィンドウ（テスト・デバッグ用）"""
+        return self._windows.get(TOOL_KEYS.index(key))
+
+    # ------------------------------------------------------------------ 終了
+
+    def closeEvent(self, event):
+        # 読み込み済みの各ツールに閉じてよいか確認する（未保存の変更の確認はツール側が出す）。
+        # 途中のツールが閉じるのを断ったら、先に閉じたツールを表示し直してアプリは閉じない
+        closed: list[QMainWindow] = []
+        for index, window in sorted(self._windows.items()):
+            if not window.close():
+                for w in closed:
+                    w.show()
+                self._tabs.setCurrentIndex(index)
+                event.ignore()
+                return
+            closed.append(window)
+        self._settings.setValue("geometry", self.saveGeometry())
+        super().closeEvent(event)
+```
+
+#### 共通部品（iku_tools/common）
+
+### `programs/IKU_NAVI_Tools/iku_tools/common/__init__.py`
+
+```python
+"""各ツールが共有する部品（データの場所・APIへのアクセス・配色・表示名）。"""
+```
+
+### `programs/IKU_NAVI_Tools/iku_tools/common/api.py`
 
 ```python
 """経路探索API（programs/3D_Graph）へのアクセス。
@@ -10037,7 +7844,7 @@ def make_session(headers=None, total=2, backoff_factor=0.3,
     return session
 ```
 
-### `programs/gui_common/labels.py`
+### `programs/IKU_NAVI_Tools/iku_tools/common/labels.py`
 
 ```python
 """建物・階・トイレなど、ツール間で表記を揃えたい表示名。"""
@@ -10055,10 +7862,39 @@ def floor_label(floor: int) -> str:
     return "屋外" if int(floor) == 0 else f"{int(floor)}F"
 ```
 
-### `programs/gui_common/theme.py`
+### `programs/IKU_NAVI_Tools/iku_tools/common/paths.py`
 
 ```python
-"""チェッカー系ツール（Route_Checker / Image_Checker）共通のダークテーマ。
+"""リポジトリ内のデータ・素材ディレクトリの位置。
+
+各ツールが `Path(__file__)` から相対でパスを組み立てていると、ファイルを移したときに
+静かに壊れるため、ここ一箇所で解決する。
+"""
+from pathlib import Path
+
+# このファイル → common → iku_tools → IKU_NAVI_Tools → programs → リポジトリ直下
+REPO_ROOT = Path(__file__).resolve().parents[4]
+
+DATA_DIR  = REPO_ROOT / "data"
+SVG_DIR   = REPO_ROOT / "programs" / "html" / "svg"
+PHOTO_DIR = REPO_ROOT / "captured_photos"
+
+BUILDING_NAME_CSV = DATA_DIR / "building_name.csv"
+EVENT_CSV         = DATA_DIR / "event.csv"
+GLOBAL_NODE_CSV   = DATA_DIR / "global_node.csv"
+GLOBAL_EDGE_CSV   = DATA_DIR / "global_edge.csv"
+EDGE_IMAGE_CSV    = DATA_DIR / "edge_image.csv"
+
+
+def building_dir(building) -> Path:
+    """data/{building}_bldg/"""
+    return DATA_DIR / f"{building}_bldg"
+```
+
+### `programs/IKU_NAVI_Tools/iku_tools/common/theme.py`
+
+```python
+"""検証系のタブ（ルート検証・画像チェック）共通のダークテーマ。
 
 色を変えるときはここを直せば両方のツールに反映される。
 ツール固有の色（カードの背景など）は各ツール側で定義すること。
@@ -10114,63 +7950,13 @@ def base_stylesheet() -> str:
     """
 ```
 
-### `programs/gui_common/qt_app.py`
+#### マップ編集タブ（iku_tools/map_editor）
 
-```python
-"""PyQt6ツールの起動処理（どのツールも中身が同じなのでまとめている）。"""
-import sys
-
-from PyQt6.QtWidgets import QApplication
-
-
-def run(window_factory):
-    """QApplication を作り、window_factory() のウィンドウを表示して実行する"""
-    app = QApplication(sys.argv)
-    app.setStyle("Fusion")
-    window = window_factory()
-    window.show()
-    sys.exit(app.exec())
-```
-
-### `programs/Map_Editor/main.py`
+### `programs/IKU_NAVI_Tools/iku_tools/map_editor/window.py`
 
 ```python
 #!/usr/bin/env python3
-"""
-IKU NAVI Map Editor — エントリーポイント
-
-SVGフロアマップ上でノード/エッジのデータ入力・削除・撮影を1画面で行うツール。
-使い方は同ディレクトリの README.md を参照。
-
-Usage:
-  python main.py
-
-依存:
-  pip install -r requirements.txt
-"""
-
-import sys
-from pathlib import Path
-
-sys.path.append(str(Path(__file__).resolve().parents[1]))
-from gui_common import qt_app
-
-from app_window import MainWindow
-
-
-def main():
-    qt_app.run(MainWindow)
-
-
-if __name__ == "__main__":
-    main()
-```
-
-### `programs/Map_Editor/app_window.py`
-
-```python
-#!/usr/bin/env python3
-"""IKU NAVI Map Editor — メインウィンドウ"""
+"""マップ編集タブ — メインウィンドウ"""
 
 import cv2
 
@@ -10182,13 +7968,13 @@ from PyQt6.QtWidgets import (
     QPushButton, QSpinBox, QSplitter, QStackedWidget, QVBoxLayout, QWidget,
 )
 
-from camera_panel import bgr_frame_to_pixmap, CameraPanel
-from data_store import (
+from .camera_panel import bgr_frame_to_pixmap, CameraPanel
+from .data_store import (
     EDGE_TYPE_LABELS, EdgeImageStore, BuildingData, NODE_TYPE_LABELS,
     PHOTO_DIR, global_id, list_buildings, svg_path_for, to_int,
 )
-from dialogs import EdgeDialog, NodeDialog, suggest_edge_type
-from svg_canvas import SvgCanvas
+from .dialogs import EdgeDialog, NodeDialog, suggest_edge_type
+from .svg_canvas import SvgCanvas
 
 MODE_LABELS = [
     (SvgCanvas.MODE_MOVE,   "🖐 移動"),
@@ -10209,7 +7995,7 @@ class MainWindow(QMainWindow):
 
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("IKU NAVI Map Editor")
+        self.setWindowTitle("マップ編集")
         self.resize(1440, 900)
 
         self.building_data: BuildingData | None = None
@@ -10256,7 +8042,7 @@ class MainWindow(QMainWindow):
         row.setContentsMargins(12, 8, 12, 8)
         row.setSpacing(10)
 
-        title = QLabel("IKU NAVI Map Editor")
+        title = QLabel("マップ編集")
         title.setFont(QFont("", 15, QFont.Weight.Bold))
         title.setStyleSheet("color:#00B8E6;")
         row.addWidget(title)
@@ -10741,7 +8527,7 @@ class MainWindow(QMainWindow):
     def _update_dirty_indicator(self):
         dirty = self._is_dirty()
         self.dirty_label.setText("● 未保存の変更あり" if dirty else "")
-        title = "IKU NAVI Map Editor"
+        title = "マップ編集"
         if self.current_building is not None:
             title += f" — {self.current_building}号館"
         if dirty:
@@ -10778,10 +8564,80 @@ class MainWindow(QMainWindow):
             return
         self.camera_panel.disconnect_camera()
         super().closeEvent(event)
-
 ```
 
-### `programs/Map_Editor/camera_panel.py`
+### `programs/IKU_NAVI_Tools/iku_tools/map_editor/README.md`
+
+````markdown
+# マップ編集タブ（旧 IKU NAVI Map Editor）
+
+SVGフロアマップを見ながら、ノード・エッジのデータ入力とAR経路写真の撮影を1画面でまとめて行うツール。
+これまで「SVG座標取得」（旧 SVG_Pointer）→ 手動でのCSV編集 → 「画像リネーム」（旧 Image_Renamer）に分かれていた作業を統合する。
+
+## 起動方法
+
+```bash
+cd programs/IKU_NAVI_Tools
+pip install -r requirements.txt
+python main.py map_editor   # このタブを開いた状態で起動（引数なしなら前回のタブ）
+```
+
+## 画面構成
+
+- **上部バー**: 建物・階の選択（「再スキャン」で `data/{building}_bldg/` の一覧を再取得）、SVGファイルのパス表示・手動選択（「SVGを選択...」、本番配置場所と異なる場合は警告表示）、保存ボタン
+- **左（地図エリア）**: 選択中の建物・階に対応する `programs/html/svg/{building}_{floor}F.svg` を表示
+- **右パネル**: 現在の階のノード・エッジ一覧（モード「撮影」時はカメラプレビューに切り替わる）
+- **モードバー**: 🖐 移動 / ✏️ 入力 / 🗑 削除 / 📷 撮影 の4モードを切り替える
+
+SVGは常にドラッグでパン・ホイールでズームできる。モードはクリックの意味だけを切り替える。
+
+## モードの使い方
+
+### 🖐 移動モード
+クリックでは何も起きない。パン・ズームのみ行う「安全モード」。
+
+### ✏️ 入力モード
+- **空白をクリック** → ダイアログでノードID（自動採番された次のIDが初期値、既存IDを指定すると上書き確認）・実座標 (x, y, z, 単位m。`docs/XYZ_Design.md` の建物ローカル座標系)・階・種別（通常ノード/出入り口）を入力すると、
+  クリック位置の SVG 座標 (svg_x, svg_y) と同時に `node.csv` の1行が作られる。
+- **既存ノードを2つ順にクリック** → 2点間のエッジ作成ダイアログ（エッジID・名前・重み・距離・階・種別）が開く（距離は実座標から自動計算、上書き可）。
+- Escキー、または右クリックで選択中のノードを解除できる。
+
+**階をまたぐ接続（階段・エレベータ等）についての制約**: 階（上部バーの「階」）を切り替えると、SVGの再読み込みに伴い選択中のノードは自動的に解除される。そのため現状のGUIでは、異なる階のノードを画面上で順にクリックしてエッジを作成することはできない。階をまたぐエッジを追加する場合は、両端のノードをそれぞれの階であらかじめ作成したうえで、`edge.csv` を直接編集するなど別の手段が必要になる（階をまたぐエッジはそもそも2D地図上には線として表示されない。両端のノードはそれぞれの階の地図上に点として表示される）。
+
+### 🗑 削除モード
+ノードまたはエッジをクリックすると確認の上、削除する。ノード削除時はそのノードに繋がる全エッジも連鎖削除される。
+
+### 📷 撮影モード
+1. 撮影したいエッジ（線）をクリックして選択する。
+2. 右パネルでカメラを接続し、プレビューを確認する。
+3. 「→ 方向を撮影」「← 方向を撮影」でそれぞれの向きの写真を撮る（廊下は両方向から歩くため）。
+4. 撮影した画像は `captured_photos/` フォルダに `{fromの グローバルID}_to_{toのグローバルID}.jpg` の名前で保存され、
+   `data/edge_image.csv` への登録は「💾 保存」を押した時点で確定する。
+   グローバルID = `建物ID × 100000 + 建物内ローカルID`（`programs/3D_Graph/app.py` の `ID_OFFSET` と同じ計算式）。
+
+CDN（Cloudflare R2）へのアップロードはこのツールの対象外。撮影済みファイルは従来通り手動でアップロードすること。
+
+## 保存について
+
+- 建物・階を切り替える／アプリを閉じる際に未保存の変更があれば確認ダイアログが出る。
+- 「💾 保存」で現在の建物の `node.csv` / `edge.csv` と `data/edge_image.csv` をまとめて上書き保存する。
+- 保存後は `programs/3D_Graph/app.py` を再起動（またはキャッシュクリア）しないとAPI側には反映されない。
+
+## 制約・対象外の範囲
+
+- 建物内の `data/{building}_bldg/node.csv` / `edge.csv`（建物ローカル座標、カラムは `id,x,y,z,building,floor,type[,svg_x,svg_y]` / `id,name,from,to,building,floor,weight,length,type`）と `data/edge_image.csv` のみを対象とする。
+  - **注意**: `node.csv` は読み込み時のヘッダーを保持したまま保存するため未知の追加列があっても残るが、`edge.csv` は保存時に固定の列（`id,name,from,to,building,floor,weight,length,type`）のみを書き出す実装になっている。そのため、`edge.csv` に `right` / `left` 列（進行方向左右の教室名。nameの並び順に依存しない独立列）などこの一覧に無い列が追加されている建物データをこのツールで一度でも保存すると、その列の値は消えてしまう。該当建物の `edge.csv` を編集する際はこのツールを使わず、直接CSVを編集すること。
+- `anchors.csv`・`global_node.csv`・`global_edge.csv`・`buildings.json`（座標変換パラメータ、屋外ノード、建物間接続エッジ）の編集はサポートしない。これらは引き続き手動で編集すること（`docs/XYZ_Design.md` 参照）。
+- SVGファイル自体の作成・編集は対象外（既存のSVGを読み込んで座標を取得するのみ）。
+````
+
+### `programs/IKU_NAVI_Tools/iku_tools/map_editor/__init__.py`
+
+```python
+"""マップ編集: SVGフロアマップ上でノード・エッジ・経路写真をまとめて入力する（旧 programs/Map_Editor）"""
+```
+
+### `programs/IKU_NAVI_Tools/iku_tools/map_editor/camera_panel.py`
 
 ```python
 #!/usr/bin/env python3
@@ -10901,31 +8757,28 @@ class CameraPanel(QWidget):
     def closeEvent(self, event):
         self.disconnect_camera()
         super().closeEvent(event)
-
 ```
 
-### `programs/Map_Editor/data_store.py`
+### `programs/IKU_NAVI_Tools/iku_tools/map_editor/data_store.py`
 
 ```python
 #!/usr/bin/env python3
 """
-IKU NAVI Map Editor — データ層
+マップ編集タブ — データ層
 data/{building}_bldg/node.csv・edge.csv・data/edge_image.csv の読み書きを担当する。
 
 座標系・CSV仕様は docs/XYZ_Design.md に準拠:
   - node.csv: id,x,y,z,building,floor,type[,svg_x,svg_y]  (建物ローカル座標)
   - edge.csv: id,name,from,to,building,floor,weight,length,type
   - edge_image.csv: id,from,to,image_name  (from/to はグローバルID)
-  - グローバルID = building * 100000 + ローカルID (app.py の ID_OFFSET と同じ)
+  - グローバルID = building * 100000 + ローカルID (programs/3D_Graph/ikunavi/config.py の ID_OFFSET と同じ)
 """
 
 import csv
 import re
-import sys
 from pathlib import Path
 
-sys.path.append(str(Path(__file__).resolve().parents[1]))
-from gui_common.paths import DATA_DIR, PHOTO_DIR, REPO_ROOT, SVG_DIR  # noqa: F401  (他モジュールが data_store 経由で参照する)
+from ..common.paths import DATA_DIR, PHOTO_DIR, REPO_ROOT, SVG_DIR  # noqa: F401  (他モジュールが data_store 経由で参照する)
 
 ID_OFFSET = 100_000  # programs/3D_Graph/ikunavi/config.py の ID_OFFSET と一致させること
 
@@ -11193,7 +9046,7 @@ class EdgeImageStore:
         self.dirty = False
 ```
 
-### `programs/Map_Editor/dialogs.py`
+### `programs/IKU_NAVI_Tools/iku_tools/map_editor/dialogs.py`
 
 ```python
 #!/usr/bin/env python3
@@ -11204,7 +9057,7 @@ from PyQt6.QtWidgets import (
     QLabel, QLineEdit, QSpinBox,
 )
 
-from data_store import EDGE_TYPE_LABELS, NODE_TYPE_LABELS
+from .data_store import EDGE_TYPE_LABELS, NODE_TYPE_LABELS
 
 
 def _add_ok_cancel_buttons(dialog: QDialog, form: QFormLayout):
@@ -11348,10 +9201,9 @@ class EdgeDialog(QDialog):
 def suggest_edge_type(floor_a: int, floor_b: int) -> int:
     """階が異なる場合は階段(2)を、同じ階なら通常通路(1)を初期値として提案する"""
     return 2 if floor_a != floor_b else 1
-
 ```
 
-### `programs/Map_Editor/svg_canvas.py`
+### `programs/IKU_NAVI_Tools/iku_tools/map_editor/svg_canvas.py`
 
 ```python
 #!/usr/bin/env python3
@@ -11619,1095 +9471,753 @@ class SvgCanvas(QGraphicsView):
         if self._mode == self.MODE_CAMERA:
             if item is not None and not is_node:
                 self.edgeSelectedForPhoto.emit(item.data(ROLE_ID))
-
 ```
 
-### `programs/Map_Editor/README.md`
+#### イベント設定タブ（iku_tools/events）
 
-```markdown
-# IKU NAVI Map Editor
+### `programs/IKU_NAVI_Tools/iku_tools/events/window.py`
 
-SVGフロアマップを見ながら、ノード・エッジのデータ入力とAR経路写真の撮影を1画面でまとめて行うツール。
-これまで `SVG_Pointer`（座標取得）→ 手動でのCSV編集 → `Image_Renamer`（写真リネーム）に分かれていた作業を統合する。
+```python
+#!/usr/bin/env python3
+"""イベント設定タブ — メインウィンドウ"""
+
+from PyQt6.QtCore import Qt
+from PyQt6.QtWidgets import (
+    QHBoxLayout, QLabel, QLineEdit, QListWidget, QListWidgetItem,
+    QMainWindow, QMessageBox, QPushButton, QScrollArea, QSplitter,
+    QVBoxLayout, QWidget,
+)
+
+from .data_store import EVENT_CSV, EventLocation, EventStore, KIND_ROOM, load_building_name_map
+from .location_row import LocationRowWidget
+
+NEW_EVENT_TITLE = "新しいイベント"
+
+
+class MainWindow(QMainWindow):
+
+    def __init__(self):
+        super().__init__()
+        self.setWindowTitle("イベント設定")
+        self.resize(1100, 680)
+
+        self.store = EventStore()
+        self.name_map = load_building_name_map()
+        self.refs_cache = {}   # {building: BuildingRefs} — LocationRowWidget 間で共有し、建物ごとに1回だけ読み込む
+        self.current_entry = None
+        self.location_rows = []  # 現在表示中の LocationRowWidget 一覧
+
+        self._build_ui()
+        self._reload_list()
+
+    # ------------------------------------------------------------------
+    # UI 構築
+    # ------------------------------------------------------------------
+    def _build_ui(self):
+        root = QWidget()
+        self.setCentralWidget(root)
+        outer = QVBoxLayout(root)
+
+        # --- 上部バー ---
+        bar = QHBoxLayout()
+        save_btn = QPushButton("💾 保存")
+        save_btn.clicked.connect(self._save)
+        reload_btn = QPushButton("🔄 再読み込み")
+        reload_btn.clicked.connect(self._reload_from_disk)
+        bar.addWidget(save_btn)
+        bar.addWidget(reload_btn)
+        bar.addStretch(1)
+        self.dirty_label = QLabel("")
+        self.dirty_label.setStyleSheet("color:#B45309;font-weight:bold;")
+        bar.addWidget(self.dirty_label)
+        outer.addLayout(bar)
+
+        splitter = QSplitter(Qt.Orientation.Horizontal)
+        outer.addWidget(splitter, stretch=1)
+
+        # --- 左: イベント一覧 ---
+        left = QWidget()
+        left_v = QVBoxLayout(left)
+        left_v.setContentsMargins(0, 0, 0, 0)
+        self.list_widget = QListWidget()
+        self.list_widget.currentItemChanged.connect(self._on_selection_changed)
+        left_v.addWidget(self.list_widget, stretch=1)
+
+        left_btns = QHBoxLayout()
+        add_event_btn = QPushButton("+ 新規イベント")
+        add_event_btn.clicked.connect(self._add_event)
+        del_event_btn = QPushButton("🗑 削除")
+        del_event_btn.clicked.connect(self._delete_event)
+        left_btns.addWidget(add_event_btn)
+        left_btns.addWidget(del_event_btn)
+        left_v.addLayout(left_btns)
+        splitter.addWidget(left)
+
+        # --- 右: 詳細編集 ---
+        right = QWidget()
+        right_v = QVBoxLayout(right)
+
+        right_v.addWidget(QLabel("イベント名（検索候補に表示される名前）"))
+        self.title_edit = QLineEdit()
+        self.title_edit.textEdited.connect(self._on_title_edited)
+        right_v.addWidget(self.title_edit)
+        self.title_warn_label = QLabel("")
+        self.title_warn_label.setStyleSheet("color:#B45309;font-size:11px;")
+        right_v.addWidget(self.title_warn_label)
+
+        right_v.addWidget(QLabel(
+            "場所（複数登録すると、検索時に最短で行ける候補が自動で選ばれます）"
+        ))
+
+        self.locations_container = QWidget()
+        self.locations_layout = QVBoxLayout(self.locations_container)
+        self.locations_layout.setContentsMargins(0, 0, 0, 0)
+        self.locations_layout.addStretch(1)
+
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setWidget(self.locations_container)
+        right_v.addWidget(scroll, stretch=1)
+
+        add_loc_btn = QPushButton("+ 場所を追加")
+        add_loc_btn.clicked.connect(self._add_location)
+        right_v.addWidget(add_loc_btn)
+
+        hint = QLabel(
+            "教室名・ノードID・エッジIDのいずれか1つで場所を指定します。\n"
+            "屋外(建物=屋外)の場合、ノードID/エッジIDは global_node.csv / global_edge.csv のIDです。\n"
+            "詳細は docs/NameDB_EventMode.md を参照してください。"
+        )
+        hint.setStyleSheet("color:#666;font-size:11px;")
+        hint.setWordWrap(True)
+        right_v.addWidget(hint)
+
+        splitter.addWidget(right)
+        splitter.setSizes([260, 840])
+
+        self.right_panel = right
+        self.right_panel.setEnabled(False)
+
+    # ------------------------------------------------------------------
+    # イベント一覧
+    # ------------------------------------------------------------------
+    def _reload_list(self):
+        self.list_widget.blockSignals(True)
+        self.list_widget.clear()
+        for entry in self.store.entries:
+            item = QListWidgetItem(self._list_label(entry))
+            item.setData(Qt.ItemDataRole.UserRole, entry)
+            self.list_widget.addItem(item)
+        self.list_widget.blockSignals(False)
+        if self.store.entries:
+            self.list_widget.setCurrentRow(0)
+        else:
+            self._show_entry(None)
+        self._update_dirty_indicator()
+
+    @staticmethod
+    def _list_label(entry) -> str:
+        n = len(entry.locations)
+        title = entry.title.strip() or "(名称未設定)"
+        return f"{title}  [{n}箇所]"
+
+    def _refresh_current_item_label(self):
+        item = self.list_widget.currentItem()
+        if item is not None and self.current_entry is not None:
+            item.setText(self._list_label(self.current_entry))
+
+    def _on_selection_changed(self, current: QListWidgetItem, _previous):
+        entry = current.data(Qt.ItemDataRole.UserRole) if current is not None else None
+        self._show_entry(entry)
+
+    # ------------------------------------------------------------------
+    # 詳細パネル
+    # ------------------------------------------------------------------
+    def _show_entry(self, entry):
+        self.current_entry = entry
+        self.right_panel.setEnabled(entry is not None)
+
+        self.title_edit.blockSignals(True)
+        self.title_edit.setText(entry.title if entry else "")
+        self.title_edit.blockSignals(False)
+        self._update_title_warning()
+
+        self._clear_location_rows()
+        if entry is not None:
+            for loc in entry.locations:
+                self._create_location_row(loc)
+
+    def _clear_location_rows(self):
+        for row in self.location_rows:
+            self.locations_layout.removeWidget(row)
+            row.deleteLater()
+        self.location_rows = []
+
+    def _create_location_row(self, location: EventLocation):
+        row = LocationRowWidget(location, self.name_map, self.refs_cache)
+        row.changed.connect(self._mark_dirty)
+        row.removeRequested.connect(self._remove_location_row)
+        self.locations_layout.insertWidget(self.locations_layout.count() - 1, row)
+        self.location_rows.append(row)
+        return row
+
+    def _add_location(self):
+        if self.current_entry is None:
+            return
+        loc = EventLocation(building=0, kind=KIND_ROOM, value="")
+        self.current_entry.locations.append(loc)
+        self._create_location_row(loc)
+        self._mark_dirty()
+        self._refresh_current_item_label()
+
+    def _remove_location_row(self, row: LocationRowWidget):
+        if self.current_entry is not None and row.location in self.current_entry.locations:
+            self.current_entry.locations.remove(row.location)
+        self.locations_layout.removeWidget(row)
+        row.deleteLater()
+        if row in self.location_rows:
+            self.location_rows.remove(row)
+        self._mark_dirty()
+        self._refresh_current_item_label()
+
+    # ------------------------------------------------------------------
+    # イベント名編集
+    # ------------------------------------------------------------------
+    def _on_title_edited(self, text: str):
+        if self.current_entry is None:
+            return
+        self.current_entry.title = text
+        self._refresh_current_item_label()
+        self._update_title_warning()
+        self._mark_dirty()
+
+    def _update_title_warning(self):
+        if self.current_entry is None:
+            self.title_warn_label.setText("")
+            return
+        title = self.current_entry.title.strip()
+        dup = title and any(
+            e is not self.current_entry and e.title.strip() == title for e in self.store.entries
+        )
+        self.title_warn_label.setText(
+            "⚠ 同じ名前のイベントが既にあります（保存すると自動的に1つに統合されます）" if dup else ""
+        )
+
+    # ------------------------------------------------------------------
+    # イベントの追加・削除
+    # ------------------------------------------------------------------
+    def _add_event(self):
+        entry = self.store.add_entry(NEW_EVENT_TITLE)
+        item = QListWidgetItem(self._list_label(entry))
+        item.setData(Qt.ItemDataRole.UserRole, entry)
+        self.list_widget.addItem(item)
+        self.list_widget.setCurrentItem(item)
+        self.title_edit.setFocus()
+        self.title_edit.selectAll()
+        self._update_dirty_indicator()
+
+    def _delete_event(self):
+        item = self.list_widget.currentItem()
+        if item is None or self.current_entry is None:
+            return
+        title = self.current_entry.title.strip() or "(名称未設定)"
+        reply = QMessageBox.question(
+            self, "確認", f"イベント「{title}」を削除しますか？\n（保存するまでファイルには反映されません）"
+        )
+        if reply != QMessageBox.StandardButton.Yes:
+            return
+        self.store.remove_entry(self.current_entry)
+        self.list_widget.takeItem(self.list_widget.row(item))
+        self._update_dirty_indicator()
+
+    # ------------------------------------------------------------------
+    # 保存・再読み込み
+    # ------------------------------------------------------------------
+    def _mark_dirty(self):
+        self.store.dirty = True
+        self._update_dirty_indicator()
+
+    def _update_dirty_indicator(self):
+        self.dirty_label.setText("● 未保存の変更あり" if self.store.dirty else "")
+
+    def _collect_invalid_count(self) -> int:
+        count = 0
+        for entry in self.store.entries:
+            for loc in entry.locations:
+                from .data_store import BuildingRefs
+                refs = self.refs_cache.setdefault(loc.building, BuildingRefs(loc.building))
+                if refs.validate(loc.kind, loc.value):
+                    count += 1
+        return count
+
+    def _save(self):
+        invalid = self._collect_invalid_count()
+        if invalid:
+            reply = QMessageBox.question(
+                self, "確認",
+                f"内容に問題がある場所が {invalid} 件あります（赤色表示の行）。\n"
+                "このまま保存すると、該当の場所はナビ側で無視されます。\n保存を続けますか？",
+            )
+            if reply != QMessageBox.StandardButton.Yes:
+                return
+        self.store.save()
+        self._update_dirty_indicator()
+        QMessageBox.information(
+            self, "保存完了",
+            f"{EVENT_CSV} に保存しました。\nFlask側（app.py）は再起動またはキャッシュクリアで反映されます。",
+        )
+
+    def _reload_from_disk(self):
+        if not self._confirm_discard_if_dirty():
+            return
+        self.store = EventStore()
+        self.refs_cache = {}
+        self._reload_list()
+
+    # ------------------------------------------------------------------
+    def _confirm_discard_if_dirty(self) -> bool:
+        if not self.store.dirty:
+            return True
+        reply = QMessageBox.question(
+            self, "未保存の変更があります", "保存しますか？",
+            QMessageBox.StandardButton.Save | QMessageBox.StandardButton.Discard
+            | QMessageBox.StandardButton.Cancel,
+        )
+        if reply == QMessageBox.StandardButton.Save:
+            self._save()
+            return True
+        if reply == QMessageBox.StandardButton.Discard:
+            return True
+        return False
+
+    def closeEvent(self, event):
+        if not self._confirm_discard_if_dirty():
+            event.ignore()
+            return
+        super().closeEvent(event)
+```
+
+### `programs/IKU_NAVI_Tools/iku_tools/events/README.md`
+
+````markdown
+# イベント設定タブ（旧 IKU NAVI Event Editor）
+
+`data/event.csv`（学園祭などのイベントモード `navi/?event=1` で検索候補に出す屋台名などの紐付け）を、
+CSVを直接編集せずGUIで安全に設定するツール。仕様は `docs/NameDB_EventMode.md`「4. イベントモード」に準拠する。
 
 ## 起動方法
 
 ```bash
-cd programs/Map_Editor
+cd programs/IKU_NAVI_Tools
 pip install -r requirements.txt
-python main.py
+python main.py events   # このタブを開いた状態で起動（引数なしなら前回のタブ）
 ```
 
 ## 画面構成
 
-- **上部バー**: 建物・階の選択、SVGファイルのパス表示、保存ボタン
-- **左（地図エリア）**: 選択中の建物・階に対応する `programs/html/svg/{building}_{floor}F.svg` を表示
-- **右パネル**: 現在の階のノード・エッジ一覧（モード「撮影」時はカメラプレビューに切り替わる）
-- **モードバー**: 🖐 移動 / ✏️ 入力 / 🗑 削除 / 📷 撮影 の4モードを切り替える
+- **左（イベント一覧）**: 登録済みイベント名の一覧。`[N箇所]` は紐付け先の数。
+- **右（詳細）**: 選択中イベントの名前編集と、紐付け先（場所）の一覧・追加・削除。
 
-SVGは常にドラッグでパン・ホイールでズームできる。モードはクリックの意味だけを切り替える。
+## 場所の指定方法
 
-## モードの使い方
+1つの場所につき、**建物**と**種別（教室名 / ノードID / エッジID）**を選び、値を1つ指定する。
 
-### 🖐 移動モード
-クリックでは何も起きない。パン・ズームのみ行う「安全モード」。
+- **教室名**: 選択した建物の `edge.csv` に登録されている名前（トイレ・除外リスト掲載の名前も含む）。入力欄に直接タイプして絞り込める。
+- **ノードID**: 建物内のローカルノードID。建物を「屋外」にした場合は `data/global_node.csv` のIDになる。
+- **エッジID**: 建物内のローカルエッジID。建物を「屋外」にした場合は `data/global_edge.csv` のIDになる。
 
-### ✏️ 入力モード
-- **空白をクリック** → ダイアログで実座標 (x, y, z, 単位m。`docs/XYZ_Design.md` の建物ローカル座標系) と階・種別を入力すると、
-  クリック位置の SVG 座標 (svg_x, svg_y) と同時に `node.csv` の1行が作られる。
-- **既存ノードを2つ順にクリック** → 2点間のエッジ作成ダイアログが開く（距離は実座標から自動計算、上書き可）。
-  - **階段・エレベータなど階をまたぐ接続**: 片方のノードをクリックして選択した状態のまま、上部の「階」を切り替えると
-    選択は保持される。切り替え後の階でもう一方のノード（例: 上の階の踊り場）をクリックすればエッジが作成できる。
-    （階をまたぐエッジは2D地図上には線として表示されない。両端のノードはそれぞれの階の地図上に点として表示される）
-- Escキー、または右クリックで選択中のノードを解除できる。
+同じイベント名で「+ 場所を追加」すると、複数箇所で開催するイベント（屋台の出店を複数フロアで行う場合など）として登録できる。
+検索時はナビ側で最短で行ける候補が自動的に選ばれる。
 
-### 🗑 削除モード
-ノードまたはエッジをクリックすると確認の上、削除する。ノード削除時はそのノードに繋がる全エッジも連鎖削除される。
-
-### 📷 撮影モード
-1. 撮影したいエッジ（線）をクリックして選択する。
-2. 右パネルでカメラを接続し、プレビューを確認する。
-3. 「→ 方向を撮影」「← 方向を撮影」でそれぞれの向きの写真を撮る（廊下は両方向から歩くため）。
-4. 撮影した画像は `captured_photos/` フォルダに `{fromの グローバルID}_to_{toのグローバルID}.jpg` の名前で保存され、
-   `data/edge_image.csv` への登録は「💾 保存」を押した時点で確定する。
-   グローバルID = `建物ID × 100000 + 建物内ローカルID`（`programs/3D_Graph/app.py` の `ID_OFFSET` と同じ計算式）。
-
-CDN（Cloudflare R2）へのアップロードはこのツールの対象外。撮影済みファイルは従来通り手動でアップロードすること。
+値が現在のデータと矛盾する（教室名が存在しない・IDが範囲外など）場合はその行が赤く表示され、保存時に確認ダイアログが出る。
+保存はできるが、Flask側では該当行が読み込み時にスキップされる（起動ログに警告が出るのみで、他の行には影響しない）。
 
 ## 保存について
 
-- 建物・階を切り替える／アプリを閉じる際に未保存の変更があれば確認ダイアログが出る。
-- 「💾 保存」で現在の建物の `node.csv` / `edge.csv` と `data/edge_image.csv` をまとめて上書き保存する。
+- 「💾 保存」で `data/event.csv` を上書きする。空のイベント名・空の場所は保存時に除外される。
 - 保存後は `programs/3D_Graph/app.py` を再起動（またはキャッシュクリア）しないとAPI側には反映されない。
+- 「🔄 再読み込み」でファイルの内容を破棄して読み直せる（未保存の変更があれば確認あり）。
 
-## 制約・対象外の範囲
+## 対象外の範囲
 
-- 建物内の `node.csv` / `edge.csv`（建物ローカル座標）と `edge_image.csv` のみを対象とする。
-- `anchors.csv`・`global_node.csv`・`global_edge.csv`・`connect_edge.csv`・`buildings.json`（座標変換パラメータ、
-  屋外ノード、建物間接続）の編集はサポートしない。これらは引き続き手動で編集すること（`docs/XYZ_Design.md` 参照）。
-- SVGファイル自体の作成・編集は対象外（既存のSVGを読み込んで座標を取得するのみ）。
+- `data/name.csv`（表示名の上書き）・`data/building_name.csv`（建物の表示名）・`data/ignore.csv`（教室検索の除外）は対象外。
+  これらは引き続き手動でCSVを編集すること（`docs/NameDB_EventMode.md` 参照）。
+- ノード・エッジそのものの追加・編集は対象外（「マップ編集」タブを使用すること）。
+````
 
+### `programs/IKU_NAVI_Tools/iku_tools/events/__init__.py`
+
+```python
+"""イベント設定: data/event.csv（イベントモードの検索候補の紐付け）を編集する（旧 programs/events）"""
 ```
 
-### `programs/Map_Editor/requirements.txt`
-
-```text
-PyQt6>=6.4.0
-opencv-python>=4.8.0
-numpy>=1.24.0
-
-```
-
-#### Image_Checker
-
-### `programs/Image_Checker/image_checker.py`
+### `programs/IKU_NAVI_Tools/iku_tools/events/data_store.py`
 
 ```python
 #!/usr/bin/env python3
-"""IKU NAVI 画像チェッカー — 全グラフエッジの経路画像 存在確認ツール
+"""
+イベント設定タブ — データ層
+data/event.csv の読み書きと、紐付け先（教室名・ノードID・エッジID）の検証用参照データを扱う。
 
-/api/graph でグラフ上の全エッジを取得し、その両方向を網羅的に確認する。
-/api/edge_images で登録済み URL を取得し、実際に CDN へアクセスして判定。
-
-カードの状態:
-  ok           … CSV 登録済み + CDN に実在
-  missing      … CSV 登録済み + CDN に存在しない
-  unregistered … グラフ上にエッジがあるが edge_image.csv に未登録
-  not_required … 建物出入口エッジ（type=7, anchors.csv由来）。
-                 navi側はこの区間で写真の代わりにカメラARを起動するため、
-                 edge_image.csv 未登録でも欠損・未登録として扱わない。
+仕様は docs/NameDB_EventMode.md の「4. イベントモード」に準拠:
+  - event.csv: title,building,room,node_id,edge_id
+  - 1行につき room / node_id / edge_id のいずれか1つで場所を指定する
+  - room    … data/{building}_bldg/edge.csv の name 列（;区切り）に含まれる教室名
+  - node_id … 建物内ローカルノードID（building=0 なら data/global_node.csv のID）
+  - edge_id … 建物内ローカルエッジID（building=0 なら data/global_edge.csv のID）
+  - 同じ title の行が複数あれば、複数箇所で開催するイベントとして統合される
 """
 
-import sys
-import threading
-import unicodedata
-from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime
-from pathlib import Path
+import csv
 
-import requests
-
-from PyQt6.QtWidgets import (
-    QApplication, QMainWindow, QWidget,
-    QHBoxLayout, QVBoxLayout, QGridLayout,
-    QLabel, QPushButton, QLineEdit, QScrollArea,
-    QFrame, QProgressBar, QMessageBox,
-    QDialog, QTextEdit, QComboBox, QFileDialog,
-)
-from PyQt6.QtCore import Qt, QThread, pyqtSignal, QTimer
-from PyQt6.QtGui import QFont, QColor, QPixmap, QPainter, QPen
-
-sys.path.append(str(Path(__file__).resolve().parents[1]))
-from gui_common import qt_app
-from gui_common.api import BROWSER_HEADERS, DEFAULT_API, make_session
-from gui_common.labels import building_label as _bldg_label
-from gui_common.theme import (
-    ACCENT,
-    BG_BAR,
-    BG_WIN,
-    BORDER,
-    BTN_ACTIVE,
-    BTN_IDLE,
-    COL_ERR,
-    COL_OK,
-    COL_WARN,
-    INPUT_BG,
-    TXT_KEY,
-    TXT_PRIMARY,
-    TXT_SUB,
-    base_stylesheet,
+from ..common.paths import (  # noqa: F401  (他モジュールが data_store 経由で参照する)
+    BUILDING_NAME_CSV,
+    DATA_DIR,
+    EVENT_CSV,
+    GLOBAL_EDGE_CSV,
+    GLOBAL_NODE_CSV,
+    REPO_ROOT,
 )
 
+EVENT_COLS = ["title", "building", "room", "node_id", "edge_id"]
 
-# ── 設定 ──────────────────────────────────────────────────────────────────────
-CARD_W      = 230
-CARD_H      = 215
-THUMB_H     = 135
-MAX_WORKERS = 6     # Cloudflare レート制限対策で抑え気味
-
-def _make_session() -> requests.Session:
-    return make_session(headers=BROWSER_HEADERS, total=3, backoff_factor=0.5,
-                        status_forcelist=(429, 500, 502, 503, 504))
+KIND_ROOM, KIND_NODE, KIND_EDGE = "room", "node_id", "edge_id"
+KIND_LABELS = {KIND_ROOM: "教室名", KIND_NODE: "ノードID", KIND_EDGE: "エッジID"}
 
 
-# ── パレット（共通色は gui_common.theme、ここはこのツール固有の色だけ）──────────
-BG_CARD_OK     = "#0C2318"
-BG_CARD_NG     = "#2B0F0F"
-BG_CARD_UNREG  = "#1A1A2A"
-BG_CARD_LOAD   = "#1A2233"
-BG_CARD_NOTREQ = "#12283A"
-BG_THUMB       = "#0D1626"
-COL_UNREG      = "#6B7280"
-COL_NOTREQ     = "#38BDF8"
+def to_int(v, default=None):
+    try:
+        return int(float(v))
+    except (TypeError, ValueError):
+        return default
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# 共通ユーティリティ
-# ─────────────────────────────────────────────────────────────────────────────
-
-def _bldg_label(building: int) -> str:
-    """号館番号を表示用ラベルに変換する（0 = 屋外）"""
-    return "屋外" if building == 0 else f"{building}号館"
+def building_label(building: int, name_map: dict) -> str:
+    if building == 0:
+        return "屋外"
+    return name_map.get(building, f"{building}号館")
 
 
-def _edge_sort_key(card):
-    """カードを (building, floor, from_id) の順に並べるためのキー"""
-    return (card.building, card.floor, int(card.key.split("_")[0]))
+def load_building_name_map() -> dict:
+    """building_name.csv（列: building,display_name）→ {building: display_name}"""
+    name_map = {}
+    if not BUILDING_NAME_CSV.exists():
+        return name_map
+    with open(BUILDING_NAME_CSV, newline="", encoding="utf-8") as f:
+        for row in csv.DictReader(f):
+            bldg = to_int(row.get("building"))
+            display = (row.get("display_name") or "").strip()
+            if bldg is None or not display:
+                continue
+            name_map[bldg] = display
+    return name_map
 
 
-def _count_states(cards) -> tuple[int, int, int, int]:
-    """カード集合から (ok, missing, unregistered, not_required) の件数を返す"""
-    ok           = sum(1 for c in cards if c.state == "ok")
-    missing      = sum(1 for c in cards if c.state == "missing")
-    unreg        = sum(1 for c in cards if c.state == "unregistered")
-    not_required = sum(1 for c in cards if c.state == "not_required")
-    return ok, missing, unreg, not_required
+def list_buildings() -> list:
+    """紐付け先を持てる建物IDの一覧（屋外=0 + data/*_bldg のある建物）を返す"""
+    ids = [0]
+    if DATA_DIR.exists():
+        for p in DATA_DIR.glob("*_bldg"):
+            n = to_int(p.name.split("_")[0])
+            if n is not None:
+                ids.append(n)
+    return sorted(ids)
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# ワーカー
-# ─────────────────────────────────────────────────────────────────────────────
+class BuildingRefs:
+    """1建物分の「有効な教室名・ノードID・エッジID」を保持する参照専用データ（イベント紐付けの検証用）"""
 
-class FetchGraphWorker(QThread):
-    """/api/graph と /api/edge_images を取得する"""
-    # nodes_map: {node_id: {building, floor, ...}}
-    # edges_list: [{id, from, to, building, floor, ...}]
-    # edge_images: {"from_to": url}
-    finished = pyqtSignal(dict, list, dict)
-    error    = pyqtSignal(str)
-
-    def __init__(self, api_url: str):
-        super().__init__()
-        self.api_url = api_url.rstrip("/")
-
-    def run(self):
-        session = _make_session()
-        session.headers["Accept"] = "application/json"
-        try:
-            graph_data  = self._get(session, f"{self.api_url}/api/graph")
-            edge_images = self._get(session, f"{self.api_url}/api/edge_images")
-        except Exception as e:
-            self.error.emit(str(e))
-            return
-
-        nodes_map  = {int(n["id"]): n for n in graph_data.get("nodes", [])}
-        edges_list = graph_data.get("edges", [])
-        self.finished.emit(nodes_map, edges_list, edge_images)
-
-    def _get(self, session: requests.Session, url: str) -> dict:
-        r = session.get(url, timeout=15)
-        r.raise_for_status()
-        ct = r.headers.get("Content-Type", "")
-        if "text/html" in ct:
-            raise RuntimeError(
-                f"HTML が返りました（Cloudflare チャレンジ？）\n"
-                f"URL: {url}  HTTP {r.status_code}"
-            )
-        return r.json()
-
-
-class ImageFetchWorker(QThread):
-    """登録済みエッジ画像を並列フェッチして結果を emit する"""
-    image_ready = pyqtSignal(str, bytes)   # key, bytes (空 = 欠損)
-    progress    = pyqtSignal(int, int)     # done, total
-
-    def __init__(self, tasks: list):
-        super().__init__()
-        self._tasks = tasks   # [(key, url), ...]
-        self._done  = 0
-        self._lock  = threading.Lock()
-
-    def run(self):
-        total = len(self._tasks)
-        tls   = threading.local()
-
-        def get_session() -> requests.Session:
-            if not hasattr(tls, "s"):
-                tls.s = _make_session()
-                tls.s.headers["Accept"] = "image/*,*/*;q=0.8"
-            return tls.s
-
-        def fetch_one(task):
-            key, url = task
-            try:
-                r    = get_session().get(url, timeout=12)
-                data = r.content if r.status_code == 200 else b""
-            except Exception:
-                data = b""
-            with self._lock:
-                self._done += 1
-                n = self._done
-            self.image_ready.emit(key, data)
-            self.progress.emit(n, total)
-
-        with ThreadPoolExecutor(max_workers=MAX_WORKERS) as pool:
-            list(pool.map(fetch_one, self._tasks))
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-# 画像カード
-# ─────────────────────────────────────────────────────────────────────────────
-
-class ImageCard(QFrame):
-    """1 directed-edge = 1 カード"""
-
-    _BG = {
-        "loading":      BG_CARD_LOAD,
-        "ok":           BG_CARD_OK,
-        "missing":      BG_CARD_NG,
-        "unregistered": BG_CARD_UNREG,
-        "not_required": BG_CARD_NOTREQ,
-    }
-
-    def __init__(self, key: str, url: str | None,
-                 building: int, floor: int, initial_state: str = "loading",
-                 parent=None):
-        super().__init__(parent)
-        self.key      = key
-        self.url      = url
+    def __init__(self, building: int):
         self.building = building
-        self.floor    = floor
-        self._state   = initial_state
-        self.setFixedSize(CARD_W, CARD_H)
-        self.setFrameShape(QFrame.Shape.NoFrame)
-        self._build_ui()
-        self._apply_style()
+        self.rooms = []       # 教室名（重複なし・元の表記順）
+        self.node_ids = []    # ノードID（昇順）
+        self.edges = []       # [(edge_id, label), ...]（昇順）
+        self._load()
 
-    # ── UI ───────────────────────────────────────────────────────────────────
+    def _load(self):
+        if self.building == 0:
+            node_path, edge_path = GLOBAL_NODE_CSV, GLOBAL_EDGE_CSV
+        else:
+            bldg_dir = DATA_DIR / f"{self.building}_bldg"
+            node_path, edge_path = bldg_dir / "node.csv", bldg_dir / "edge.csv"
 
-    def _build_ui(self):
-        root = QVBoxLayout(self)
-        root.setContentsMargins(0, 0, 0, 6)
-        root.setSpacing(0)
+        if node_path.exists():
+            with open(node_path, newline="", encoding="utf-8") as f:
+                for row in csv.DictReader(f):
+                    nid = to_int(row.get("id"))
+                    if nid is not None:
+                        self.node_ids.append(nid)
+        self.node_ids.sort()
 
-        # サムネイル
-        self._thumb = QLabel()
-        self._thumb.setFixedSize(CARD_W, THUMB_H)
-        self._thumb.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self._thumb.setStyleSheet(
-            f"background: {BG_THUMB}; border-radius: 8px 8px 0 0;"
-        )
-        self._draw_thumb_for_state()
-        root.addWidget(self._thumb)
+        seen_rooms = set()
+        if edge_path.exists():
+            with open(edge_path, newline="", encoding="utf-8") as f:
+                for row in csv.DictReader(f):
+                    eid = to_int(row.get("id"))
+                    if eid is not None:
+                        name = (row.get("name") or "").strip()
+                        floor = row.get("floor", "")
+                        label = f"{eid}（{name}）" if name else f"{eid}（{floor}F）"
+                        self.edges.append((eid, label))
+                    raw_name = (row.get("name") or "").strip()
+                    if not raw_name:
+                        continue
+                    for room in raw_name.split(";"):
+                        room = room.strip()
+                        if room and room not in seen_rooms:
+                            seen_rooms.add(room)
+                            self.rooms.append(room)
+        self.edges.sort(key=lambda t: t[0])
 
-        # 情報
-        info = QWidget()
-        info.setStyleSheet("background: transparent;")
-        vb = QVBoxLayout(info)
-        vb.setContentsMargins(8, 5, 8, 0)
-        vb.setSpacing(2)
-
-        parts    = self.key.split("_")
-        key_lbl  = QLabel(f"{parts[0]} →\n{parts[1]}")
-        key_lbl.setFont(QFont("Courier New", 10, QFont.Weight.Bold))
-        key_lbl.setStyleSheet(f"color: {TXT_KEY}; background: transparent;")
-        vb.addWidget(key_lbl)
-
-        bldg_txt = _bldg_label(self.building)
-        if self.building != 0:
-            bldg_txt += f" {self.floor}階"
-        bldg_lbl = QLabel(bldg_txt)
-        bldg_lbl.setFont(QFont("", 11))
-        bldg_lbl.setStyleSheet(f"color: {TXT_SUB}; background: transparent;")
-        vb.addWidget(bldg_lbl)
-
-        root.addWidget(info)
-
-        # ステータス
-        self._status = QLabel()
-        self._status.setFont(QFont("", 11, QFont.Weight.Bold))
-        self._status.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self._update_status_label()
-        root.addWidget(self._status)
-
-    def _apply_style(self):
-        bg = self._BG.get(self._state, BG_CARD_LOAD)
-        self.setStyleSheet(f"""
-            ImageCard {{
-                background: {bg};
-                border-radius: 8px;
-                border: 1px solid {BORDER};
-            }}
-        """)
-
-    def _update_status_label(self):
-        conf = {
-            "loading":      ("読み込み中...",      COL_WARN),
-            "ok":           ("✔  OK",              COL_OK),
-            "missing":      ("✕  CDN に存在しない", COL_ERR),
-            "unregistered": ("—  CSV 未登録",       COL_UNREG),
-            "not_required": ("◎  AR起動区間（不要）", COL_NOTREQ),
-        }
-        text, color = conf.get(self._state, ("", TXT_SUB))
-        self._status.setText(text)
-        self._status.setStyleSheet(
-            f"color: {color}; background: transparent; padding-bottom: 2px;"
-        )
-
-    # ── サムネイル描画 ────────────────────────────────────────────────────────
-
-    def _draw_thumb_for_state(self):
-        if self._state == "loading":
-            self._draw_text_thumb("取得中...", TXT_SUB, BG_THUMB)
-        elif self._state == "missing":
-            self._draw_text_thumb("✕  画像なし", COL_ERR, "#180808")
-        elif self._state == "unregistered":
-            self._draw_text_thumb("—  未登録", COL_UNREG, "#111120")
-        elif self._state == "not_required":
-            self._draw_text_thumb("◎  AR起動区間", COL_NOTREQ, "#0B1C2A")
-        # ok はセット時に上書き
-
-    def _draw_text_thumb(self, text: str, color: str, bg: str):
-        pix = QPixmap(CARD_W, THUMB_H)
-        pix.fill(QColor(bg))
-        p = QPainter(pix)
-        p.setPen(QPen(QColor(color), 2))
-        p.setFont(QFont("", 14, QFont.Weight.Bold))
-        p.drawText(pix.rect(), Qt.AlignmentFlag.AlignCenter, text)
-        p.end()
-        self._thumb.setPixmap(pix)
-
-    # ── 外部 API ─────────────────────────────────────────────────────────────
-
-    def set_image(self, data: bytes):
-        """ImageFetchWorker から呼ばれる（必ず登録済みカードのみ）"""
-        if data:
-            pix = QPixmap()
-            if pix.loadFromData(data) and not pix.isNull():
-                scaled = pix.scaled(
-                    CARD_W, THUMB_H,
-                    Qt.AspectRatioMode.KeepAspectRatioByExpanding,
-                    Qt.TransformationMode.SmoothTransformation,
-                )
-                x = max(0, (scaled.width()  - CARD_W)  // 2)
-                y = max(0, (scaled.height() - THUMB_H) // 2)
-                self._thumb.setPixmap(scaled.copy(x, y, CARD_W, THUMB_H))
-                self._state = "ok"
-                self._update_status_label()
-                self._apply_style()
-                return
-
-        self._state = "missing"
-        self._draw_text_thumb("✕  画像なし", COL_ERR, "#180808")
-        self._update_status_label()
-        self._apply_style()
-
-    @property
-    def state(self) -> str:
-        return self._state
+    def validate(self, kind: str, value: str) -> str:
+        """問題なければ空文字、問題があればエラーメッセージを返す"""
+        value = (value or "").strip()
+        if not value:
+            return "値が入力されていません"
+        if kind == KIND_ROOM:
+            if value not in self.rooms:
+                return f"教室名 '{value}' がこの建物の edge.csv に見つかりません"
+        else:
+            n = to_int(value)
+            if n is None:
+                return "IDは数値で入力してください"
+            pool = self.node_ids if kind == KIND_NODE else [eid for eid, _ in self.edges]
+            if n not in pool:
+                return f"{KIND_LABELS[kind]} {n} がこの建物に見つかりません"
+        return ""
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# テキスト出力ダイアログ
-# ─────────────────────────────────────────────────────────────────────────────
-
-def _cjk_pad(text: str, width: int) -> str:
-    """CJK 全角文字を 2 カラム幅として計算してスペースで右埋めする"""
-    disp = sum(2 if unicodedata.east_asian_width(c) in ("W", "F") else 1 for c in text)
-    return text + " " * max(0, width - disp)
+class EventLocation:
+    def __init__(self, building: int = 0, kind: str = KIND_ROOM, value: str = ""):
+        self.building = building
+        self.kind = kind
+        self.value = value
 
 
-class ExportDialog(QDialog):
-    """欠損・未登録エッジをテキスト表形式で出力するダイアログ"""
-
-    def __init__(self, cards: dict, buildings: list, parent=None):
-        super().__init__(parent)
-        self._cards     = cards
-        self._buildings = buildings
-        self._sel_bldg  = -1
-
-        self.setWindowTitle("テキスト出力 — 欠損・未登録一覧")
-        self.setMinimumSize(720, 520)
-        self.resize(860, 640)
-        self.setStyleSheet(f"""
-            QDialog, QWidget  {{ background: {BG_WIN}; color: {TXT_PRIMARY}; }}
-            QTextEdit {{
-                background: #1A2233; color: {TXT_PRIMARY};
-                border: 1px solid {BORDER}; border-radius: 6px;
-                font-family: "Courier New", monospace; font-size: 13px;
-            }}
-            QComboBox {{
-                background: #374151; color: {TXT_PRIMARY};
-                border: 1px solid #4B5563; border-radius: 6px;
-                padding: 4px 10px; font-size: 14px; min-width: 110px;
-            }}
-            QComboBox QAbstractItemView {{
-                background: #374151; color: {TXT_PRIMARY};
-                selection-background-color: {BTN_ACTIVE};
-            }}
-        """)
-        self._build_ui()
-        self._refresh()
-
-    def _build_ui(self):
-        vbox = QVBoxLayout(self)
-        vbox.setContentsMargins(16, 16, 16, 16)
-        vbox.setSpacing(10)
-
-        row = QHBoxLayout()
-        lbl = QLabel("対象号館:")
-        lbl.setStyleSheet(f"color: {TXT_SUB}; font-size: 15px;")
-        row.addWidget(lbl)
-
-        self._combo = QComboBox()
-        self._combo.addItem("全て", -1)
-        for b in self._buildings:
-            self._combo.addItem(_bldg_label(b), b)
-        self._combo.currentIndexChanged.connect(lambda _: self._on_bldg_changed())
-        row.addWidget(self._combo)
-        row.addStretch()
-
-        copy_btn = QPushButton("クリップボードにコピー")
-        copy_btn.setFont(QFont("", 12))
-        copy_btn.setStyleSheet(f"""
-            QPushButton {{
-                background: {BTN_ACTIVE}; color: #FFF;
-                border-radius: 5px; padding: 4px 14px; border: none;
-            }}
-            QPushButton:hover {{ background: #22D4FF; color: #000; }}
-        """)
-        copy_btn.clicked.connect(self._copy)
-        row.addWidget(copy_btn)
-
-        save_btn = QPushButton("ファイルに保存")
-        save_btn.setFont(QFont("", 12))
-        save_btn.setStyleSheet(f"""
-            QPushButton {{
-                background: {BTN_IDLE}; color: {TXT_PRIMARY};
-                border-radius: 5px; padding: 4px 14px; border: none;
-            }}
-            QPushButton:hover {{ background: #4B5563; }}
-        """)
-        save_btn.clicked.connect(self._save)
-        row.addWidget(save_btn)
-
-        vbox.addLayout(row)
-
-        self._text = QTextEdit()
-        self._text.setReadOnly(True)
-        vbox.addWidget(self._text)
-
-    def _on_bldg_changed(self):
-        self._sel_bldg = self._combo.currentData()
-        self._refresh()
-
-    def _generate(self) -> str:
-        target = {"missing", "unregistered"}
-        cards = [
-            c for c in self._cards.values()
-            if c.state in target
-            and (self._sel_bldg == -1 or c.building == self._sel_bldg)
-        ]
-        cards.sort(key=_edge_sort_key)
-
-        bldg_label = "全て" if self._sel_bldg == -1 else _bldg_label(self._sel_bldg)
-
-        now   = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        lines = [
-            "IKU NAVI 画像チェッカー — 欠損・未登録エッジ一覧",
-            f"生成日時: {now}",
-            f"対象号館: {bldg_label}",
-            "",
-        ]
-
-        if not cards:
-            lines.append("※ 欠損・未登録エッジはありません")
-            return "\n".join(lines)
-
-        W_KEY   = max(len("エッジキー"), max(len(c.key) for c in cards)) + 2
-        W_BLDG  = 8   # 表示幅（CJK 考慮）
-        W_FLOOR = 4
-        SEP     = "-" * (W_KEY + W_BLDG + W_FLOOR + 28 + 6)
-
-        lines += [
-            SEP,
-            _cjk_pad("エッジキー", W_KEY)
-            + "  " + _cjk_pad("号館", W_BLDG)
-            + "  " + _cjk_pad("階", W_FLOOR)
-            + "  状態",
-            SEP,
-        ]
-
-        for c in cards:
-            bldg_str  = _bldg_label(c.building)
-            floor_str = f"{c.floor}階"
-            state_str = "欠損 (CDN に存在しない)" if c.state == "missing" else "未登録 (CSV 未登録)"
-            lines.append(
-                f"{c.key:<{W_KEY}}"
-                "  " + _cjk_pad(bldg_str, W_BLDG)
-                + "  " + _cjk_pad(floor_str, W_FLOOR)
-                + f"  {state_str}"
-            )
-
-        n_miss  = sum(1 for c in cards if c.state == "missing")
-        n_unreg = sum(1 for c in cards if c.state == "unregistered")
-        lines += [SEP, f"合計: {len(cards)} 件  (欠損: {n_miss}  未登録: {n_unreg})"]
-        return "\n".join(lines)
-
-    def _refresh(self):
-        self._text.setPlainText(self._generate())
-
-    def _copy(self):
-        QApplication.clipboard().setText(self._text.toPlainText())
-
-    def _save(self):
-        path, _ = QFileDialog.getSaveFileName(
-            self, "ファイルに保存", "missing_edges.txt",
-            "テキストファイル (*.txt);;すべてのファイル (*)",
-        )
-        if path:
-            with open(path, "w", encoding="utf-8") as f:
-                f.write(self._text.toPlainText())
+class EventEntry:
+    def __init__(self, title: str = ""):
+        self.title = title
+        self.locations = []  # [EventLocation, ...]
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# メインウィンドウ
-# ─────────────────────────────────────────────────────────────────────────────
+class EventStore:
+    """data/event.csv 全体をメモリ上で保持し、読み書きする"""
 
-# フィルタ定数
-FILTER_ALL     = "all"
-FILTER_NG      = "missing"        # CDN 欠損
-FILTER_UNREG   = "unregistered"   # CSV 未登録
-FILTER_ATTN    = "attention"      # 欠損 + 未登録まとめて
-FILTER_NOTREQ  = "not_required"   # 建物出入口エッジ（AR起動のため写真不要）
-
-
-class MainWindow(QMainWindow):
     def __init__(self):
-        super().__init__()
-        self.setWindowTitle("IKU NAVI 画像チェッカー")
-        self.setMinimumSize(980, 680)
-        self.resize(1280, 820)
+        self.entries = []  # [EventEntry, ...]（初出順）
+        self.dirty = False
+        self.load()
 
-        self._cards:            dict[str, ImageCard] = {}
-        self._buildings:        list[int] = []
-        self._bldg_btn_map:     dict[int, QPushButton] = {}
-        self._current_building: int = -1
-        self._filter_state:     str = FILTER_ALL
-
-        self._fetch_worker: FetchGraphWorker  | None = None
-        self._img_worker:   ImageFetchWorker  | None = None
-
-        self._resize_timer = QTimer(self)
-        self._resize_timer.setSingleShot(True)
-        self._resize_timer.timeout.connect(self._refresh_grid)
-
-        self._build_ui()
-        self._apply_theme()
-
-    # ── テーマ ────────────────────────────────────────────────────────────────
-
-    def _apply_theme(self):
-        self.setStyleSheet(base_stylesheet())
-
-    # ── UI 構築 ───────────────────────────────────────────────────────────────
-
-    def _build_ui(self):
-        root = QWidget()
-        self.setCentralWidget(root)
-        vbox = QVBoxLayout(root)
-        vbox.setContentsMargins(0, 0, 0, 0)
-        vbox.setSpacing(0)
-        vbox.addWidget(self._build_topbar())
-        vbox.addWidget(self._build_filterbar())
-        vbox.addWidget(self._build_scroll(), stretch=1)
-
-    def _build_topbar(self) -> QWidget:
-        bar = QWidget()
-        bar.setFixedHeight(62)
-        bar.setStyleSheet(f"background: {BG_BAR}; border-bottom: 1px solid {BORDER};")
-        row = QHBoxLayout(bar)
-        row.setContentsMargins(16, 0, 16, 0)
-        row.setSpacing(10)
-
-        title = QLabel("IKU NAVI 画像チェッカー")
-        title.setFont(QFont("", 18, QFont.Weight.Bold))
-        title.setStyleSheet(f"color: {ACCENT};")
-        row.addWidget(title)
-
-        row.addSpacing(12)
-        lbl = QLabel("API URL:")
-        lbl.setStyleSheet(f"color: {TXT_SUB}; font-size: 16px;")
-        row.addWidget(lbl)
-
-        self._api_edit = QLineEdit(DEFAULT_API)
-        self._api_edit.setFixedWidth(260)
-        self._api_edit.returnPressed.connect(self._start_fetch)
-        row.addWidget(self._api_edit)
-
-        self._fetch_btn = QPushButton("取得開始")
-        self._fetch_btn.setFixedSize(100, 34)
-        self._fetch_btn.setFont(QFont("", 13, QFont.Weight.Bold))
-        self._fetch_btn.setStyleSheet(f"""
-            QPushButton {{
-                background: {ACCENT}; color: #001A22; border-radius: 6px;
-            }}
-            QPushButton:hover    {{ background: #22D4FF; }}
-            QPushButton:pressed  {{ background: #0099BB; }}
-            QPushButton:disabled {{ background: {INPUT_BG}; color: {TXT_SUB}; }}
-        """)
-        self._fetch_btn.clicked.connect(self._start_fetch)
-        row.addWidget(self._fetch_btn)
-
-        row.addSpacing(6)
-
-        self._export_btn = QPushButton("欠損を出力")
-        self._export_btn.setFixedSize(110, 34)
-        self._export_btn.setFont(QFont("", 13, QFont.Weight.Bold))
-        self._export_btn.setEnabled(False)
-        self._export_btn.setStyleSheet(f"""
-            QPushButton {{
-                background: {BTN_IDLE}; color: {TXT_PRIMARY}; border-radius: 6px;
-            }}
-            QPushButton:hover    {{ background: #4B5563; }}
-            QPushButton:pressed  {{ background: #374151; }}
-            QPushButton:disabled {{ background: #2D3748; color: #4B5563; }}
-        """)
-        self._export_btn.clicked.connect(self._open_export_dialog)
-        row.addWidget(self._export_btn)
-
-        row.addSpacing(6)
-
-        self._progress = QProgressBar()
-        self._progress.setFixedSize(180, 8)
-        self._progress.setRange(0, 1)
-        self._progress.setValue(0)
-        self._progress.setTextVisible(False)
-        row.addWidget(self._progress)
-
-        row.addStretch()
-
-        self._status_lbl = QLabel("API URL を入力して「取得開始」")
-        self._status_lbl.setStyleSheet(f"color: {TXT_SUB}; font-size: 16px;")
-        row.addWidget(self._status_lbl)
-
-        return bar
-
-    def _build_filterbar(self) -> QWidget:
-        self._filterbar = QWidget()
-        self._filterbar.setFixedHeight(48)
-        self._filterbar.setStyleSheet(
-            f"background: {BG_BAR}; border-bottom: 1px solid {BORDER};"
-        )
-        self._filterbar_row = QHBoxLayout(self._filterbar)
-        self._filterbar_row.setContentsMargins(16, 0, 16, 0)
-        self._filterbar_row.setSpacing(6)
-        self._filterbar_row.addStretch()
-        return self._filterbar
-
-    def _rebuild_filterbar(self):
-        while self._filterbar_row.count():
-            item = self._filterbar_row.takeAt(0)
-            if item.widget():
-                item.widget().deleteLater()
-
-        self._bldg_btn_map = {}
-
-        # ── 号館フィルタ ─────────────────────────────────────────────────────
-        lbl1 = QLabel("号館:")
-        lbl1.setStyleSheet(f"color: {TXT_SUB}; font-size: 16px;")
-        self._filterbar_row.addWidget(lbl1)
-
-        all_bldg = self._make_pill("全て", True)
-        all_bldg.clicked.connect(lambda: self._filter_building(-1))
-        self._filterbar_row.addWidget(all_bldg)
-        self._bldg_btn_map[-1] = all_bldg
-
-        for bldg in self._buildings:
-            btn = self._make_pill(_bldg_label(bldg), False)
-            btn.clicked.connect(lambda _=False, b=bldg: self._filter_building(b))
-            self._filterbar_row.addWidget(btn)
-            self._bldg_btn_map[bldg] = btn
-
-        # ── セパレータ ────────────────────────────────────────────────────────
-        sep = QFrame()
-        sep.setFrameShape(QFrame.Shape.VLine)
-        sep.setFixedHeight(24)
-        sep.setStyleSheet(f"color: {BORDER};")
-        self._filterbar_row.addSpacing(8)
-        self._filterbar_row.addWidget(sep)
-        self._filterbar_row.addSpacing(8)
-
-        # ── 状態フィルタ ──────────────────────────────────────────────────────
-        lbl2 = QLabel("表示:")
-        lbl2.setStyleSheet(f"color: {TXT_SUB}; font-size: 16px;")
-        self._filterbar_row.addWidget(lbl2)
-
-        self._state_btns: dict[str, QPushButton] = {}
-        filters = [
-            (FILTER_ALL,    "全て"),
-            (FILTER_NG,     "欠損"),
-            (FILTER_UNREG,  "未登録"),
-            (FILTER_ATTN,   "要対応"),
-            (FILTER_NOTREQ, "AR区間(不要)"),
-        ]
-        for fkey, flabel in filters:
-            btn = self._make_pill(flabel, fkey == FILTER_ALL)
-            btn.clicked.connect(lambda _=False, k=fkey: self._filter_state_set(k))
-            self._filterbar_row.addWidget(btn)
-            self._state_btns[fkey] = btn
-
-        self._filterbar_row.addStretch()
-
-        self._count_lbl = QLabel("")
-        self._count_lbl.setStyleSheet(f"color: {TXT_SUB}; font-size: 16px;")
-        self._filterbar_row.addWidget(self._count_lbl)
-
-    def _make_pill(self, text: str, active: bool) -> QPushButton:
-        btn = QPushButton(text)
-        btn.setFixedHeight(28)
-        btn.setFont(QFont("", 12))
-        self._set_pill(btn, active)
-        return btn
-
-    def _set_pill(self, btn: QPushButton, active: bool):
-        if active:
-            btn.setStyleSheet(f"""
-                QPushButton {{
-                    background: {BTN_ACTIVE}; color: #FFF;
-                    border-radius: 5px; padding: 0 12px; border: none;
-                }}
-            """)
-        else:
-            btn.setStyleSheet(f"""
-                QPushButton {{
-                    background: {BTN_IDLE}; color: {TXT_PRIMARY};
-                    border-radius: 5px; padding: 0 12px; border: none;
-                }}
-                QPushButton:hover {{ background: #4B5563; }}
-            """)
-
-    def _new_grid_widget(self) -> tuple[QWidget, QGridLayout]:
-        """カードを並べるためのグリッドウィジェットを新規生成する"""
-        gw = QWidget()
-        gw.setStyleSheet(f"background: {BG_WIN};")
-        gl = QGridLayout(gw)
-        gl.setContentsMargins(16, 16, 16, 16)
-        gl.setSpacing(12)
-        gl.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft)
-        return gw, gl
-
-    def _placeholder_label(self, text: str) -> QLabel:
-        lbl = QLabel(text)
-        lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        lbl.setStyleSheet(f"color: {TXT_SUB}; font-size: 16px;")
-        return lbl
-
-    def _build_scroll(self) -> QScrollArea:
-        self._scroll = QScrollArea()
-        self._scroll.setWidgetResizable(True)
-
-        gw, gl = self._new_grid_widget()
-        gl.addWidget(
-            self._placeholder_label("API URL を入力して「取得開始」をクリックしてください"), 0, 0
-        )
-
-        self._scroll.setWidget(gw)
-        return self._scroll
-
-    # ── フェッチ ──────────────────────────────────────────────────────────────
-
-    def _start_fetch(self):
-        api_url = self._api_edit.text().strip()
-        if not api_url:
-            QMessageBox.warning(self, "エラー", "API URL を入力してください。")
+    def load(self):
+        self.entries.clear()
+        self.dirty = False
+        by_title = {}
+        if not EVENT_CSV.exists():
             return
-
-        self._cards.clear()
-        self._buildings.clear()
-        self._current_building = -1
-        self._filter_state     = FILTER_ALL
-
-        self._fetch_btn.setEnabled(False)
-        self._set_status("API に接続中...", TXT_SUB)
-        self._progress.setRange(0, 1)
-        self._progress.setValue(0)
-
-        self._fetch_worker = FetchGraphWorker(api_url)
-        self._fetch_worker.finished.connect(self._on_graph_data)
-        self._fetch_worker.error.connect(self._on_fetch_error)
-        self._fetch_worker.start()
-
-    def _on_fetch_error(self, msg: str):
-        self._fetch_btn.setEnabled(True)
-        self._set_status(f"エラー: {msg}", COL_ERR)
-        QMessageBox.critical(
-            self, "取得エラー",
-            f"API への接続に失敗しました:\n\n{msg}\n\n"
-            "サーバーが起動しているか確認してください。"
-        )
-
-    def _on_graph_data(self, nodes_map: dict, edges_list: list, edge_images: dict):
-        """グラフ上の全エッジ（両方向）を網羅してカードを生成する"""
-
-        self._set_status("グラフを解析中...", TXT_SUB)
-
-        buildings_set: set[int] = set()
-        tasks: list[tuple[str, str]] = []   # 登録済みエッジの (key, url) リスト
-        seen:  set[str] = set()
-
-        # 全エッジ × 両方向を処理
-        for edge in edges_list:
-            from_id  = int(edge["from"])
-            to_id    = int(edge["to"])
-            # type=7 は anchors.csv から自動生成される建物出入口エッジ。
-            # navi側はこの区間で写真を使わずカメラARを起動するため写真登録は不要。
-            is_entrance_edge = str(edge.get("type", "1")) == "7"
-            # エッジのノードが nodes_map になければ from_id を参照
-            nf       = nodes_map.get(from_id, {})
-            building = nf.get("building", edge.get("building", -1))
-            floor    = nf.get("floor",    edge.get("floor",    1))
-            buildings_set.add(building)
-
-            for f, t in [(from_id, to_id), (to_id, from_id)]:
-                key = f"{f}_{t}"
-                if key in seen:
+        with open(EVENT_CSV, newline="", encoding="utf-8") as f:
+            for row in csv.DictReader(f):
+                title = (row.get("title") or "").strip()
+                if not title:
                     continue
-                seen.add(key)
-
-                # 方向を反転した場合は to_id の建物情報を使う
-                if f == to_id:
-                    nt       = nodes_map.get(to_id, {})
-                    building = nt.get("building", edge.get("building", -1))
-                    floor    = nt.get("floor",    edge.get("floor",    1))
-                    buildings_set.add(building)
-
-                if is_entrance_edge:
-                    card = ImageCard(key, None, building, floor, "not_required")
+                building = to_int(row.get("building"), 0) or 0
+                room    = (row.get("room") or "").strip()
+                node_id = (row.get("node_id") or "").strip()
+                edge_id = (row.get("edge_id") or "").strip()
+                if room:
+                    kind, value = KIND_ROOM, room
+                elif node_id:
+                    kind, value = KIND_NODE, node_id
+                elif edge_id:
+                    kind, value = KIND_EDGE, edge_id
                 else:
-                    url = edge_images.get(key)
-                    if url:
-                        card = ImageCard(key, url, building, floor, "loading")
-                        tasks.append((key, url))
-                    else:
-                        card = ImageCard(key, None, building, floor, "unregistered")
+                    continue
 
-                self._cards[key] = card
+                entry = by_title.get(title)
+                if entry is None:
+                    entry = EventEntry(title)
+                    by_title[title] = entry
+                    self.entries.append(entry)
+                entry.locations.append(EventLocation(building, kind, value))
 
-        self._buildings = sorted(buildings_set)
-        self._rebuild_filterbar()
-        self._refresh_grid()
-        self._export_btn.setEnabled(True)
+    def add_entry(self, title: str) -> EventEntry:
+        entry = EventEntry(title)
+        self.entries.append(entry)
+        self.dirty = True
+        return entry
 
-        total_edges = len(self._cards)
-        registered  = len(tasks)
-        _, _, unreg, not_required = _count_states(self._cards.values())
-        self._set_status(
-            f"全 {total_edges} エッジ  登録済 {registered}  未登録 {unreg}  "
-            f"AR起動区間(不要) {not_required}  — 画像取得中...",
-            TXT_SUB,
-        )
-        self._progress.setRange(0, max(1, registered))
-        self._progress.setValue(0)
+    def remove_entry(self, entry: EventEntry):
+        if entry in self.entries:
+            self.entries.remove(entry)
+            self.dirty = True
 
-        if not tasks:
-            self._fetch_btn.setEnabled(True)
-            self._set_status(
-                f"全 {total_edges} エッジ中、CSV 登録済みが 0 件でした", COL_WARN
-            )
-            return
-
-        self._img_worker = ImageFetchWorker(tasks)
-        self._img_worker.image_ready.connect(self._on_image_ready)
-        self._img_worker.progress.connect(self._on_progress)
-        self._img_worker.finished.connect(self._on_images_done)
-        self._img_worker.start()
-
-    def _on_image_ready(self, key: str, data: bytes):
-        card = self._cards.get(key)
-        if card:
-            card.set_image(data)
-            self._update_count_lbl()
-
-    def _on_progress(self, done: int, total: int):
-        self._progress.setValue(done)
-        self._set_status(f"画像取得中... {done} / {total}", TXT_SUB)
-
-    def _on_images_done(self):
-        self._fetch_btn.setEnabled(True)
-        ok, missing, unreg, _ = _count_states(self._cards.values())
-        total = len(self._cards)
-
-        if missing or unreg:
-            self._set_status(
-                f"完了: 全 {total} エッジ  ✔ {ok}  ✕ 欠損 {missing}  — 未登録 {unreg}",
-                COL_ERR,
-            )
-        else:
-            self._set_status(f"完了: 全 {total} エッジ  ✔ 全て OK", COL_OK)
-
-        self._update_count_lbl()
-        if self._filter_state != FILTER_ALL:
-            self._refresh_grid()
-
-    # ── グリッド制御 ──────────────────────────────────────────────────────────
-
-    def _visible_cards(self) -> list[ImageCard]:
-        def match_state(c: ImageCard) -> bool:
-            if self._filter_state == FILTER_ALL:   return True
-            if self._filter_state == FILTER_NG:     return c.state == "missing"
-            if self._filter_state == FILTER_UNREG:  return c.state == "unregistered"
-            if self._filter_state == FILTER_ATTN:   return c.state in ("missing", "unregistered")
-            if self._filter_state == FILTER_NOTREQ: return c.state == "not_required"
-            return True
-
-        cards = [
-            c for c in self._cards.values()
-            if (self._current_building == -1 or c.building == self._current_building)
-            and match_state(c)
-        ]
-        return sorted(cards, key=_edge_sort_key)
-
-    def _refresh_grid(self):
-        for card in self._cards.values():
-            card.setParent(None)
-
-        old = self._scroll.takeWidget()
-        if old:
-            old.deleteLater()
-
-        gw, gl = self._new_grid_widget()
-
-        visible = self._visible_cards()
-
-        if not visible and not self._cards:
-            gl.addWidget(
-                self._placeholder_label("API URL を入力して「取得開始」をクリックしてください"), 0, 0
-            )
-        elif not visible:
-            gl.addWidget(self._placeholder_label("該当するエッジがありません"), 0, 0)
-        else:
-            vw   = max(1, self._scroll.viewport().width() - 32)
-            cols = max(1, vw // (CARD_W + 12))
-            for i, card in enumerate(visible):
-                gl.addWidget(card, i // cols, i % cols)
-
-        self._scroll.setWidget(gw)
-        self._update_count_lbl()
-
-    def _filter_building(self, building: int):
-        self._current_building = building
-        for b, btn in self._bldg_btn_map.items():
-            self._set_pill(btn, b == building)
-        self._refresh_grid()
-
-    def _filter_state_set(self, fkey: str):
-        self._filter_state = fkey
-        for k, btn in self._state_btns.items():
-            self._set_pill(btn, k == fkey)
-        self._refresh_grid()
-
-    # ── テキスト出力 ──────────────────────────────────────────────────────────
-
-    def _open_export_dialog(self):
-        dlg = ExportDialog(self._cards, self._buildings, parent=self)
-        dlg.exec()
-
-    # ── ユーティリティ ────────────────────────────────────────────────────────
-
-    def _set_status(self, text: str, color: str):
-        self._status_lbl.setText(text)
-        self._status_lbl.setStyleSheet(f"color: {color}; font-size: 16px;")
-
-    def _update_count_lbl(self):
-        if not hasattr(self, "_count_lbl"):
-            return
-
-        total   = len(self._cards)
-        ok, missing, unreg, not_required = _count_states(self._cards.values())
-        loading = total - ok - missing - unreg - not_required
-        visible = len(self._visible_cards())
-
-        parts = [f"全 {total} エッジ"]
-        if loading:
-            parts.append(f"読込中 {loading}")
-        parts += [f"✔ {ok}", f"✕ 欠損 {missing}", f"— 未登録 {unreg}", f"◎ AR区間 {not_required}"]
-
-        if self._current_building != -1:
-            bldg_cards = [c for c in self._cards.values() if c.building == self._current_building]
-            bldg_total = len(bldg_cards)
-            bldg_ok, bldg_miss, bldg_unreg, bldg_notreq = _count_states(bldg_cards)
-            bldg_name  = _bldg_label(self._current_building)
-            parts.append(
-                f"[{bldg_name}: 全 {bldg_total}  ✔ {bldg_ok}  ✕ {bldg_miss}  "
-                f"— {bldg_unreg}  ◎ {bldg_notreq}  表示 {visible}]"
-            )
-        else:
-            parts.append(f"[表示 {visible}]")
-
-        color = COL_ERR if (missing or unreg) else (TXT_SUB if loading else COL_OK)
-        self._count_lbl.setText("  ".join(parts))
-        self._count_lbl.setStyleSheet(f"color: {color}; font-size: 16px;")
-
-    def resizeEvent(self, event):
-        super().resizeEvent(event)
-        if self._cards:
-            self._resize_timer.start(180)
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-# エントリーポイント
-# ─────────────────────────────────────────────────────────────────────────────
-
-def main():
-    qt_app.run(MainWindow)
-
-
-if __name__ == "__main__":
-    main()
+    def save(self):
+        DATA_DIR.mkdir(parents=True, exist_ok=True)
+        rows = []
+        for entry in self.entries:
+            title = entry.title.strip()
+            if not title:
+                continue
+            for loc in entry.locations:
+                value = (loc.value or "").strip()
+                if not value:
+                    continue
+                row = {"title": title, "building": loc.building, "room": "", "node_id": "", "edge_id": ""}
+                row[loc.kind] = value
+                rows.append(row)
+        with open(EVENT_CSV, "w", newline="", encoding="utf-8") as f:
+            w = csv.DictWriter(f, fieldnames=EVENT_COLS)
+            w.writeheader()
+            w.writerows(rows)
+        self.dirty = False
 ```
 
-### `programs/Image_Checker/requirements.txt`
+### `programs/IKU_NAVI_Tools/iku_tools/events/location_row.py`
 
-```text
-PyQt6>=6.4.0
-requests>=2.31.0
+```python
+#!/usr/bin/env python3
+"""IKU NAVI Event Editor — イベント1箇所分（建物・種別・値）を編集する行ウィジェット"""
 
+from PyQt6.QtCore import pyqtSignal
+from PyQt6.QtWidgets import QComboBox, QHBoxLayout, QLabel, QPushButton, QWidget
+
+from .data_store import KIND_EDGE, KIND_LABELS, KIND_NODE, KIND_ROOM, building_label, list_buildings
+
+PLACEHOLDER = "-- 選択してください --"
+
+
+class LocationRowWidget(QWidget):
+    """1つの EventLocation を編集する行。建物・種別・値（教室名 or ID）を選ぶUI。"""
+
+    changed = pyqtSignal()
+    removeRequested = pyqtSignal(QWidget)
+
+    def __init__(self, location, name_map: dict, refs_cache: dict, parent=None):
+        super().__init__(parent)
+        self.location = location
+        self.name_map = name_map
+        self.refs_cache = refs_cache  # {building: BuildingRefs}（呼び出し元と共有し、建物ごとに1回だけ読み込む）
+
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+
+        self.building_combo = QComboBox()
+        self.building_combo.setMinimumWidth(110)
+        for bid in list_buildings():
+            self.building_combo.addItem(building_label(bid, name_map), bid)
+        layout.addWidget(self.building_combo)
+
+        self.kind_combo = QComboBox()
+        self.kind_combo.setMinimumWidth(90)
+        for kind in (KIND_ROOM, KIND_NODE, KIND_EDGE):
+            self.kind_combo.addItem(KIND_LABELS[kind], kind)
+        layout.addWidget(self.kind_combo)
+
+        self.value_combo = QComboBox()
+        self.value_combo.setMinimumWidth(220)
+        layout.addWidget(self.value_combo, stretch=1)
+
+        self.error_label = QLabel("")
+        self.error_label.setStyleSheet("color:#DC2626;font-size:11px;")
+        layout.addWidget(self.error_label, stretch=1)
+
+        self.delete_btn = QPushButton("✕")
+        self.delete_btn.setFixedWidth(28)
+        self.delete_btn.setToolTip("この場所を削除")
+        layout.addWidget(self.delete_btn)
+
+        # 初期表示をlocationの内容に合わせる
+        idx = self.building_combo.findData(location.building)
+        self.building_combo.setCurrentIndex(idx if idx >= 0 else 0)
+        idx = self.kind_combo.findData(location.kind)
+        self.kind_combo.setCurrentIndex(idx if idx >= 0 else 0)
+        self._rebuild_value_combo(preselect=location.value)
+
+        self.building_combo.currentIndexChanged.connect(self._on_building_changed)
+        self.kind_combo.currentIndexChanged.connect(self._on_kind_changed)
+        self.value_combo.currentIndexChanged.connect(self._on_value_changed)
+        self.value_combo.editTextChanged.connect(self._on_value_changed)
+        self.delete_btn.clicked.connect(lambda: self.removeRequested.emit(self))
+
+    # ------------------------------------------------------------------
+    def _refs(self, building: int):
+        if building not in self.refs_cache:
+            from .data_store import BuildingRefs
+            self.refs_cache[building] = BuildingRefs(building)
+        return self.refs_cache[building]
+
+    def _rebuild_value_combo(self, preselect: str = ""):
+        """建物・種別に応じて選択肢を作り直す。既存値が候補になければ警告付きで先頭に残す。"""
+        kind = self.location.kind
+        refs = self._refs(self.location.building)
+
+        self.value_combo.blockSignals(True)
+        self.value_combo.clear()
+
+        if kind == KIND_ROOM:
+            self.value_combo.setEditable(True)
+            self.value_combo.addItem("", "")
+            for room in refs.rooms:
+                self.value_combo.addItem(room, room)
+            known = set(refs.rooms)
+        elif kind == KIND_NODE:
+            self.value_combo.setEditable(False)
+            self.value_combo.addItem(PLACEHOLDER, "")
+            for nid in refs.node_ids:
+                self.value_combo.addItem(str(nid), str(nid))
+            known = {str(n) for n in refs.node_ids}
+        else:
+            self.value_combo.setEditable(False)
+            self.value_combo.addItem(PLACEHOLDER, "")
+            for eid, label in refs.edges:
+                self.value_combo.addItem(label, str(eid))
+            known = {str(eid) for eid, _ in refs.edges}
+
+        if preselect and preselect not in known:
+            self.value_combo.insertItem(1, f"⚠ {preselect}（現在は無効な値）", preselect)
+
+        idx = self.value_combo.findData(preselect) if preselect else 0
+        self.value_combo.setCurrentIndex(idx if idx >= 0 else 0)
+        if kind == KIND_ROOM:
+            self.value_combo.setEditText(preselect or "")
+
+        self.value_combo.blockSignals(False)
+        self.location.value = preselect or ""
+        self._update_validation()
+
+    # ------------------------------------------------------------------
+    def _on_building_changed(self):
+        self.location.building = self.building_combo.currentData()
+        self._rebuild_value_combo(preselect="")
+        self.changed.emit()
+
+    def _on_kind_changed(self):
+        self.location.kind = self.kind_combo.currentData()
+        self._rebuild_value_combo(preselect="")
+        self.changed.emit()
+
+    def _on_value_changed(self):
+        if self.location.kind == KIND_ROOM:
+            self.location.value = self.value_combo.currentText().strip()
+        else:
+            data = self.value_combo.currentData()
+            self.location.value = data or ""
+        self._update_validation()
+        self.changed.emit()
+
+    def _update_validation(self):
+        refs = self._refs(self.location.building)
+        err = refs.validate(self.location.kind, self.location.value)
+        self.error_label.setText(err)
+        self.value_combo.setStyleSheet("" if not err else "background:#FEE2E2;")
+
+    def is_valid(self) -> bool:
+        refs = self._refs(self.location.building)
+        return not refs.validate(self.location.kind, self.location.value)
 ```
 
-#### Route_Checker
+#### ルート検証タブ（iku_tools/route_checker）
 
-### `programs/Route_Checker/route_checker.py`
+### `programs/IKU_NAVI_Tools/iku_tools/route_checker/window.py`
 
 ```python
 #!/usr/bin/env python3
@@ -12722,10 +10232,8 @@ requests>=2.31.0
 
 import csv
 import json
-import sys
 import threading
 from concurrent.futures import ThreadPoolExecutor
-from pathlib import Path
 
 import requests
 
@@ -12754,11 +10262,9 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-sys.path.append(str(Path(__file__).resolve().parents[1]))
-from gui_common import qt_app
-from gui_common.api import DEFAULT_API, JSON_HEADERS, make_session
-from gui_common.labels import TOILET_ROOMS, building_label, floor_label
-from gui_common.theme import (
+from ..common.api import DEFAULT_API, JSON_HEADERS, make_session
+from ..common.labels import TOILET_ROOMS, building_label, floor_label
+from ..common.theme import (
     ACCENT,
     BG_BAR,
     BG_WIN,
@@ -12789,7 +10295,7 @@ EDGE_TYPE_LABELS = {
     "7": "入口",
 }
 
-# ── パレット（共通色は gui_common.theme、ここはこのツール固有の色だけ）──────────
+# ── パレット（共通色は common.theme、ここはこのツール固有の色だけ）──────────
 BG_TABLE    = "#141E2E"
 BG_ROW_ALT  = "#1A2436"
 BG_SEL      = "#0E3A50"
@@ -13336,7 +10842,7 @@ class PathDetailDialog(QDialog):
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("IKU NAVI ルートチェッカー")
+        self.setWindowTitle("ルート検証")
         self.setMinimumSize(1100, 680)
         self.resize(1440, 860)
 
@@ -13406,7 +10912,7 @@ class MainWindow(QMainWindow):
         row.setContentsMargins(16, 0, 16, 0)
         row.setSpacing(10)
 
-        title = QLabel("IKU NAVI ルートチェッカー")
+        title = QLabel("ルート検証")
         title.setFont(QFont("", 18, QFont.Weight.Bold))
         title.setStyleSheet(f"color: {ACCENT};")
         row.addWidget(title)
@@ -13828,32 +11334,1016 @@ class MainWindow(QMainWindow):
 
 
 # ── エントリーポイント ────────────────────────────────────────────────────────
-
-def main():
-    qt_app.run(MainWindow)
-
-
-if __name__ == "__main__":
-    main()
 ```
 
-### `programs/Route_Checker/requirements.txt`
+### `programs/IKU_NAVI_Tools/iku_tools/route_checker/__init__.py`
 
-```text
-PyQt6>=6.4.0
-requests>=2.31.0
-
+```python
+"""ルート検証: 全教室ペア間のルートを取得して異常を検出する（旧 programs/Route_Checker）"""
 ```
 
-#### Image_Renamer
+#### 画像チェックタブ（iku_tools/image_checker）
 
-### `programs/Image_Renamer/image_renamer.py`
+### `programs/IKU_NAVI_Tools/iku_tools/image_checker/window.py`
+
+```python
+#!/usr/bin/env python3
+"""IKU NAVI 画像チェッカー — 全グラフエッジの経路画像 存在確認ツール
+
+/api/graph でグラフ上の全エッジを取得し、その両方向を網羅的に確認する。
+/api/edge_images で登録済み URL を取得し、実際に CDN へアクセスして判定。
+
+カードの状態:
+  ok           … CSV 登録済み + CDN に実在
+  missing      … CSV 登録済み + CDN に存在しない
+  unregistered … グラフ上にエッジがあるが edge_image.csv に未登録
+  not_required … 建物出入口エッジ（type=7, anchors.csv由来）。
+                 navi側はこの区間で写真の代わりにカメラARを起動するため、
+                 edge_image.csv 未登録でも欠損・未登録として扱わない。
+"""
+
+import threading
+import unicodedata
+from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime
+
+import requests
+
+from PyQt6.QtWidgets import (
+    QApplication, QMainWindow, QWidget,
+    QHBoxLayout, QVBoxLayout, QGridLayout,
+    QLabel, QPushButton, QLineEdit, QScrollArea,
+    QFrame, QProgressBar, QMessageBox,
+    QDialog, QTextEdit, QComboBox, QFileDialog,
+)
+from PyQt6.QtCore import Qt, QThread, pyqtSignal, QTimer
+from PyQt6.QtGui import QFont, QColor, QPixmap, QPainter, QPen
+
+from ..common.api import BROWSER_HEADERS, DEFAULT_API, make_session
+from ..common.labels import building_label as _bldg_label
+from ..common.theme import (
+    ACCENT,
+    BG_BAR,
+    BG_WIN,
+    BORDER,
+    BTN_ACTIVE,
+    BTN_IDLE,
+    COL_ERR,
+    COL_OK,
+    COL_WARN,
+    INPUT_BG,
+    TXT_KEY,
+    TXT_PRIMARY,
+    TXT_SUB,
+    base_stylesheet,
+)
+
+
+# ── 設定 ──────────────────────────────────────────────────────────────────────
+CARD_W      = 230
+CARD_H      = 215
+THUMB_H     = 135
+MAX_WORKERS = 6     # Cloudflare レート制限対策で抑え気味
+
+def _make_session() -> requests.Session:
+    return make_session(headers=BROWSER_HEADERS, total=3, backoff_factor=0.5,
+                        status_forcelist=(429, 500, 502, 503, 504))
+
+
+# ── パレット（共通色は common.theme、ここはこのツール固有の色だけ）──────────
+BG_CARD_OK     = "#0C2318"
+BG_CARD_NG     = "#2B0F0F"
+BG_CARD_UNREG  = "#1A1A2A"
+BG_CARD_LOAD   = "#1A2233"
+BG_CARD_NOTREQ = "#12283A"
+BG_THUMB       = "#0D1626"
+COL_UNREG      = "#6B7280"
+COL_NOTREQ     = "#38BDF8"
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 共通ユーティリティ
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _bldg_label(building: int) -> str:
+    """号館番号を表示用ラベルに変換する（0 = 屋外）"""
+    return "屋外" if building == 0 else f"{building}号館"
+
+
+def _edge_sort_key(card):
+    """カードを (building, floor, from_id) の順に並べるためのキー"""
+    return (card.building, card.floor, int(card.key.split("_")[0]))
+
+
+def _count_states(cards) -> tuple[int, int, int, int]:
+    """カード集合から (ok, missing, unregistered, not_required) の件数を返す"""
+    ok           = sum(1 for c in cards if c.state == "ok")
+    missing      = sum(1 for c in cards if c.state == "missing")
+    unreg        = sum(1 for c in cards if c.state == "unregistered")
+    not_required = sum(1 for c in cards if c.state == "not_required")
+    return ok, missing, unreg, not_required
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# ワーカー
+# ─────────────────────────────────────────────────────────────────────────────
+
+class FetchGraphWorker(QThread):
+    """/api/graph と /api/edge_images を取得する"""
+    # nodes_map: {node_id: {building, floor, ...}}
+    # edges_list: [{id, from, to, building, floor, ...}]
+    # edge_images: {"from_to": url}
+    finished = pyqtSignal(dict, list, dict)
+    error    = pyqtSignal(str)
+
+    def __init__(self, api_url: str):
+        super().__init__()
+        self.api_url = api_url.rstrip("/")
+
+    def run(self):
+        session = _make_session()
+        session.headers["Accept"] = "application/json"
+        try:
+            graph_data  = self._get(session, f"{self.api_url}/api/graph")
+            edge_images = self._get(session, f"{self.api_url}/api/edge_images")
+        except Exception as e:
+            self.error.emit(str(e))
+            return
+
+        nodes_map  = {int(n["id"]): n for n in graph_data.get("nodes", [])}
+        edges_list = graph_data.get("edges", [])
+        self.finished.emit(nodes_map, edges_list, edge_images)
+
+    def _get(self, session: requests.Session, url: str) -> dict:
+        r = session.get(url, timeout=15)
+        r.raise_for_status()
+        ct = r.headers.get("Content-Type", "")
+        if "text/html" in ct:
+            raise RuntimeError(
+                f"HTML が返りました（Cloudflare チャレンジ？）\n"
+                f"URL: {url}  HTTP {r.status_code}"
+            )
+        return r.json()
+
+
+class ImageFetchWorker(QThread):
+    """登録済みエッジ画像を並列フェッチして結果を emit する"""
+    image_ready = pyqtSignal(str, bytes)   # key, bytes (空 = 欠損)
+    progress    = pyqtSignal(int, int)     # done, total
+
+    def __init__(self, tasks: list):
+        super().__init__()
+        self._tasks = tasks   # [(key, url), ...]
+        self._done  = 0
+        self._lock  = threading.Lock()
+
+    def run(self):
+        total = len(self._tasks)
+        tls   = threading.local()
+
+        def get_session() -> requests.Session:
+            if not hasattr(tls, "s"):
+                tls.s = _make_session()
+                tls.s.headers["Accept"] = "image/*,*/*;q=0.8"
+            return tls.s
+
+        def fetch_one(task):
+            key, url = task
+            try:
+                r    = get_session().get(url, timeout=12)
+                data = r.content if r.status_code == 200 else b""
+            except Exception:
+                data = b""
+            with self._lock:
+                self._done += 1
+                n = self._done
+            self.image_ready.emit(key, data)
+            self.progress.emit(n, total)
+
+        with ThreadPoolExecutor(max_workers=MAX_WORKERS) as pool:
+            list(pool.map(fetch_one, self._tasks))
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 画像カード
+# ─────────────────────────────────────────────────────────────────────────────
+
+class ImageCard(QFrame):
+    """1 directed-edge = 1 カード"""
+
+    _BG = {
+        "loading":      BG_CARD_LOAD,
+        "ok":           BG_CARD_OK,
+        "missing":      BG_CARD_NG,
+        "unregistered": BG_CARD_UNREG,
+        "not_required": BG_CARD_NOTREQ,
+    }
+
+    def __init__(self, key: str, url: str | None,
+                 building: int, floor: int, initial_state: str = "loading",
+                 parent=None):
+        super().__init__(parent)
+        self.key      = key
+        self.url      = url
+        self.building = building
+        self.floor    = floor
+        self._state   = initial_state
+        self.setFixedSize(CARD_W, CARD_H)
+        self.setFrameShape(QFrame.Shape.NoFrame)
+        self._build_ui()
+        self._apply_style()
+
+    # ── UI ───────────────────────────────────────────────────────────────────
+
+    def _build_ui(self):
+        root = QVBoxLayout(self)
+        root.setContentsMargins(0, 0, 0, 6)
+        root.setSpacing(0)
+
+        # サムネイル
+        self._thumb = QLabel()
+        self._thumb.setFixedSize(CARD_W, THUMB_H)
+        self._thumb.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._thumb.setStyleSheet(
+            f"background: {BG_THUMB}; border-radius: 8px 8px 0 0;"
+        )
+        self._draw_thumb_for_state()
+        root.addWidget(self._thumb)
+
+        # 情報
+        info = QWidget()
+        info.setStyleSheet("background: transparent;")
+        vb = QVBoxLayout(info)
+        vb.setContentsMargins(8, 5, 8, 0)
+        vb.setSpacing(2)
+
+        parts    = self.key.split("_")
+        key_lbl  = QLabel(f"{parts[0]} →\n{parts[1]}")
+        key_lbl.setFont(QFont("Courier New", 10, QFont.Weight.Bold))
+        key_lbl.setStyleSheet(f"color: {TXT_KEY}; background: transparent;")
+        vb.addWidget(key_lbl)
+
+        bldg_txt = _bldg_label(self.building)
+        if self.building != 0:
+            bldg_txt += f" {self.floor}階"
+        bldg_lbl = QLabel(bldg_txt)
+        bldg_lbl.setFont(QFont("", 11))
+        bldg_lbl.setStyleSheet(f"color: {TXT_SUB}; background: transparent;")
+        vb.addWidget(bldg_lbl)
+
+        root.addWidget(info)
+
+        # ステータス
+        self._status = QLabel()
+        self._status.setFont(QFont("", 11, QFont.Weight.Bold))
+        self._status.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._update_status_label()
+        root.addWidget(self._status)
+
+    def _apply_style(self):
+        bg = self._BG.get(self._state, BG_CARD_LOAD)
+        self.setStyleSheet(f"""
+            ImageCard {{
+                background: {bg};
+                border-radius: 8px;
+                border: 1px solid {BORDER};
+            }}
+        """)
+
+    def _update_status_label(self):
+        conf = {
+            "loading":      ("読み込み中...",      COL_WARN),
+            "ok":           ("✔  OK",              COL_OK),
+            "missing":      ("✕  CDN に存在しない", COL_ERR),
+            "unregistered": ("—  CSV 未登録",       COL_UNREG),
+            "not_required": ("◎  AR起動区間（不要）", COL_NOTREQ),
+        }
+        text, color = conf.get(self._state, ("", TXT_SUB))
+        self._status.setText(text)
+        self._status.setStyleSheet(
+            f"color: {color}; background: transparent; padding-bottom: 2px;"
+        )
+
+    # ── サムネイル描画 ────────────────────────────────────────────────────────
+
+    def _draw_thumb_for_state(self):
+        if self._state == "loading":
+            self._draw_text_thumb("取得中...", TXT_SUB, BG_THUMB)
+        elif self._state == "missing":
+            self._draw_text_thumb("✕  画像なし", COL_ERR, "#180808")
+        elif self._state == "unregistered":
+            self._draw_text_thumb("—  未登録", COL_UNREG, "#111120")
+        elif self._state == "not_required":
+            self._draw_text_thumb("◎  AR起動区間", COL_NOTREQ, "#0B1C2A")
+        # ok はセット時に上書き
+
+    def _draw_text_thumb(self, text: str, color: str, bg: str):
+        pix = QPixmap(CARD_W, THUMB_H)
+        pix.fill(QColor(bg))
+        p = QPainter(pix)
+        p.setPen(QPen(QColor(color), 2))
+        p.setFont(QFont("", 14, QFont.Weight.Bold))
+        p.drawText(pix.rect(), Qt.AlignmentFlag.AlignCenter, text)
+        p.end()
+        self._thumb.setPixmap(pix)
+
+    # ── 外部 API ─────────────────────────────────────────────────────────────
+
+    def set_image(self, data: bytes):
+        """ImageFetchWorker から呼ばれる（必ず登録済みカードのみ）"""
+        if data:
+            pix = QPixmap()
+            if pix.loadFromData(data) and not pix.isNull():
+                scaled = pix.scaled(
+                    CARD_W, THUMB_H,
+                    Qt.AspectRatioMode.KeepAspectRatioByExpanding,
+                    Qt.TransformationMode.SmoothTransformation,
+                )
+                x = max(0, (scaled.width()  - CARD_W)  // 2)
+                y = max(0, (scaled.height() - THUMB_H) // 2)
+                self._thumb.setPixmap(scaled.copy(x, y, CARD_W, THUMB_H))
+                self._state = "ok"
+                self._update_status_label()
+                self._apply_style()
+                return
+
+        self._state = "missing"
+        self._draw_text_thumb("✕  画像なし", COL_ERR, "#180808")
+        self._update_status_label()
+        self._apply_style()
+
+    @property
+    def state(self) -> str:
+        return self._state
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# テキスト出力ダイアログ
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _cjk_pad(text: str, width: int) -> str:
+    """CJK 全角文字を 2 カラム幅として計算してスペースで右埋めする"""
+    disp = sum(2 if unicodedata.east_asian_width(c) in ("W", "F") else 1 for c in text)
+    return text + " " * max(0, width - disp)
+
+
+class ExportDialog(QDialog):
+    """欠損・未登録エッジをテキスト表形式で出力するダイアログ"""
+
+    def __init__(self, cards: dict, buildings: list, parent=None):
+        super().__init__(parent)
+        self._cards     = cards
+        self._buildings = buildings
+        self._sel_bldg  = -1
+
+        self.setWindowTitle("テキスト出力 — 欠損・未登録一覧")
+        self.setMinimumSize(720, 520)
+        self.resize(860, 640)
+        self.setStyleSheet(f"""
+            QDialog, QWidget  {{ background: {BG_WIN}; color: {TXT_PRIMARY}; }}
+            QTextEdit {{
+                background: #1A2233; color: {TXT_PRIMARY};
+                border: 1px solid {BORDER}; border-radius: 6px;
+                font-family: "Courier New", monospace; font-size: 13px;
+            }}
+            QComboBox {{
+                background: #374151; color: {TXT_PRIMARY};
+                border: 1px solid #4B5563; border-radius: 6px;
+                padding: 4px 10px; font-size: 14px; min-width: 110px;
+            }}
+            QComboBox QAbstractItemView {{
+                background: #374151; color: {TXT_PRIMARY};
+                selection-background-color: {BTN_ACTIVE};
+            }}
+        """)
+        self._build_ui()
+        self._refresh()
+
+    def _build_ui(self):
+        vbox = QVBoxLayout(self)
+        vbox.setContentsMargins(16, 16, 16, 16)
+        vbox.setSpacing(10)
+
+        row = QHBoxLayout()
+        lbl = QLabel("対象号館:")
+        lbl.setStyleSheet(f"color: {TXT_SUB}; font-size: 15px;")
+        row.addWidget(lbl)
+
+        self._combo = QComboBox()
+        self._combo.addItem("全て", -1)
+        for b in self._buildings:
+            self._combo.addItem(_bldg_label(b), b)
+        self._combo.currentIndexChanged.connect(lambda _: self._on_bldg_changed())
+        row.addWidget(self._combo)
+        row.addStretch()
+
+        copy_btn = QPushButton("クリップボードにコピー")
+        copy_btn.setFont(QFont("", 12))
+        copy_btn.setStyleSheet(f"""
+            QPushButton {{
+                background: {BTN_ACTIVE}; color: #FFF;
+                border-radius: 5px; padding: 4px 14px; border: none;
+            }}
+            QPushButton:hover {{ background: #22D4FF; color: #000; }}
+        """)
+        copy_btn.clicked.connect(self._copy)
+        row.addWidget(copy_btn)
+
+        save_btn = QPushButton("ファイルに保存")
+        save_btn.setFont(QFont("", 12))
+        save_btn.setStyleSheet(f"""
+            QPushButton {{
+                background: {BTN_IDLE}; color: {TXT_PRIMARY};
+                border-radius: 5px; padding: 4px 14px; border: none;
+            }}
+            QPushButton:hover {{ background: #4B5563; }}
+        """)
+        save_btn.clicked.connect(self._save)
+        row.addWidget(save_btn)
+
+        vbox.addLayout(row)
+
+        self._text = QTextEdit()
+        self._text.setReadOnly(True)
+        vbox.addWidget(self._text)
+
+    def _on_bldg_changed(self):
+        self._sel_bldg = self._combo.currentData()
+        self._refresh()
+
+    def _generate(self) -> str:
+        target = {"missing", "unregistered"}
+        cards = [
+            c for c in self._cards.values()
+            if c.state in target
+            and (self._sel_bldg == -1 or c.building == self._sel_bldg)
+        ]
+        cards.sort(key=_edge_sort_key)
+
+        bldg_label = "全て" if self._sel_bldg == -1 else _bldg_label(self._sel_bldg)
+
+        now   = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        lines = [
+            "IKU NAVI 画像チェッカー — 欠損・未登録エッジ一覧",
+            f"生成日時: {now}",
+            f"対象号館: {bldg_label}",
+            "",
+        ]
+
+        if not cards:
+            lines.append("※ 欠損・未登録エッジはありません")
+            return "\n".join(lines)
+
+        W_KEY   = max(len("エッジキー"), max(len(c.key) for c in cards)) + 2
+        W_BLDG  = 8   # 表示幅（CJK 考慮）
+        W_FLOOR = 4
+        SEP     = "-" * (W_KEY + W_BLDG + W_FLOOR + 28 + 6)
+
+        lines += [
+            SEP,
+            _cjk_pad("エッジキー", W_KEY)
+            + "  " + _cjk_pad("号館", W_BLDG)
+            + "  " + _cjk_pad("階", W_FLOOR)
+            + "  状態",
+            SEP,
+        ]
+
+        for c in cards:
+            bldg_str  = _bldg_label(c.building)
+            floor_str = f"{c.floor}階"
+            state_str = "欠損 (CDN に存在しない)" if c.state == "missing" else "未登録 (CSV 未登録)"
+            lines.append(
+                f"{c.key:<{W_KEY}}"
+                "  " + _cjk_pad(bldg_str, W_BLDG)
+                + "  " + _cjk_pad(floor_str, W_FLOOR)
+                + f"  {state_str}"
+            )
+
+        n_miss  = sum(1 for c in cards if c.state == "missing")
+        n_unreg = sum(1 for c in cards if c.state == "unregistered")
+        lines += [SEP, f"合計: {len(cards)} 件  (欠損: {n_miss}  未登録: {n_unreg})"]
+        return "\n".join(lines)
+
+    def _refresh(self):
+        self._text.setPlainText(self._generate())
+
+    def _copy(self):
+        QApplication.clipboard().setText(self._text.toPlainText())
+
+    def _save(self):
+        path, _ = QFileDialog.getSaveFileName(
+            self, "ファイルに保存", "missing_edges.txt",
+            "テキストファイル (*.txt);;すべてのファイル (*)",
+        )
+        if path:
+            with open(path, "w", encoding="utf-8") as f:
+                f.write(self._text.toPlainText())
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# メインウィンドウ
+# ─────────────────────────────────────────────────────────────────────────────
+
+# フィルタ定数
+FILTER_ALL     = "all"
+FILTER_NG      = "missing"        # CDN 欠損
+FILTER_UNREG   = "unregistered"   # CSV 未登録
+FILTER_ATTN    = "attention"      # 欠損 + 未登録まとめて
+FILTER_NOTREQ  = "not_required"   # 建物出入口エッジ（AR起動のため写真不要）
+
+
+class MainWindow(QMainWindow):
+    def __init__(self):
+        super().__init__()
+        self.setWindowTitle("画像チェック")
+        self.setMinimumSize(980, 680)
+        self.resize(1280, 820)
+
+        self._cards:            dict[str, ImageCard] = {}
+        self._buildings:        list[int] = []
+        self._bldg_btn_map:     dict[int, QPushButton] = {}
+        self._current_building: int = -1
+        self._filter_state:     str = FILTER_ALL
+
+        self._fetch_worker: FetchGraphWorker  | None = None
+        self._img_worker:   ImageFetchWorker  | None = None
+
+        self._resize_timer = QTimer(self)
+        self._resize_timer.setSingleShot(True)
+        self._resize_timer.timeout.connect(self._refresh_grid)
+
+        self._build_ui()
+        self._apply_theme()
+
+    # ── テーマ ────────────────────────────────────────────────────────────────
+
+    def _apply_theme(self):
+        self.setStyleSheet(base_stylesheet())
+
+    # ── UI 構築 ───────────────────────────────────────────────────────────────
+
+    def _build_ui(self):
+        root = QWidget()
+        self.setCentralWidget(root)
+        vbox = QVBoxLayout(root)
+        vbox.setContentsMargins(0, 0, 0, 0)
+        vbox.setSpacing(0)
+        vbox.addWidget(self._build_topbar())
+        vbox.addWidget(self._build_filterbar())
+        vbox.addWidget(self._build_scroll(), stretch=1)
+
+    def _build_topbar(self) -> QWidget:
+        bar = QWidget()
+        bar.setFixedHeight(62)
+        bar.setStyleSheet(f"background: {BG_BAR}; border-bottom: 1px solid {BORDER};")
+        row = QHBoxLayout(bar)
+        row.setContentsMargins(16, 0, 16, 0)
+        row.setSpacing(10)
+
+        title = QLabel("画像チェック")
+        title.setFont(QFont("", 18, QFont.Weight.Bold))
+        title.setStyleSheet(f"color: {ACCENT};")
+        row.addWidget(title)
+
+        row.addSpacing(12)
+        lbl = QLabel("API URL:")
+        lbl.setStyleSheet(f"color: {TXT_SUB}; font-size: 16px;")
+        row.addWidget(lbl)
+
+        self._api_edit = QLineEdit(DEFAULT_API)
+        self._api_edit.setFixedWidth(260)
+        self._api_edit.returnPressed.connect(self._start_fetch)
+        row.addWidget(self._api_edit)
+
+        self._fetch_btn = QPushButton("取得開始")
+        self._fetch_btn.setFixedSize(100, 34)
+        self._fetch_btn.setFont(QFont("", 13, QFont.Weight.Bold))
+        self._fetch_btn.setStyleSheet(f"""
+            QPushButton {{
+                background: {ACCENT}; color: #001A22; border-radius: 6px;
+            }}
+            QPushButton:hover    {{ background: #22D4FF; }}
+            QPushButton:pressed  {{ background: #0099BB; }}
+            QPushButton:disabled {{ background: {INPUT_BG}; color: {TXT_SUB}; }}
+        """)
+        self._fetch_btn.clicked.connect(self._start_fetch)
+        row.addWidget(self._fetch_btn)
+
+        row.addSpacing(6)
+
+        self._export_btn = QPushButton("欠損を出力")
+        self._export_btn.setFixedSize(110, 34)
+        self._export_btn.setFont(QFont("", 13, QFont.Weight.Bold))
+        self._export_btn.setEnabled(False)
+        self._export_btn.setStyleSheet(f"""
+            QPushButton {{
+                background: {BTN_IDLE}; color: {TXT_PRIMARY}; border-radius: 6px;
+            }}
+            QPushButton:hover    {{ background: #4B5563; }}
+            QPushButton:pressed  {{ background: #374151; }}
+            QPushButton:disabled {{ background: #2D3748; color: #4B5563; }}
+        """)
+        self._export_btn.clicked.connect(self._open_export_dialog)
+        row.addWidget(self._export_btn)
+
+        row.addSpacing(6)
+
+        self._progress = QProgressBar()
+        self._progress.setFixedSize(180, 8)
+        self._progress.setRange(0, 1)
+        self._progress.setValue(0)
+        self._progress.setTextVisible(False)
+        row.addWidget(self._progress)
+
+        row.addStretch()
+
+        self._status_lbl = QLabel("API URL を入力して「取得開始」")
+        self._status_lbl.setStyleSheet(f"color: {TXT_SUB}; font-size: 16px;")
+        row.addWidget(self._status_lbl)
+
+        return bar
+
+    def _build_filterbar(self) -> QWidget:
+        self._filterbar = QWidget()
+        self._filterbar.setFixedHeight(48)
+        self._filterbar.setStyleSheet(
+            f"background: {BG_BAR}; border-bottom: 1px solid {BORDER};"
+        )
+        self._filterbar_row = QHBoxLayout(self._filterbar)
+        self._filterbar_row.setContentsMargins(16, 0, 16, 0)
+        self._filterbar_row.setSpacing(6)
+        self._filterbar_row.addStretch()
+        return self._filterbar
+
+    def _rebuild_filterbar(self):
+        while self._filterbar_row.count():
+            item = self._filterbar_row.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+
+        self._bldg_btn_map = {}
+
+        # ── 号館フィルタ ─────────────────────────────────────────────────────
+        lbl1 = QLabel("号館:")
+        lbl1.setStyleSheet(f"color: {TXT_SUB}; font-size: 16px;")
+        self._filterbar_row.addWidget(lbl1)
+
+        all_bldg = self._make_pill("全て", True)
+        all_bldg.clicked.connect(lambda: self._filter_building(-1))
+        self._filterbar_row.addWidget(all_bldg)
+        self._bldg_btn_map[-1] = all_bldg
+
+        for bldg in self._buildings:
+            btn = self._make_pill(_bldg_label(bldg), False)
+            btn.clicked.connect(lambda _=False, b=bldg: self._filter_building(b))
+            self._filterbar_row.addWidget(btn)
+            self._bldg_btn_map[bldg] = btn
+
+        # ── セパレータ ────────────────────────────────────────────────────────
+        sep = QFrame()
+        sep.setFrameShape(QFrame.Shape.VLine)
+        sep.setFixedHeight(24)
+        sep.setStyleSheet(f"color: {BORDER};")
+        self._filterbar_row.addSpacing(8)
+        self._filterbar_row.addWidget(sep)
+        self._filterbar_row.addSpacing(8)
+
+        # ── 状態フィルタ ──────────────────────────────────────────────────────
+        lbl2 = QLabel("表示:")
+        lbl2.setStyleSheet(f"color: {TXT_SUB}; font-size: 16px;")
+        self._filterbar_row.addWidget(lbl2)
+
+        self._state_btns: dict[str, QPushButton] = {}
+        filters = [
+            (FILTER_ALL,    "全て"),
+            (FILTER_NG,     "欠損"),
+            (FILTER_UNREG,  "未登録"),
+            (FILTER_ATTN,   "要対応"),
+            (FILTER_NOTREQ, "AR区間(不要)"),
+        ]
+        for fkey, flabel in filters:
+            btn = self._make_pill(flabel, fkey == FILTER_ALL)
+            btn.clicked.connect(lambda _=False, k=fkey: self._filter_state_set(k))
+            self._filterbar_row.addWidget(btn)
+            self._state_btns[fkey] = btn
+
+        self._filterbar_row.addStretch()
+
+        self._count_lbl = QLabel("")
+        self._count_lbl.setStyleSheet(f"color: {TXT_SUB}; font-size: 16px;")
+        self._filterbar_row.addWidget(self._count_lbl)
+
+    def _make_pill(self, text: str, active: bool) -> QPushButton:
+        btn = QPushButton(text)
+        btn.setFixedHeight(28)
+        btn.setFont(QFont("", 12))
+        self._set_pill(btn, active)
+        return btn
+
+    def _set_pill(self, btn: QPushButton, active: bool):
+        if active:
+            btn.setStyleSheet(f"""
+                QPushButton {{
+                    background: {BTN_ACTIVE}; color: #FFF;
+                    border-radius: 5px; padding: 0 12px; border: none;
+                }}
+            """)
+        else:
+            btn.setStyleSheet(f"""
+                QPushButton {{
+                    background: {BTN_IDLE}; color: {TXT_PRIMARY};
+                    border-radius: 5px; padding: 0 12px; border: none;
+                }}
+                QPushButton:hover {{ background: #4B5563; }}
+            """)
+
+    def _new_grid_widget(self) -> tuple[QWidget, QGridLayout]:
+        """カードを並べるためのグリッドウィジェットを新規生成する"""
+        gw = QWidget()
+        gw.setStyleSheet(f"background: {BG_WIN};")
+        gl = QGridLayout(gw)
+        gl.setContentsMargins(16, 16, 16, 16)
+        gl.setSpacing(12)
+        gl.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft)
+        return gw, gl
+
+    def _placeholder_label(self, text: str) -> QLabel:
+        lbl = QLabel(text)
+        lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        lbl.setStyleSheet(f"color: {TXT_SUB}; font-size: 16px;")
+        return lbl
+
+    def _build_scroll(self) -> QScrollArea:
+        self._scroll = QScrollArea()
+        self._scroll.setWidgetResizable(True)
+
+        gw, gl = self._new_grid_widget()
+        gl.addWidget(
+            self._placeholder_label("API URL を入力して「取得開始」をクリックしてください"), 0, 0
+        )
+
+        self._scroll.setWidget(gw)
+        return self._scroll
+
+    # ── フェッチ ──────────────────────────────────────────────────────────────
+
+    def _start_fetch(self):
+        api_url = self._api_edit.text().strip()
+        if not api_url:
+            QMessageBox.warning(self, "エラー", "API URL を入力してください。")
+            return
+
+        self._cards.clear()
+        self._buildings.clear()
+        self._current_building = -1
+        self._filter_state     = FILTER_ALL
+
+        self._fetch_btn.setEnabled(False)
+        self._set_status("API に接続中...", TXT_SUB)
+        self._progress.setRange(0, 1)
+        self._progress.setValue(0)
+
+        self._fetch_worker = FetchGraphWorker(api_url)
+        self._fetch_worker.finished.connect(self._on_graph_data)
+        self._fetch_worker.error.connect(self._on_fetch_error)
+        self._fetch_worker.start()
+
+    def _on_fetch_error(self, msg: str):
+        self._fetch_btn.setEnabled(True)
+        self._set_status(f"エラー: {msg}", COL_ERR)
+        QMessageBox.critical(
+            self, "取得エラー",
+            f"API への接続に失敗しました:\n\n{msg}\n\n"
+            "サーバーが起動しているか確認してください。"
+        )
+
+    def _on_graph_data(self, nodes_map: dict, edges_list: list, edge_images: dict):
+        """グラフ上の全エッジ（両方向）を網羅してカードを生成する"""
+
+        self._set_status("グラフを解析中...", TXT_SUB)
+
+        buildings_set: set[int] = set()
+        tasks: list[tuple[str, str]] = []   # 登録済みエッジの (key, url) リスト
+        seen:  set[str] = set()
+
+        # 全エッジ × 両方向を処理
+        for edge in edges_list:
+            from_id  = int(edge["from"])
+            to_id    = int(edge["to"])
+            # type=7 は anchors.csv から自動生成される建物出入口エッジ。
+            # navi側はこの区間で写真を使わずカメラARを起動するため写真登録は不要。
+            is_entrance_edge = str(edge.get("type", "1")) == "7"
+            # エッジのノードが nodes_map になければ from_id を参照
+            nf       = nodes_map.get(from_id, {})
+            building = nf.get("building", edge.get("building", -1))
+            floor    = nf.get("floor",    edge.get("floor",    1))
+            buildings_set.add(building)
+
+            for f, t in [(from_id, to_id), (to_id, from_id)]:
+                key = f"{f}_{t}"
+                if key in seen:
+                    continue
+                seen.add(key)
+
+                # 方向を反転した場合は to_id の建物情報を使う
+                if f == to_id:
+                    nt       = nodes_map.get(to_id, {})
+                    building = nt.get("building", edge.get("building", -1))
+                    floor    = nt.get("floor",    edge.get("floor",    1))
+                    buildings_set.add(building)
+
+                if is_entrance_edge:
+                    card = ImageCard(key, None, building, floor, "not_required")
+                else:
+                    url = edge_images.get(key)
+                    if url:
+                        card = ImageCard(key, url, building, floor, "loading")
+                        tasks.append((key, url))
+                    else:
+                        card = ImageCard(key, None, building, floor, "unregistered")
+
+                self._cards[key] = card
+
+        self._buildings = sorted(buildings_set)
+        self._rebuild_filterbar()
+        self._refresh_grid()
+        self._export_btn.setEnabled(True)
+
+        total_edges = len(self._cards)
+        registered  = len(tasks)
+        _, _, unreg, not_required = _count_states(self._cards.values())
+        self._set_status(
+            f"全 {total_edges} エッジ  登録済 {registered}  未登録 {unreg}  "
+            f"AR起動区間(不要) {not_required}  — 画像取得中...",
+            TXT_SUB,
+        )
+        self._progress.setRange(0, max(1, registered))
+        self._progress.setValue(0)
+
+        if not tasks:
+            self._fetch_btn.setEnabled(True)
+            self._set_status(
+                f"全 {total_edges} エッジ中、CSV 登録済みが 0 件でした", COL_WARN
+            )
+            return
+
+        self._img_worker = ImageFetchWorker(tasks)
+        self._img_worker.image_ready.connect(self._on_image_ready)
+        self._img_worker.progress.connect(self._on_progress)
+        self._img_worker.finished.connect(self._on_images_done)
+        self._img_worker.start()
+
+    def _on_image_ready(self, key: str, data: bytes):
+        card = self._cards.get(key)
+        if card:
+            card.set_image(data)
+            self._update_count_lbl()
+
+    def _on_progress(self, done: int, total: int):
+        self._progress.setValue(done)
+        self._set_status(f"画像取得中... {done} / {total}", TXT_SUB)
+
+    def _on_images_done(self):
+        self._fetch_btn.setEnabled(True)
+        ok, missing, unreg, _ = _count_states(self._cards.values())
+        total = len(self._cards)
+
+        if missing or unreg:
+            self._set_status(
+                f"完了: 全 {total} エッジ  ✔ {ok}  ✕ 欠損 {missing}  — 未登録 {unreg}",
+                COL_ERR,
+            )
+        else:
+            self._set_status(f"完了: 全 {total} エッジ  ✔ 全て OK", COL_OK)
+
+        self._update_count_lbl()
+        if self._filter_state != FILTER_ALL:
+            self._refresh_grid()
+
+    # ── グリッド制御 ──────────────────────────────────────────────────────────
+
+    def _visible_cards(self) -> list[ImageCard]:
+        def match_state(c: ImageCard) -> bool:
+            if self._filter_state == FILTER_ALL:   return True
+            if self._filter_state == FILTER_NG:     return c.state == "missing"
+            if self._filter_state == FILTER_UNREG:  return c.state == "unregistered"
+            if self._filter_state == FILTER_ATTN:   return c.state in ("missing", "unregistered")
+            if self._filter_state == FILTER_NOTREQ: return c.state == "not_required"
+            return True
+
+        cards = [
+            c for c in self._cards.values()
+            if (self._current_building == -1 or c.building == self._current_building)
+            and match_state(c)
+        ]
+        return sorted(cards, key=_edge_sort_key)
+
+    def _refresh_grid(self):
+        for card in self._cards.values():
+            card.setParent(None)
+
+        old = self._scroll.takeWidget()
+        if old:
+            old.deleteLater()
+
+        gw, gl = self._new_grid_widget()
+
+        visible = self._visible_cards()
+
+        if not visible and not self._cards:
+            gl.addWidget(
+                self._placeholder_label("API URL を入力して「取得開始」をクリックしてください"), 0, 0
+            )
+        elif not visible:
+            gl.addWidget(self._placeholder_label("該当するエッジがありません"), 0, 0)
+        else:
+            vw   = max(1, self._scroll.viewport().width() - 32)
+            cols = max(1, vw // (CARD_W + 12))
+            for i, card in enumerate(visible):
+                gl.addWidget(card, i // cols, i % cols)
+
+        self._scroll.setWidget(gw)
+        self._update_count_lbl()
+
+    def _filter_building(self, building: int):
+        self._current_building = building
+        for b, btn in self._bldg_btn_map.items():
+            self._set_pill(btn, b == building)
+        self._refresh_grid()
+
+    def _filter_state_set(self, fkey: str):
+        self._filter_state = fkey
+        for k, btn in self._state_btns.items():
+            self._set_pill(btn, k == fkey)
+        self._refresh_grid()
+
+    # ── テキスト出力 ──────────────────────────────────────────────────────────
+
+    def _open_export_dialog(self):
+        dlg = ExportDialog(self._cards, self._buildings, parent=self)
+        dlg.exec()
+
+    # ── ユーティリティ ────────────────────────────────────────────────────────
+
+    def _set_status(self, text: str, color: str):
+        self._status_lbl.setText(text)
+        self._status_lbl.setStyleSheet(f"color: {color}; font-size: 16px;")
+
+    def _update_count_lbl(self):
+        if not hasattr(self, "_count_lbl"):
+            return
+
+        total   = len(self._cards)
+        ok, missing, unreg, not_required = _count_states(self._cards.values())
+        loading = total - ok - missing - unreg - not_required
+        visible = len(self._visible_cards())
+
+        parts = [f"全 {total} エッジ"]
+        if loading:
+            parts.append(f"読込中 {loading}")
+        parts += [f"✔ {ok}", f"✕ 欠損 {missing}", f"— 未登録 {unreg}", f"◎ AR区間 {not_required}"]
+
+        if self._current_building != -1:
+            bldg_cards = [c for c in self._cards.values() if c.building == self._current_building]
+            bldg_total = len(bldg_cards)
+            bldg_ok, bldg_miss, bldg_unreg, bldg_notreq = _count_states(bldg_cards)
+            bldg_name  = _bldg_label(self._current_building)
+            parts.append(
+                f"[{bldg_name}: 全 {bldg_total}  ✔ {bldg_ok}  ✕ {bldg_miss}  "
+                f"— {bldg_unreg}  ◎ {bldg_notreq}  表示 {visible}]"
+            )
+        else:
+            parts.append(f"[表示 {visible}]")
+
+        color = COL_ERR if (missing or unreg) else (TXT_SUB if loading else COL_OK)
+        self._count_lbl.setText("  ".join(parts))
+        self._count_lbl.setStyleSheet(f"color: {color}; font-size: 16px;")
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        if self._cards:
+            self._resize_timer.start(180)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# エントリーポイント
+# ─────────────────────────────────────────────────────────────────────────────
+```
+
+### `programs/IKU_NAVI_Tools/iku_tools/image_checker/__init__.py`
+
+```python
+"""画像チェック: CDN 上の経路写真の有無をエッジごとに確認する（旧 programs/Image_Checker）"""
+```
+
+#### 画像リネームタブ（iku_tools/image_renamer）
+
+### `programs/IKU_NAVI_Tools/iku_tools/image_renamer/window.py`
 
 ```python
 #!/usr/bin/env python3
 """画像バッチリネーマー — 左にD&D、右に名前をペーストするだけ"""
 
-import sys
 import os
 from pathlib import Path
 
@@ -13870,8 +12360,6 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QFont, QColor, QPainter, QKeySequence, QShortcut, QIntValidator
 
-sys.path.append(str(Path(__file__).resolve().parents[1]))
-from gui_common import qt_app
 
 IMAGE_EXTS = {".jpg", ".jpeg", ".png", ".gif", ".bmp",
               ".tiff", ".tif", ".webp", ".heic", ".heif"}
@@ -13959,7 +12447,7 @@ class DropListWidget(QListWidget):
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("画像リネーマー")
+        self.setWindowTitle("画像リネーム")
         self.setMinimumSize(960, 780)
         self._build_ui()
 
@@ -13996,9 +12484,11 @@ class MainWindow(QMainWindow):
 
         layout.addWidget(self._resize_section())
 
-        QShortcut(QKeySequence.StandardKey.Delete, self).activated.connect(
-            self.drop_list.remove_selected
-        )
+        # Delete キーで選択した画像を外す。ほかのタブを操作しているときに反応しないよう、
+        # このタブの中にフォーカスがあるときだけ効くようにする
+        delete_shortcut = QShortcut(QKeySequence.StandardKey.Delete, self)
+        delete_shortcut.setContext(Qt.ShortcutContext.WidgetWithChildrenShortcut)
+        delete_shortcut.activated.connect(self.drop_list.remove_selected)
 
     def _left_panel(self) -> QVBoxLayout:
         vbox = QVBoxLayout()
@@ -14321,322 +12811,17 @@ class MainWindow(QMainWindow):
 
         self.drop_list.clear_all()
         self.name_edit.clear()
-
-
-def main():
-    qt_app.run(MainWindow)
-
-
-if __name__ == "__main__":
-    main()
 ```
 
-### `programs/Image_Renamer/requirements.txt`
-
-```text
-PyQt6
-Pillow
-
-```
-
-#### SVG_Pointer
-
-### `programs/SVG_Pointer/svg_picker.py`
+### `programs/IKU_NAVI_Tools/iku_tools/image_renamer/__init__.py`
 
 ```python
-#!/usr/bin/env python3
-"""
-SVG Coordinate Picker (PyQt5)
-------------------------------
-SVGファイルを画面に表示し、クリックした位置のSVG座標(x, y)を取得する。
-クリックするたびに全点がクリップボードにタブ区切りでコピーされ、
-スプレッドシートに2列でペースト可能。
-
-Usage:
-  python svg_picker.py [file.svg]
-  python svg_picker.py             # ファイルダイアログで選択
-
-依存:
-  pip install PyQt5
-"""
-
-import sys
-from pathlib import Path
-
-try:
-    from PyQt5.QtWidgets import (
-        QApplication, QMainWindow, QGraphicsView, QGraphicsScene,
-        QWidget, QVBoxLayout, QPushButton, QListWidget,
-        QLabel, QFileDialog, QSplitter,
-    )
-    from PyQt5.QtSvg import QGraphicsSvgItem
-    from PyQt5.QtCore import Qt, QTimer
-    from PyQt5.QtGui import QPen, QBrush, QColor, QFont, QPainter
-except ImportError:
-    print("PyQt5が必要です:  pip install PyQt5")
-    sys.exit(1)
-
-
-PIN_R = 6
-PIN_FILL    = QColor("#ff3333")
-PIN_OUTLINE = QColor("white")
-PIN_TEXT    = QColor("#cc0000")
-
-
-# ---------------------------------------------------------------------------
-# カスタム QGraphicsView — ズーム・パン・クリック
-# ---------------------------------------------------------------------------
-
-class SVGView(QGraphicsView):
-
-    def __init__(self, scene: QGraphicsScene, on_click):
-        super().__init__(scene)
-        self._on_click = on_click
-        self._press_pos = None
-
-        self.setRenderHints(QPainter.Antialiasing | QPainter.SmoothPixmapTransform)
-        self.setDragMode(QGraphicsView.ScrollHandDrag)
-        self.setTransformationAnchor(QGraphicsView.AnchorUnderMouse)
-        self.setResizeAnchor(QGraphicsView.AnchorViewCenter)
-        self.setBackgroundBrush(QBrush(QColor("#e8e8e8")))
-
-    def wheelEvent(self, event):
-        factor = 1.15 if event.angleDelta().y() > 0 else 1 / 1.15
-        self.scale(factor, factor)
-
-    def mousePressEvent(self, event):
-        if event.button() == Qt.LeftButton:
-            self._press_pos = event.pos()
-        super().mousePressEvent(event)
-
-    def mouseReleaseEvent(self, event):
-        if event.button() == Qt.LeftButton and self._press_pos is not None:
-            # 5px以内の移動ならクリック扱い（ドラッグと区別）
-            if (event.pos() - self._press_pos).manhattanLength() < 5:
-                scene_pos = self.mapToScene(event.pos())
-                self._on_click(scene_pos.x(), scene_pos.y())
-            self._press_pos = None
-        super().mouseReleaseEvent(event)
-
-    def keyPressEvent(self, event):
-        k = event.key()
-        if k in (Qt.Key_Plus, Qt.Key_Equal):
-            self.scale(1.25, 1.25)
-        elif k == Qt.Key_Minus:
-            self.scale(0.8, 0.8)
-        elif k == Qt.Key_0:
-            self.fit_all()
-        else:
-            super().keyPressEvent(event)
-
-    def fit_all(self):
-        rect = self.scene().itemsBoundingRect()
-        if not rect.isEmpty():
-            self.fitInView(rect, Qt.KeepAspectRatio)
-
-
-# ---------------------------------------------------------------------------
-# メインウィンドウ
-# ---------------------------------------------------------------------------
-
-class MainWindow(QMainWindow):
-
-    def __init__(self, svg_path: str):
-        super().__init__()
-        self.svg_path = svg_path
-        self.points: list = []   # (svg_x, svg_y)
-
-        self.setWindowTitle(f"SVG Coord Picker — {Path(svg_path).name}")
-        self.resize(1280, 820)
-
-        self._build_ui()
-        self._load_svg()
-
-    # ------------------------------------------------------------------
-    # UI
-    # ------------------------------------------------------------------
-
-    def _build_ui(self):
-        splitter = QSplitter(Qt.Horizontal)
-        self.setCentralWidget(splitter)
-
-        # 左: SVGビュー
-        self._scene = QGraphicsScene()
-        self._view = SVGView(self._scene, self._on_click)
-        splitter.addWidget(self._view)
-
-        # 右: サイドパネル
-        side = QWidget()
-        side.setFixedWidth(240)
-        side.setStyleSheet("background:#f5f5f5;")
-        vl = QVBoxLayout(side)
-        vl.setContentsMargins(8, 12, 8, 8)
-        vl.setSpacing(4)
-
-        vl.addWidget(QLabel("<b>取得座標一覧</b>"))
-
-        self._list = QListWidget()
-        self._list.setFont(QFont("Courier", 11))
-        self._list.setStyleSheet("background:white; color:black;")
-        vl.addWidget(self._list, 1)
-
-        for label, fn, color in [
-            ("クリップボードにコピー (全点)", self._copy_all,       "#4CAF50"),
-            ("選択した点を削除",              self._delete_selected, "#757575"),
-            ("全消去",                        self._clear_all,       "#e53935"),
-        ]:
-            btn = QPushButton(label)
-            btn.clicked.connect(fn)
-            btn.setStyleSheet(
-                f"QPushButton{{background:{color};color:white;"
-                f"padding:6px;border:none;border-radius:3px;}}"
-                f"QPushButton:hover{{background:{color};opacity:0.9;}}"
-            )
-            vl.addWidget(btn)
-
-        note = QLabel("ズーム: スクロール / + −\n全体表示: キー 0\nパン: 左ドラッグ")
-        note.setStyleSheet("color:#888;font-size:10px;")
-        vl.addWidget(note)
-
-        splitter.addWidget(side)
-        splitter.setSizes([1040, 240])
-
-        self.statusBar().showMessage("SVGをクリックして座標を取得")
-
-    def _load_svg(self):
-        self._svg_item = QGraphicsSvgItem(self.svg_path)
-        self._scene.addItem(self._svg_item)
-        self._scene.setSceneRect(self._svg_item.boundingRect())
-        # ウィンドウ表示後に全体フィット
-        QTimer.singleShot(100, self._view.fit_all)
-
-    # ------------------------------------------------------------------
-    # ピン描画
-    # ------------------------------------------------------------------
-
-    def _draw_pin(self, sx: float, sy: float, n: int):
-        r = PIN_R
-        pen_w = QPen(PIN_OUTLINE, 2)
-        pen_r = QPen(PIN_FILL, 2)
-
-        line = self._scene.addLine(sx, sy - r - 8, sx, sy - r, pen_r)
-        line.setZValue(10)
-
-        circle = self._scene.addEllipse(
-            sx - r, sy - r, r * 2, r * 2, pen_w, QBrush(PIN_FILL)
-        )
-        circle.setZValue(10)
-
-        text = self._scene.addSimpleText(str(n))
-        text.setPos(sx + r + 2, sy - 8)
-        text.setBrush(QBrush(PIN_TEXT))
-        text.setFont(QFont("Helvetica", 8, QFont.Bold))
-        text.setZValue(10)
-
-    # ------------------------------------------------------------------
-    # クリック
-    # ------------------------------------------------------------------
-
-    def _on_click(self, sx: float, sy: float):
-        # SVG範囲外は無視
-        if not self._svg_item.boundingRect().contains(sx, sy):
-            return
-
-        self.points.append((sx, sy))
-        n = len(self.points)
-        self._draw_pin(sx, sy, n)
-
-        self._list.addItem(self._point_line(n, sx, sy))
-        self._list.scrollToBottom()
-        self._copy_all()
-        self.statusBar().showMessage(
-            f"点 {n} 追加 → クリップボードにコピー済み  (x={sx:.3f}, y={sy:.3f})"
-        )
-
-    # ------------------------------------------------------------------
-    # クリップボード (タブ区切り → スプレッドシートに2列ペースト)
-    # ------------------------------------------------------------------
-
-    def _copy_all(self):
-        if not self.points:
-            return
-        text = "\n".join(f"{x:.3f}\t{y:.3f}" for x, y in self.points)
-        QApplication.clipboard().setText(text)
-
-    # ------------------------------------------------------------------
-    # リスト操作
-    # ------------------------------------------------------------------
-
-    def _delete_selected(self):
-        row = self._list.currentRow()
-        if row < 0:
-            return
-        self.points.pop(row)
-        self._redraw_all()
-        self._rebuild_list()
-        self._copy_all()
-
-    def _clear_all(self):
-        self.points.clear()
-        self._redraw_all()
-        self._list.clear()
-        QApplication.clipboard().clear()
-        self.statusBar().showMessage("全消去しました")
-
-    def _redraw_all(self):
-        for item in list(self._scene.items()):
-            if item is not self._svg_item:
-                self._scene.removeItem(item)
-        for i, (sx, sy) in enumerate(self.points, 1):
-            self._draw_pin(sx, sy, i)
-
-    def _rebuild_list(self):
-        self._list.clear()
-        for i, (x, y) in enumerate(self.points, 1):
-            self._list.addItem(self._point_line(i, x, y))
-
-    @staticmethod
-    def _point_line(n: int, x: float, y: float) -> str:
-        return f"{n:>3}: {x:>10.3f}, {y:>10.3f}"
-
-
-# ---------------------------------------------------------------------------
-# エントリーポイント
-# ---------------------------------------------------------------------------
-
-def main():
-    app = QApplication(sys.argv)
-
-    if len(sys.argv) > 1:
-        svg_path = sys.argv[1]
-    else:
-        svg_path, _ = QFileDialog.getOpenFileName(
-            None, "SVGファイルを選択", "",
-            "SVG files (*.svg);;All files (*)"
-        )
-        if not svg_path:
-            sys.exit(0)
-
-    win = MainWindow(svg_path)
-    win.show()
-    sys.exit(app.exec_())
-
-
-if __name__ == "__main__":
-    main()
-
+"""画像リネーム: 経路写真の一括リネーム・リサイズ（旧 programs/Image_Renamer）"""
 ```
 
-### `programs/SVG_Pointer/requirements.txt`
+#### 人物ぼかしタブ（iku_tools/human_remover）
 
-```text
-PyQt5>=5.15.0
-
-```
-
-#### Human_Remover
-
-### `programs/Human_Remover/main.py`
+### `programs/IKU_NAVI_Tools/iku_tools/human_remover/window.py`
 
 ```python
 #!/usr/bin/env python3
@@ -14645,7 +12830,6 @@ Human Remover
 写真内の人物（立ち/座り問わず）を自動検出してぼかし・モザイク・消去するツール
 """
 
-import sys
 import os
 import cv2
 import numpy as np
@@ -14668,7 +12852,10 @@ from PyQt6.QtGui import (
 #  定数
 # ──────────────────────────────────────────────────────────────────────
 SUPPORTED_EXTS = {".jpg", ".jpeg", ".png", ".bmp", ".webp", ".tiff", ".tif"}
-MODEL_NAME     = "yolov8n-seg.pt"   # 初回起動時に自動ダウンロード (~6 MB)
+MODEL_NAME     = "yolov8n-seg.pt"   # 無ければ初回の処理時に自動ダウンロード (~6 MB)
+# このフォルダに置いたモデルを優先する（以前は「起動したフォルダ」から探していたため、
+# 起動する場所によって毎回ダウンロードし直すことがあった）
+MODEL_PATH     = Path(__file__).with_name(MODEL_NAME)
 PERSON_CLS     = 0                  # COCO person class
 
 STATUS_WAIT  = "wait"
@@ -14812,7 +12999,7 @@ class ProcessWorker(QThread):
     def run(self):
         try:
             from ultralytics import YOLO
-            model = YOLO(MODEL_NAME)
+            model = YOLO(str(MODEL_PATH) if MODEL_PATH.exists() else MODEL_NAME)
         except Exception as exc:
             self.item_error.emit("", f"モデルの読み込みに失敗しました:\n{exc}")
             self.finished.emit()
@@ -15020,7 +13207,7 @@ class MainWindow(QMainWindow):
 
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Human Remover")
+        self.setWindowTitle("人物ぼかし")
         self.setMinimumSize(1000, 660)
         self.resize(1260, 780)
 
@@ -15439,7 +13626,7 @@ class MainWindow(QMainWindow):
 # ──────────────────────────────────────────────────────────────────────
 #  エントリポイント
 # ──────────────────────────────────────────────────────────────────────
-def check_deps() -> List[str]:
+def missing_dependencies() -> List[str]:
     missing = []
     try:
         import cv2          # noqa: F401
@@ -15450,44 +13637,513 @@ def check_deps() -> List[str]:
     except ImportError:
         missing.append("ultralytics")
     return missing
-
-
-def main():
-    app = QApplication(sys.argv)
-    app.setStyle("Fusion")
-
-    missing = check_deps()
-    if missing:
-        cmd = "pip install " + " ".join(missing)
-        msg = QMessageBox()
-        msg.setWindowTitle("依存ライブラリが不足しています")
-        msg.setText(
-            "以下のライブラリが必要です:\n\n"
-            + "\n".join(f"  • {m}" for m in missing)
-            + f"\n\nターミナルで以下を実行してください:\n\n  {cmd}"
-        )
-        msg.setIcon(QMessageBox.Icon.Critical)
-        msg.exec()
-        sys.exit(1)
-
-    win = MainWindow()
-    win.show()
-    sys.exit(app.exec())
-
-
-if __name__ == "__main__":
-    main()
-
 ```
 
-### `programs/Human_Remover/requirements.txt`
+### `programs/IKU_NAVI_Tools/iku_tools/human_remover/__init__.py`
 
-```text
-PyQt6>=6.4.0
-opencv-python>=4.8.0
-ultralytics>=8.0.0
-numpy>=1.24.0
+```python
+"""人物ぼかし: YOLOv8 で経路写真の人物を検出して匿名化する（旧 programs/Human_Remover）"""
+```
 
+#### SVG座標取得タブ（iku_tools/svg_pointer）
+
+### `programs/IKU_NAVI_Tools/iku_tools/svg_pointer/window.py`
+
+```python
+"""SVG座標取得タブ
+
+SVGファイルを表示し、クリックした位置のSVG座標(x, y)を取得する。
+クリックするたびに全点がクリップボードにタブ区切りでコピーされ、
+スプレッドシートに2列でそのまま貼り付けられる。
+
+もとは PyQt5 製の単独ツール（programs/SVG_Pointer/svg_picker.py）で、起動時にファイルを
+選ぶ作りだった。タブとして開けるよう、ファイルはタブ内の「SVGを開く」で選ぶようにしている。
+"""
+
+from pathlib import Path
+
+from PyQt6.QtCore import Qt, QTimer
+from PyQt6.QtGui import QBrush, QColor, QFont, QPainter, QPen
+from PyQt6.QtSvgWidgets import QGraphicsSvgItem
+from PyQt6.QtWidgets import (
+    QApplication,
+    QFileDialog,
+    QGraphicsScene,
+    QGraphicsView,
+    QHBoxLayout,
+    QLabel,
+    QListWidget,
+    QMainWindow,
+    QPushButton,
+    QSplitter,
+    QVBoxLayout,
+    QWidget,
+)
+
+from ..common.paths import SVG_DIR
+
+PIN_R = 6
+PIN_FILL = QColor("#ff3333")
+PIN_OUTLINE = QColor("white")
+PIN_TEXT = QColor("#cc0000")
+
+
+class SVGView(QGraphicsView):
+    """ズーム（ホイール・+/-）・パン（ドラッグ）・クリックでの座標取得"""
+
+    def __init__(self, scene: QGraphicsScene, on_click):
+        super().__init__(scene)
+        self._on_click = on_click
+        self._press_pos = None
+
+        self.setRenderHints(QPainter.RenderHint.Antialiasing | QPainter.RenderHint.SmoothPixmapTransform)
+        self.setDragMode(QGraphicsView.DragMode.ScrollHandDrag)
+        self.setTransformationAnchor(QGraphicsView.ViewportAnchor.AnchorUnderMouse)
+        self.setResizeAnchor(QGraphicsView.ViewportAnchor.AnchorViewCenter)
+        self.setBackgroundBrush(QBrush(QColor("#e8e8e8")))
+
+    def wheelEvent(self, event):
+        factor = 1.15 if event.angleDelta().y() > 0 else 1 / 1.15
+        self.scale(factor, factor)
+
+    def mousePressEvent(self, event):
+        if event.button() == Qt.MouseButton.LeftButton:
+            self._press_pos = event.position().toPoint()
+        super().mousePressEvent(event)
+
+    def mouseReleaseEvent(self, event):
+        pos = event.position().toPoint()
+        if event.button() == Qt.MouseButton.LeftButton and self._press_pos is not None:
+            # 5px以内の移動ならクリック扱い（ドラッグと区別）
+            if (pos - self._press_pos).manhattanLength() < 5:
+                scene_pos = self.mapToScene(pos)
+                self._on_click(scene_pos.x(), scene_pos.y())
+            self._press_pos = None
+        super().mouseReleaseEvent(event)
+
+    def keyPressEvent(self, event):
+        k = event.key()
+        if k in (Qt.Key.Key_Plus, Qt.Key.Key_Equal):
+            self.scale(1.25, 1.25)
+        elif k == Qt.Key.Key_Minus:
+            self.scale(0.8, 0.8)
+        elif k == Qt.Key.Key_0:
+            self.fit_all()
+        else:
+            super().keyPressEvent(event)
+
+    def fit_all(self):
+        rect = self.scene().itemsBoundingRect()
+        if not rect.isEmpty():
+            self.fitInView(rect, Qt.AspectRatioMode.KeepAspectRatio)
+
+
+class MainWindow(QMainWindow):
+
+    def __init__(self):
+        super().__init__()
+        self.svg_path: str | None = None
+        self.points: list[tuple[float, float]] = []   # (svg_x, svg_y)
+        self._svg_item: QGraphicsSvgItem | None = None
+
+        self.setWindowTitle("SVG座標取得")
+        self._build_ui()
+
+    # ------------------------------------------------------------------ UI
+
+    def _build_ui(self):
+        root = QWidget()
+        layout = QVBoxLayout(root)
+        layout.setContentsMargins(8, 8, 8, 8)
+        self.setCentralWidget(root)
+
+        bar = QHBoxLayout()
+        open_btn = QPushButton("SVGを開く…")
+        open_btn.clicked.connect(self._choose_file)
+        bar.addWidget(open_btn)
+        self._file_label = QLabel("SVGファイルを開いてください（IKU NAVI のフロアマップは programs/html/svg/ にあります）")
+        self._file_label.setStyleSheet("color:#555;")
+        bar.addWidget(self._file_label, 1)
+        layout.addLayout(bar)
+
+        splitter = QSplitter(Qt.Orientation.Horizontal)
+        layout.addWidget(splitter, 1)
+
+        # 左: SVGビュー
+        self._scene = QGraphicsScene()
+        self._view = SVGView(self._scene, self._on_click)
+        splitter.addWidget(self._view)
+
+        # 右: サイドパネル
+        side = QWidget()
+        side.setFixedWidth(240)
+        side.setStyleSheet("background:#f5f5f5;")
+        vl = QVBoxLayout(side)
+        vl.setContentsMargins(8, 12, 8, 8)
+        vl.setSpacing(4)
+
+        vl.addWidget(QLabel("<b>取得座標一覧</b>"))
+
+        self._list = QListWidget()
+        self._list.setFont(QFont("Courier", 11))
+        self._list.setStyleSheet("background:white; color:black;")
+        vl.addWidget(self._list, 1)
+
+        for label, fn, color in [
+            ("クリップボードにコピー (全点)", self._copy_all, "#4CAF50"),
+            ("選択した点を削除", self._delete_selected, "#757575"),
+            ("全消去", self._clear_all, "#e53935"),
+        ]:
+            btn = QPushButton(label)
+            btn.clicked.connect(fn)
+            btn.setStyleSheet(
+                f"QPushButton{{background:{color};color:white;"
+                f"padding:6px;border:none;border-radius:3px;}}"
+            )
+            vl.addWidget(btn)
+
+        note = QLabel("ズーム: スクロール / + −\n全体表示: キー 0\nパン: 左ドラッグ")
+        note.setStyleSheet("color:#888;font-size:10px;")
+        vl.addWidget(note)
+
+        splitter.addWidget(side)
+        splitter.setSizes([1040, 240])
+
+        self.statusBar().showMessage("「SVGを開く…」でファイルを選んでください")
+
+    # ------------------------------------------------------------------ ファイル
+
+    def _choose_file(self):
+        start_dir = str(Path(self.svg_path).parent) if self.svg_path else str(SVG_DIR)
+        path, _ = QFileDialog.getOpenFileName(
+            self, "SVGファイルを選択", start_dir, "SVG files (*.svg);;All files (*)",
+        )
+        if path:
+            self.load_svg(path)
+
+    def load_svg(self, path: str):
+        """SVGを読み込み直す。取得済みの点は、別の図面の座標と混ざらないよう消す"""
+        item = QGraphicsSvgItem(path)
+        if item.boundingRect().isEmpty():
+            self.statusBar().showMessage(f"SVGとして読み込めませんでした: {Path(path).name}")
+            return
+        self.svg_path = path
+        self.points.clear()
+        self._list.clear()
+        self._scene.clear()
+        self._svg_item = item
+        self._scene.addItem(item)
+        self._scene.setSceneRect(item.boundingRect())
+        self._file_label.setText(path)
+        self.setWindowTitle(f"SVG座標取得 — {Path(path).name}")
+        self.statusBar().showMessage("SVGをクリックして座標を取得")
+        # レイアウトが決まってから全体を表示する
+        QTimer.singleShot(100, self._view.fit_all)
+
+    # ------------------------------------------------------------------ ピン描画
+
+    def _draw_pin(self, sx: float, sy: float, n: int):
+        r = PIN_R
+        pen_w = QPen(PIN_OUTLINE, 2)
+        pen_r = QPen(PIN_FILL, 2)
+
+        line = self._scene.addLine(sx, sy - r - 8, sx, sy - r, pen_r)
+        line.setZValue(10)
+
+        circle = self._scene.addEllipse(sx - r, sy - r, r * 2, r * 2, pen_w, QBrush(PIN_FILL))
+        circle.setZValue(10)
+
+        text = self._scene.addSimpleText(str(n))
+        text.setPos(sx + r + 2, sy - 8)
+        text.setBrush(QBrush(PIN_TEXT))
+        text.setFont(QFont("Helvetica", 8, QFont.Weight.Bold))
+        text.setZValue(10)
+
+    # ------------------------------------------------------------------ クリック
+
+    def _on_click(self, sx: float, sy: float):
+        # SVG未読み込み・SVG範囲外は無視
+        if self._svg_item is None or not self._svg_item.boundingRect().contains(sx, sy):
+            return
+
+        self.points.append((sx, sy))
+        n = len(self.points)
+        self._draw_pin(sx, sy, n)
+
+        self._list.addItem(self._point_line(n, sx, sy))
+        self._list.scrollToBottom()
+        self._copy_all()
+        self.statusBar().showMessage(
+            f"点 {n} 追加 → クリップボードにコピー済み  (x={sx:.3f}, y={sy:.3f})"
+        )
+
+    # ------------------------------------------------------------------ クリップボード
+
+    def _copy_all(self):
+        """タブ区切りでコピー（スプレッドシートに2列で貼り付けられる）"""
+        if not self.points:
+            return
+        text = "\n".join(f"{x:.3f}\t{y:.3f}" for x, y in self.points)
+        QApplication.clipboard().setText(text)
+
+    # ------------------------------------------------------------------ リスト操作
+
+    def _delete_selected(self):
+        row = self._list.currentRow()
+        if row < 0:
+            return
+        self.points.pop(row)
+        self._redraw_all()
+        self._rebuild_list()
+        self._copy_all()
+
+    def _clear_all(self):
+        self.points.clear()
+        self._redraw_all()
+        self._list.clear()
+        QApplication.clipboard().clear()
+        self.statusBar().showMessage("全消去しました")
+
+    def _redraw_all(self):
+        for item in list(self._scene.items()):
+            if item is not self._svg_item:
+                self._scene.removeItem(item)
+        for i, (sx, sy) in enumerate(self.points, 1):
+            self._draw_pin(sx, sy, i)
+
+    def _rebuild_list(self):
+        self._list.clear()
+        for i, (x, y) in enumerate(self.points, 1):
+            self._list.addItem(self._point_line(i, x, y))
+
+    @staticmethod
+    def _point_line(n: int, x: float, y: float) -> str:
+        return f"{n:>3}: {x:>10.3f}, {y:>10.3f}"
+```
+
+### `programs/IKU_NAVI_Tools/iku_tools/svg_pointer/__init__.py`
+
+```python
+"""SVG座標取得: SVGをクリックして座標を取得する（旧 programs/SVG_Pointer）"""
+```
+
+#### テスト
+
+### `programs/IKU_NAVI_Tools/tests/conftest.py`
+
+```python
+"""IKU NAVI ツールのテスト共通設定。画面を出さない offscreen モードで Qt を動かす。
+
+PyQt6 が入っていない環境（GitHub Actions など）では、各テストファイルの先頭の
+pytest.importorskip でテストごとスキップする（ここでは PyQt6 を import しない）。
+"""
+import os
+import sys
+from pathlib import Path
+
+import pytest
+
+os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+
+
+@pytest.fixture(scope="session")
+def qapp():
+    from PyQt6.QtWidgets import QApplication
+    app = QApplication.instance() or QApplication([])
+    yield app
+
+
+@pytest.fixture
+def settings(tmp_path):
+    """利用者の設定を汚さないよう、一時ファイルの QSettings を使う"""
+    from PyQt6.QtCore import QSettings
+    return QSettings(str(tmp_path / "settings.ini"), QSettings.Format.IniFormat)
+
+
+@pytest.fixture
+def make_window(qapp, settings):
+    from iku_tools.app import ToolsWindow
+
+    windows = []
+
+    def _make(initial_tool=None):
+        w = ToolsWindow(initial_tool=initial_tool, settings=settings)
+        w.show()
+        qapp.processEvents()
+        windows.append(w)
+        return w
+
+    yield _make
+    for w in windows:
+        for tool in w._windows.values():
+            # 後片付けでは確認ダイアログを出さない
+            if hasattr(tool, "_confirm_discard_if_dirty"):
+                tool._confirm_discard_if_dirty = lambda: True
+        w.close()
+        qapp.processEvents()
+```
+
+### `programs/IKU_NAVI_Tools/tests/test_app.py`
+
+```python
+"""タブで各ツールを切り替えるアプリ本体の動作"""
+import pytest
+
+pytest.importorskip("PyQt6.QtWidgets")
+
+from PyQt6.QtWidgets import QPlainTextEdit  # noqa: E402
+
+from iku_tools import app as app_module  # noqa: E402
+from iku_tools.app import TOOL_KEYS, TOOLS  # noqa: E402
+
+
+def _error_text(window, index):
+    err = window._pages[index].findChild(QPlainTextEdit)
+    return err.toPlainText() if err else None
+
+
+def test_タブは7つで決まった順に並ぶ(make_window):
+    w = make_window()
+    assert [w._tabs.tabText(i) for i in range(w._tabs.count())] == [t.label for t in TOOLS]
+    assert TOOL_KEYS == ("map_editor", "events", "route_checker", "image_checker",
+                         "image_renamer", "human_remover", "svg_pointer")
+
+
+@pytest.mark.parametrize("key", TOOL_KEYS)
+def test_どのタブも読み込める(make_window, qapp, key):
+    if key == "human_remover":
+        pytest.importorskip("cv2")
+        pytest.importorskip("ultralytics")
+    w = make_window(initial_tool=key)
+    index = TOOL_KEYS.index(key)
+    assert w._tabs.currentIndex() == index
+    assert w.tool_window(key) is not None, _error_text(w, index)
+
+
+def test_タブは開くまで読み込まない(make_window):
+    w = make_window(initial_tool="svg_pointer")
+    assert list(w._windows) == [TOOL_KEYS.index("svg_pointer")]
+
+
+def test_最後に開いたタブで次回起動する(make_window, qapp):
+    w = make_window()
+    w._tabs.setCurrentIndex(TOOL_KEYS.index("image_renamer"))
+    qapp.processEvents()
+    w2 = make_window()
+    assert w2.current_tool_key() == "image_renamer"
+
+
+def test_ウィンドウのタイトルに開いているツールのタイトルが出る(make_window):
+    w = make_window(initial_tool="route_checker")
+    assert w.windowTitle() == "ルート検証 — IKU NAVI ツール"
+
+
+def test_必要なライブラリが無いタブにはエラーを出し他のタブは使える(make_window, monkeypatch):
+    import iku_tools.svg_pointer.window as svg_window
+    monkeypatch.setattr(svg_window, "missing_dependencies", lambda: ["some-package"], raising=False)
+    w = make_window(initial_tool="svg_pointer")
+    index = TOOL_KEYS.index("svg_pointer")
+    assert w.tool_window("svg_pointer") is None
+    assert "some-package" in _error_text(w, index)
+    w._tabs.setCurrentIndex(TOOL_KEYS.index("image_renamer"))
+    assert w.tool_window("image_renamer") is not None
+
+
+def test_読み込み中の例外でもアプリは落ちない(make_window, monkeypatch):
+    def broken(key):
+        raise RuntimeError(f"{key} が壊れた")
+    monkeypatch.setattr(app_module, "load_tool_window", broken)
+    w = make_window(initial_tool="events")
+    assert "events が壊れた" in _error_text(w, TOOL_KEYS.index("events"))
+
+
+def test_未保存のツールが閉じるのを断るとアプリも閉じない(make_window, qapp):
+    w = make_window(initial_tool="events")
+    w._tabs.setCurrentIndex(TOOL_KEYS.index("map_editor"))
+    qapp.processEvents()
+    map_editor = w.tool_window("map_editor")
+    events = w.tool_window("events")
+    events._confirm_discard_if_dirty = lambda: False       # 「イベント設定」に未保存の変更がある
+    w._tabs.setCurrentIndex(TOOL_KEYS.index("svg_pointer"))
+
+    assert w.close() is False
+    assert w.isVisible()
+    # 断ったツールのタブに切り替わり、先に閉じたツールも表示し直されている
+    assert w.current_tool_key() == "events"
+    assert not map_editor.isHidden()
+
+
+def test_全ツールが閉じてよければアプリも閉じる(make_window):
+    w = make_window(initial_tool="events")
+    w.tool_window("events")._confirm_discard_if_dirty = lambda: True
+    assert w.close() is True
+```
+
+### `programs/IKU_NAVI_Tools/tests/test_svg_pointer.py`
+
+```python
+"""SVG座標取得タブ（PyQt5 から移植）"""
+import pytest
+
+pytest.importorskip("PyQt6.QtWidgets")
+
+from PyQt6.QtWidgets import QApplication  # noqa: E402
+
+from iku_tools.common.paths import SVG_DIR  # noqa: E402
+
+
+@pytest.fixture
+def svg_tab(qapp):
+    from iku_tools.svg_pointer.window import MainWindow
+    w = MainWindow()
+    w.show()
+    qapp.processEvents()
+    yield w
+    w.close()
+
+
+def test_SVGを開くまではクリックしても何も起きない(svg_tab):
+    svg_tab._on_click(10, 10)
+    assert svg_tab.points == []
+
+
+def test_フロアマップを開いてクリックすると座標がクリップボードに入る(svg_tab):
+    svg = sorted(SVG_DIR.glob("*.svg"))[0]
+    svg_tab.load_svg(str(svg))
+    rect = svg_tab._svg_item.boundingRect()
+    svg_tab._on_click(rect.center().x(), rect.center().y())
+    svg_tab._on_click(rect.left() + 1, rect.top() + 1)
+    assert len(svg_tab.points) == 2
+    assert svg_tab._list.count() == 2
+    lines = QApplication.clipboard().text().splitlines()
+    assert len(lines) == 2 and "\t" in lines[0]
+
+
+def test_図面の外のクリックは無視する(svg_tab):
+    svg = sorted(SVG_DIR.glob("*.svg"))[0]
+    svg_tab.load_svg(str(svg))
+    rect = svg_tab._svg_item.boundingRect()
+    svg_tab._on_click(rect.right() + 100, rect.bottom() + 100)
+    assert svg_tab.points == []
+
+
+def test_別の図面を開くと前の点は消える(svg_tab):
+    svgs = sorted(SVG_DIR.glob("*.svg"))
+    svg_tab.load_svg(str(svgs[0]))
+    rect = svg_tab._svg_item.boundingRect()
+    svg_tab._on_click(rect.center().x(), rect.center().y())
+    svg_tab.load_svg(str(svgs[-1]))
+    assert svg_tab.points == [] and svg_tab._list.count() == 0
+
+
+def test_SVGでないファイルは読み込まずに知らせる(svg_tab, tmp_path):
+    bad = tmp_path / "not.svg"
+    bad.write_text("これはSVGではない", encoding="utf-8")
+    svg_tab.load_svg(str(bad))
+    assert svg_tab.svg_path is None
+    assert "読み込めません" in svg_tab.statusBar().currentMessage()
 ```
 
 ### 10.4 インフラ・デプロイ設定

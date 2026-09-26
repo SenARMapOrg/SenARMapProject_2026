@@ -1,7 +1,7 @@
 """グラフ構築: 双方向化・エスカレータの一方向制約・エレベータ除外・入口ペナルティ"""
 import pandas as pd
 
-from conftest import B1, B2, OUT
+from tiny_campus import B1, B2, OUT
 from ikunavi.cache import get_data, get_graph
 from ikunavi.config import ENTRANCE_PENALTY
 from ikunavi.graph import build_graph
