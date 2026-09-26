@@ -1,7 +1,7 @@
 """データファイルのパスと、経路探索・描画で使う定数。
 
 ここにある値はデータの意味そのものに関わるため、変更するときは
-data/ 配下のCSVの作り方（programs/Map_Editor）と合わせて見直すこと。
+data/ 配下のCSVの作り方（programs/IKU_NAVI_Tools の「マップ編集」タブ）と合わせて見直すこと。
 """
 import os
 
