@@ -20,7 +20,7 @@ python main.py route_checker   # 指定したタブで起動
 | イベント設定 | `events` | イベントモードの検索候補（`data/event.csv`）を編集する（[詳しい使い方](iku_tools/events/README.md)） | `programs/events` |
 | ルート検証 | `route_checker` | 全教室ペア間のルートを経路探索APIから取得し、異常を検出する | `programs/Route_Checker` |
 | 画像チェック | `image_checker` | CDN 上の経路写真がエッジごとに揃っているかを確認する | `programs/Image_Checker` |
-| 画像リネーム | `image_renamer` | 経路写真を一括でリネーム・リサイズする | `programs/Image_Renamer` |
+| 画像リネーム | `image_renamer` | 経路写真を一括でリネーム・リサイズする（リサイズは裏で進み、下のステータスバーに進み具合と中止ボタンが出る） | `programs/Image_Renamer` |
 | 人物ぼかし | `human_remover` | YOLOv8 で経路写真の人物を検出し、ぼかし・モザイクで匿名化する | `programs/Human_Remover` |
 | SVG座標取得 | `svg_pointer` | SVGをクリックして座標を取得し、クリップボードにコピーする | `programs/SVG_Pointer`（PyQt5 から移植） |
 
