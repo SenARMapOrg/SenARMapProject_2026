@@ -24,6 +24,7 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import ikunavi  # noqa: E402
+from tiny_campus import B1, B2, OUT  # noqa: E402,F401  (テストからは tiny_campus を直接 import する)
 from app import app as flask_app  # noqa: E402
 
 BUILDING_1_NODES = """id,x,y,z,building,floor,type,svg_x,svg_y
@@ -72,12 +73,6 @@ FILES = {
     "event.csv": "title,building,room,node_id,edge_id\nたこ焼き,2,201,,\n射的,0,,2,\n",
     "edge_image.csv": "id,from,to,image_name\n1,100001,100002,a.jpg\n2,0,0,skip.jpg\n",
 }
-
-# 合成キャンパスのグローバルID（テストから参照する）
-B1 = {n: 100000 + n for n in range(1, 6)}
-B2 = {n: 200000 + n for n in range(1, 6)}
-OUT = {1: 9000001, 2: 9000002}
-
 
 @pytest.fixture(scope="session")
 def tiny_campus_dir(tmp_path_factory):

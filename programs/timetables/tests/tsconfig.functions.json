@@ -4,6 +4,15 @@
   "include": [
     "validate.test.ts",
     "admin.test.ts",
+    "session-migration.test.ts",
+    "cookie-names.test.ts",
+    "helpers/d1-sqlite.ts",
     "../functions"
-  ]
+  ],
+  "compilerOptions": {
+    "types": [
+      "@cloudflare/workers-types",
+      "vite/client"
+    ]
+  }
 }

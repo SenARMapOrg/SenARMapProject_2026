@@ -45,14 +45,7 @@ SenARMapProject_2026/
 │   ├── 3D_Graph/          # Flask バックエンド (app.py + ikunavi/) + 3D 経路ビューア（経路探索APIの実体）
 │   ├── html/               # Cloudflare Pages 公開ルート（ナビ UI・AR画面・blog・SVG 等。本番で実際に配信されるのはこちら）
 │   ├── Website/             # プロジェクト紹介 LP（学内発表用、Pages では非公開）
-│   ├── gui_common/          # 下記デスクトップツール群が共有するモジュール（パス・APIセッション・配色・起動処理）
-│   ├── Map_Editor/          # ノード・エッジ・経路写真をまとめて入力する統合編集GUI（PyQt6）
-│   ├── Image_Checker/       # CDN上のエッジ画像の存在確認GUI（PyQt6）
-│   ├── Route_Checker/       # 全教室ペア間ルートの異常検出GUI（PyQt6）
-│   ├── Image_Renamer/       # 画像の一括リネーム／リサイズツール（PyQt6）
-│   ├── SVG_Pointer/         # SVG座標取得ツール（PyQt5）
-│   ├── Human_Remover/       # YOLOv8 による経路写真の人物匿名化バッチツール（PyQt6）
-│   ├── events/              # イベントモード（event.csv）設定用GUI（PyQt6）
+│   ├── IKU_NAVI_Tools/      # データ作成・検証用デスクトップアプリ（PyQt6）。マップ編集・イベント設定・ルート検証・画像チェック・画像リネーム・人物ぼかし・SVG座標取得をタブで切り替えて使う
 │   ├── image_uploader/      # Cloudflare Pages + R2 を使った画像一括アップローダー
 │   ├── timetables/          # 時間割共有サービス（Cloudflare Pages Functions + D1、別サービス）
 │   └── syllabus_courses/    # timetables 用シラバススクレイパー
