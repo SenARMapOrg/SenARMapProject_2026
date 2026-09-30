@@ -7,10 +7,14 @@ IKU NAVI のデータ作成・検証に使うデスクトップアプリ（PyQt6
 
 ```bash
 cd programs/IKU_NAVI_Tools
+python3.13 -m venv .venv && source .venv/bin/activate   # 初回のみ venv を作る（2回目からは source だけ）
 pip install -r requirements.txt
 python main.py                 # 前回開いていたタブで起動
 python main.py route_checker   # 指定したタブで起動
 ```
+
+Mac での Python のインストールから、つまずきやすい点（カメラの許可など）までは
+[docs/setup_mac.md](../../docs/setup_mac.md) を参照。
 
 ## タブ一覧
 
