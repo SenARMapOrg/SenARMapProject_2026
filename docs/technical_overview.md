@@ -51,7 +51,6 @@ AR 領域にはエッジ間の経路写真（CDN 配信）を表示する。
 | `networkx` | グラフ構築・Dijkstra 経路探索 |
 | `Flask` | REST API サーバー |
 | `gunicorn` | 本番 WSGI サーバー |
-| `plotly` / `pyvis` | 3D グラフビューア（`/3d/` パス） |
 
 ### API エンドポイント一覧
 

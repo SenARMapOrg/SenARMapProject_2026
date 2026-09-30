@@ -20,14 +20,36 @@ function setupAutocomplete(inputId, suggId, bldgSelectId) {
       : allRooms;
     if (query) candidates = candidates.filter(r =>
       r.room.toLowerCase().includes(query) || r.display.toLowerCase().includes(query));
-    return candidates.slice(0, 20);
+    // イベントモードでは、イベント（屋台など）を上にまとめ、その下に今まで通りの教室を並べる。
+    // 教室の件数でイベントが押し出されないよう、上限はそれぞれに設ける
+    const events = candidates.filter(r => r.isEvent).slice(0, 20);
+    const rooms  = candidates.filter(r => !r.isEvent).slice(0, 20);
+    return events.concat(rooms);
+  }
+
+  // イベントと教室の両方が候補にあるときだけ、区切りの見出しを入れる。
+  // ナビ画面のデザイン案(navi1〜9)ごとにCSSが別なので、色は周りの文字色を薄めて使う
+  function groupHeader(text) {
+    const h = document.createElement("div");
+    h.className = "sugg-header";
+    h.textContent = text;
+    h.style.cssText = "padding:4px 12px;font-size:11px;font-weight:700;opacity:.6;"
+      + "pointer-events:none;border-bottom:1px solid var(--line, #e5e7eb);";
+    return h;
   }
 
   function renderSugg(matches) {
     const selectedBldg = bldg ? bldg.value : "";
     sugg.innerHTML = "";
     if (!matches.length) { sugg.style.display = "none"; return; }
-    matches.forEach(r => {
+    const hasEvents = matches.some(r => r.isEvent);
+    const hasRooms  = matches.some(r => !r.isEvent);
+    const showHeaders = hasEvents && hasRooms;
+    if (showHeaders) sugg.appendChild(groupHeader("イベント"));
+    matches.forEach((r, i) => {
+      if (showHeaders && !r.isEvent && (i === 0 || matches[i - 1].isEvent)) {
+        sugg.appendChild(groupHeader("教室"));
+      }
       const item = document.createElement("div");
       item.className = "item";
       const label = r.isEvent ? `\u{1F3AA} ${r.display}` : r.display;
