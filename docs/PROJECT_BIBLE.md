@@ -7510,12 +7510,15 @@ if __name__ == "__main__":
 
 ```text
 # IKU NAVI ツール（全タブ分）
-PyQt6>=6.4.0
-requests>=2.31.0      # ルート検証・画像チェック
-Pillow                # 画像リネーム
+#   pip install -r requirements.txt
+# 人物ぼかしのタブを使わないなら ultralytics の行は省いてよい（PyTorch ごと入るので数百MB〜1GB程度ある）。
+# 入っていなくても他のタブは使える。
+PyQt6>=6.5            # 画面（全タブ）
+requests>=2.31.0      # ルート検証・画像チェック（経路探索API・CDNへのアクセス）
+Pillow>=10.0          # 画像リネーム（リスケール）
 numpy>=1.24.0         # マップ編集（カメラ）・人物ぼかし
 opencv-python>=4.8.0  # マップ編集（カメラ）・人物ぼかし
-ultralytics>=8.0.0    # 人物ぼかし（重い。入っていなくても他のタブは使える）
+ultralytics>=8.1      # 人物ぼかし（YOLOv8。初回実行時にモデル yolov8n-seg.pt を自動でダウンロードする）
 ```
 
 ### `programs/IKU_NAVI_Tools/README.md`
@@ -14385,12 +14388,12 @@ WORKDIR /project/programs/3D_Graph
 ### `deploy_env/python/requirements.txt`
 
 ```text
-pandas
-networkx
-Flask
-plotly
-gunicorn
-pyvis
+# 経路探索API（programs/3D_Graph）の本番Dockerイメージ用の依存。
+# 3D表示の Plotly はブラウザ側で CDN から読み込むので、Python 側には不要。
+Flask>=3.0
+gunicorn>=22.0      # 本番のWSGIサーバー（ローカルで python app.py するだけなら使わない）
+networkx>=3.2       # 経路探索（グラフ・最短経路）
+pandas>=2.2         # CSV（ノード・エッジ・教室）の読み込み
 ```
 
 ### `deploy_env/nginx/Dockerfile`
@@ -16407,12 +16410,12 @@ docker exec -it iki_project_2026 /bin/bash
 ### `enviroments/requirements.txt`
 
 ```text
-pandas
-networkx
-Flask
-plotly
-gunicorn
-pyvis
+# 経路探索API（programs/3D_Graph）の開発用Dockerイメージ用の依存（deploy_env/python/requirements.txt と同じ内容にしておく）。
+# 3D表示の Plotly はブラウザ側で CDN から読み込むので、Python 側には不要。
+Flask>=3.0
+gunicorn>=22.0      # 本番のWSGIサーバー（ローカルで python app.py するだけなら使わない）
+networkx>=3.2       # 経路探索（グラフ・最短経路）
+pandas>=2.2         # CSV（ノード・エッジ・教室）の読み込み
 ```
 
 ### `enviroments/nginx/Dockerfile`

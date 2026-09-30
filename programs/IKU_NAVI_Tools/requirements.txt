@@ -1,7 +1,10 @@
 # IKU NAVI ツール（全タブ分）
-PyQt6>=6.4.0
-requests>=2.31.0      # ルート検証・画像チェック
-Pillow                # 画像リネーム
+#   pip install -r requirements.txt
+# 人物ぼかしのタブを使わないなら ultralytics の行は省いてよい（PyTorch ごと入るので数百MB〜1GB程度ある）。
+# 入っていなくても他のタブは使える。
+PyQt6>=6.5            # 画面（全タブ）
+requests>=2.31.0      # ルート検証・画像チェック（経路探索API・CDNへのアクセス）
+Pillow>=10.0          # 画像リネーム（リスケール）
 numpy>=1.24.0         # マップ編集（カメラ）・人物ぼかし
 opencv-python>=4.8.0  # マップ編集（カメラ）・人物ぼかし
-ultralytics>=8.0.0    # 人物ぼかし（重い。入っていなくても他のタブは使える）
+ultralytics>=8.1      # 人物ぼかし（YOLOv8。初回実行時にモデル yolov8n-seg.pt を自動でダウンロードする）

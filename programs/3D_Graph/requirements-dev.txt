@@ -1,6 +1,6 @@
-# テスト用の依存。本番イメージ（deploy_env/python/requirements.txt）に合わせた上で
-# pytest と、シラバススクレイパーのテストに必要なものを足したもの。
+# テスト用の依存。経路探索APIの依存（requirements.txt）に、pytest と
+# シラバススクレイパーのテストに必要なものを足したもの。
 #   pip install -r programs/3D_Graph/requirements-dev.txt && pytest   （リポジトリ直下で）
--r ../../deploy_env/python/requirements.txt
+-r requirements.txt
 -r ../syllabus_courses/requirements.txt
-pytest
+pytest>=8.0
