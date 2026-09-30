@@ -24,6 +24,7 @@ jobs:
           cache-dependency-path: |
             deploy_env/python/requirements.txt
             programs/syllabus_courses/requirements.txt
+            programs/3D_Graph/requirements.txt
             programs/3D_Graph/requirements-dev.txt
 
       - name: 依存をインストール

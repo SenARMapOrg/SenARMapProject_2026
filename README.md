@@ -15,6 +15,11 @@ AR 領域にはエッジ間の経路写真（Cloudflare R2 CDN 配信）を表�
 
 ![プロジェクトロゴ](/images/logo.png)
 
+## 開発環境のセットアップ
+
+Mac でサブプログラム（IKU NAVI ツール・経路探索API・シラバス取得・時間割共有）を動かす手順は
+[docs/setup_mac.md](docs/setup_mac.md) にまとめている。
+
 ## テスト
 
 ```bash
