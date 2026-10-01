@@ -1,14 +1,23 @@
 // シラバスから収集した開講科目データ(programs/syllabus_courses)を検索するためのモジュール。
-// データ本体は public/courses/{年度}.json（Viteがdistにそのままコピーする静的アセット。
-// 2020〜2026年度分を収集済み）。更新するには programs/timetables/scripts/sync-courses.sh を参照。
+// データ本体は src/data/courses/{年度}.json（2020〜2026年度分）。元のデータを scripts/compact-courses.mjs で
+// 小さな形式に変換したもので、更新するには programs/timetables/scripts/sync-courses.sh を参照。
+// ビルドすると内容のハッシュ付きのファイル名（/assets/2026-xxxx.json）で出力されるので、
+// ブラウザに長期間キャッシュさせられる（中身が変わればファイル名も変わる）。
 //
 // 注意: このデータは「開講予定の一覧」であって、特定の学生の履修状況を示すものではない。
 // 科目名オートコンプリート・曜日/時限の自動入力の参考データとしてのみ使うこと。
 
 import type { Term } from "./api";
 
-/** シラバスデータが揃っている年度（public/courses/{year}.json が存在する年度）。降順で表示に使う */
-export const AVAILABLE_COURSE_YEARS = [2026, 2025, 2024, 2023, 2022, 2021, 2020];
+/** 年度 → ビルド後のデータのURL。src/data/courses/ にファイルを置けば、その年度が選べるようになる */
+const COURSE_DATA_URLS: Record<number, string> = Object.fromEntries(
+  Object.entries(
+    import.meta.glob<string>("./data/courses/*.json", { query: "?url", import: "default", eager: true }),
+  ).map(([path, url]) => [Number(path.match(/(\d{4})\.json$/)![1]), url]),
+);
+
+/** シラバスデータが揃っている年度。降順で表示に使う */
+export const AVAILABLE_COURSE_YEARS = Object.keys(COURSE_DATA_URLS).map(Number).sort((a, b) => b - a);
 export const DEFAULT_COURSE_YEAR = AVAILABLE_COURSE_YEARS[0];
 
 /** "both" = 通年科目。シラバスの「開講期間」欄に**「通年」と書かれている場合だけ**に付く値で、
@@ -22,7 +31,6 @@ export interface CourseCatalogEntry {
   day_of_week: number;
   period: number;
   term: OfferingTerm;
-  room: string | null;
   instructor: string | null;
   departments: { faculty: string; department: string }[];
 }
@@ -36,19 +44,55 @@ export interface CourseOffering {
   slots: { day_of_week: number; period: number }[];
 }
 
+/** src/data/courses/{年度}.json の形式（scripts/compact-courses.mjs が作る） */
+export interface CompactCatalog {
+  format: 2;
+  departments: [faculty: string, department: string][];
+  departmentSets: number[][];
+  courses: [
+    courseName: string, instructor: string | null, term: OfferingTerm, dayOfWeek: number, period: number,
+    departmentSet: number,
+  ][];
+}
+
+/**
+ * 小さな形式から元の形（1コマ1件）に戻す。学部・学科の配列は同じ組み合わせのコマ同士で共有する
+ * （画面側では読むだけで書き換えないので、共有しても問題ない。メモリも少なくて済む）。
+ */
+export function decodeCatalog(data: CompactCatalog): CourseCatalogEntry[] {
+  const departments = data.departments.map(([faculty, department]) => ({ faculty, department }));
+  const sets = data.departmentSets.map((ids) => ids.map((id) => departments[id]));
+  return data.courses.map(([course_name, instructor, term, day_of_week, period, set]) => ({
+    course_name, instructor, term, day_of_week, period, departments: sets[set],
+  }));
+}
+
 const catalogCache = new Map<number, Promise<CourseCatalogEntry[]>>();
 
-/** 指定年度の /courses/{year}.json を取得する。年度ごとに初回だけ取得し、以降はメモリキャッシュを返す */
+/** 指定年度の科目データを取得する。年度ごとに初回だけ取得し、以降はメモリキャッシュを返す */
 export function loadCatalog(year: number = DEFAULT_COURSE_YEAR): Promise<CourseCatalogEntry[]> {
   let cached = catalogCache.get(year);
   if (!cached) {
-    cached = fetch(`/courses/${year}.json`).then((res) => {
+    const url = COURSE_DATA_URLS[year];
+    cached = (url ? fetch(url) : Promise.reject(new Error("no data"))).then(async (res) => {
       if (!res.ok) throw new Error(`${year}年度の科目データを取得できませんでした`);
-      return res.json() as Promise<CourseCatalogEntry[]>;
+      return decodeCatalog(await res.json() as CompactCatalog);
     });
+    // 失敗したときは次に開いたときにもう一度取りに行けるよう、キャッシュに残さない
+    cached.catch(() => catalogCache.delete(year));
     catalogCache.set(year, cached);
   }
   return cached;
+}
+
+/**
+ * 画面を開いた直後、通信が落ち着いたころに今年度の科目データを先に取っておく。
+ * 「科目を追加・削除する」を押したときには読み込みが終わっているようにするため。
+ */
+export function prefetchCatalog(year: number = DEFAULT_COURSE_YEAR): void {
+  const start = () => { void loadCatalog(year).catch(() => { /* 開いたときに改めて取得・エラー表示する */ }); };
+  if ("requestIdleCallback" in window) window.requestIdleCallback(start, { timeout: 2000 });
+  else setTimeout(start, 500);
 }
 
 export interface DepartmentCatalog {

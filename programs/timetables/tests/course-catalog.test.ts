@@ -13,7 +13,6 @@ function entry(over: Partial<CourseCatalogEntry> = {}): CourseCatalogEntry {
     day_of_week: 0,
     period: 1,
     term: "spring",
-    room: null,
     instructor: "先生A",
     departments: [{ faculty: "経済学部", department: "経済学科" }],
     ...over,

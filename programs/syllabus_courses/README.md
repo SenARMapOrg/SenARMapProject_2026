@@ -228,11 +228,12 @@ python -m http.server 8000   # このディレクトリで簡易サーバーを�
 
 ## timetables アプリへの組み込みについて
 
-`courses.json` は `programs/timetables/scripts/sync-courses.sh` によって
-`programs/timetables/public/courses.json` へコピーされ、Viteのビルドでそのまま `dist/` 直下に
-含まれる静的アセットとして配信される（D1には取り込んでいない。モノレポの Root directory 制約上
+`courses.json`（と年度別の `output/{年度}/courses.json`）は `programs/timetables/scripts/sync-courses.sh` によって
+小さな形式に変換され（`scripts/compact-courses.mjs`。学部・学科の一覧を番号で参照する形にして約1/10にする）、
+`programs/timetables/src/data/courses/{年度}.json` に置かれる。ビルドすると内容のハッシュ付きの静的ファイルとして
+配信される（D1には取り込んでいない。モノレポの Root directory 制約上
 `programs/timetables` から `programs/syllabus_courses` を直接参照できないための静的コピー方式）。
-timetables側の `src/course-catalog.ts` がこれを `fetch("/courses.json")` して、科目名オートコンプリート・
+timetables側の `src/course-catalog.ts` がこれを読み込んで元の形に戻し、科目名オートコンプリート・
 曜日/時限の自動入力、および「他の学生が同じ授業に登録した教室を自動入力する」機能（ユーザー設定
 `auto_fill_location`、既定オフ）の参考データとして使っている。
 
