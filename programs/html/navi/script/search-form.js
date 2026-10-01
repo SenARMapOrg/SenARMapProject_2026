@@ -160,30 +160,36 @@ function setCategory(cat) {
 // Facility autocomplete
 // ================================================================
 // facSearchMode ("room"/"gps") から設備検索の出発地点を解決して params に埋め込む。
-// 失敗時はエラーを alert して false を返す（呼び出し元はそのまま return する）。
+// 成功時は出発地の表示名（集計用。track.js 参照）、失敗時はエラーを alert して null を返す
+// （呼び出し元はそのまま return する）。
 function resolveFacFromParams(params) {
   if (facSearchMode === "room") {
     const fromInfo = resolveRoom("fac-from-input", "fac-from-bldg");
-    if (!fromInfo)               { alert("出発教室を入力してください。"); return false; }
-    if (fromInfo === "ambiguous") { alert("出発教室が複数の号館に存在します。号館を指定してください。"); return false; }
+    if (!fromInfo)               { alert("出発教室を入力してください。"); return null; }
+    if (fromInfo === "ambiguous") { alert("出発教室が複数の号館に存在します。号館を指定してください。"); return null; }
     if (fromInfo.isEvent) {
       params.set("from_event", fromInfo.room);
     } else {
       params.set("from_room",     fromInfo.room);
       params.set("from_building", fromInfo.building);
     }
-  } else {
-    if (!facGpsCoords) { alert("GPS位置を先に取得してください。"); return false; }
-    const nearest = findNearestNode(facGpsCoords.lat, facGpsCoords.lng);
-    if (!nearest) { alert("近くの出発ノードが見つかりません。\nキャンパスから離れすぎている可能性があります。"); return false; }
-    params.set("from_node", nearest.id);
+    // 表示名が空のデータでも検索自体は続けられるよう、生の名前にフォールバックする
+    // （戻り値が偽だと呼び出し元が検索を中断してしまうため）
+    return fromInfo.display || fromInfo.room;
   }
-  return true;
+  if (!facGpsCoords) { alert("GPS位置を先に取得してください。"); return null; }
+  const nearest = findNearestNode(facGpsCoords.lat, facGpsCoords.lng);
+  if (!nearest) { alert("近くの出発ノードが見つかりません。\nキャンパスから離れすぎている可能性があります。"); return null; }
+  params.set("from_node", nearest.id);
+  return "現在地";
 }
 
 // 検索APIを叩いてルート表示まで行う共通処理（doSearch / doToiletSearch / doCafeteriaSearch で共用）
 // 経路描画は屋外区間があると google.maps.Polyline/Marker を使うため、地図の初期化を待つ。
-async function fetchRouteAndNavigate(url) {
+// fromLabel・toLabel は鳳祭の案内人数集計（track.js）に記録する出発地・目的地の表示名。
+// レスポンスの dest_display は「目的地が最終区間の左右一覧に載っている場合」だけ入るため使わず、
+// 利用者が実際に指定した名前を呼び出し元から渡す。
+async function fetchRouteAndNavigate(url, fromLabel = "", toLabel = "") {
   await waitForMapReady();
   setLoading(true);
   try {
@@ -191,6 +197,7 @@ async function fetchRouteAndNavigate(url) {
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
     if (data.error) { alert("エラー: " + data.error); return; }
+    trackSearch(fromLabel, toLabel);
     await initRoute(data.path_coords, data.path_edges, {
       side: data.dest_side, position: data.dest_position, count: data.dest_count,
       display: data.dest_display, nearestDisplay: data.dest_nearest_display,
@@ -203,14 +210,22 @@ async function fetchRouteAndNavigate(url) {
   }
 }
 
+// 設備検索の目的地は「最寄りの○○」なので、選択中の選択肢の表示名を集計用のラベルにする
+function selectedOptionLabel(selectId) {
+  const sel = document.getElementById(selectId);
+  return sel?.selectedOptions[0]?.textContent?.trim() || "";
+}
+
 async function doToiletSearch() {
   arRequestPermissionsEarly();
   const params = new URLSearchParams({
     type:         document.getElementById("fac-toilet-type").value,
     use_elevator: document.getElementById("fac-use-elevator").checked ? "1" : "0",
   });
-  if (!resolveFacFromParams(params)) return;
-  await fetchRouteAndNavigate(`${API_BASE}/api/nearest_toilet?${params}`);
+  const fromLabel = resolveFacFromParams(params);
+  if (!fromLabel) return;
+  const toLabel = `最寄りのトイレ（${selectedOptionLabel("fac-toilet-type")}）`;
+  await fetchRouteAndNavigate(`${API_BASE}/api/nearest_toilet?${params}`, fromLabel, toLabel);
 }
 
 function onFacCategoryChange() {
@@ -231,8 +246,10 @@ async function doCafeteriaSearch() {
     use_elevator: document.getElementById("fac-use-elevator").checked ? "1" : "0",
     name:         document.getElementById("fac-cafeteria-name").value,
   });
-  if (!resolveFacFromParams(params)) return;
-  await fetchRouteAndNavigate(`${API_BASE}/api/nearest_cafeteria?${params}`);
+  const fromLabel = resolveFacFromParams(params);
+  if (!fromLabel) return;
+  const toLabel = `最寄りの食堂（${selectedOptionLabel("fac-cafeteria-name")}）`;
+  await fetchRouteAndNavigate(`${API_BASE}/api/nearest_cafeteria?${params}`, fromLabel, toLabel);
 }
 
 // ================================================================

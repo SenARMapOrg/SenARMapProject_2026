@@ -10,6 +10,9 @@ async function doSearch() {
   arRequestPermissionsEarly();
   const params = new URLSearchParams();
   params.set("use_elevator", document.getElementById("use-elevator").checked ? "1" : "0");
+  // 鳳祭の案内人数集計に記録する出発地・目的地の表示名（track.js 参照）
+  let fromLabel = "";
+  let toLabel   = "";
 
   if (searchMode === "room") {
     const fromInfo = resolveRoom("from-input", "from-bldg");
@@ -18,6 +21,8 @@ async function doSearch() {
     if (fromInfo === "ambiguous") { alert("出発教室が複数の号館に存在します。号館を指定してください。"); return; }
     if (!toInfo)                { alert("目的教室を入力してください。"); return; }
     if (toInfo   === "ambiguous") { alert("目的教室が複数の号館に存在します。号館を指定してください。"); return; }
+    fromLabel = fromInfo.display || fromInfo.room;
+    toLabel   = toInfo.display   || toInfo.room;
     if (fromInfo.isEvent) {
       params.set("from_event", fromInfo.room);
     } else {
@@ -38,6 +43,8 @@ async function doSearch() {
     const nearest = findNearestNode(gpsCoords.lat, gpsCoords.lng);
     if (!nearest) { alert("近くの出発ノードが見つかりません。\nキャンパスから離れすぎている可能性があります。"); return; }
     params.set("from_node",   nearest.id);
+    fromLabel = "現在地";
+    toLabel   = toInfo.display || toInfo.room;
     if (toInfo.isEvent) {
       params.set("to_event", toInfo.room);
     } else {
@@ -46,7 +53,7 @@ async function doSearch() {
     }
   }
 
-  await fetchRouteAndNavigate(`${API_BASE}/api/route?${params}`);
+  await fetchRouteAndNavigate(`${API_BASE}/api/route?${params}`, fromLabel, toLabel);
 }
 
 function setLoading(on) {

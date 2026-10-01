@@ -1,0 +1,14 @@
+# Cloudflare Pages のレスポンスヘッダ設定（dist/ に丸ごとコピーされ、静的ファイルの応答にだけ効く）。
+# Functions の応答（/api/*・/admin）には効かないので、そちらはコードで付けている
+# （functions/api/_lib/admin.ts の ADMIN_SECURITY_HEADERS）。
+/*
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; font-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: no-referrer
+  X-Robots-Tag: noindex, nofollow
+
+# ビルドで出力されるJS・CSS（/assets/以下）はファイル名に内容のハッシュが付いていて
+# 中身が変われば名前も変わるので、ブラウザに1年間キャッシュさせる。
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
