@@ -5,6 +5,7 @@
     "validate.test.ts",
     "admin.test.ts",
     "session-migration.test.ts",
+    "location-suggestion.test.ts",
     "cookie-names.test.ts",
     "helpers/d1-sqlite.ts",
     "../functions"
