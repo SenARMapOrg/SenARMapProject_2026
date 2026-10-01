@@ -12,3 +12,8 @@
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
   Permissions-Policy: camera=(), microphone=(), geolocation=()
+
+# ビルドで出力される JS・CSS・科目データ（/assets/ 以下）は、ファイル名に内容のハッシュが付いていて
+# 中身が変われば名前も変わるので、ブラウザに1年間キャッシュさせる（2回目以降は通信せずに読み込める）
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
