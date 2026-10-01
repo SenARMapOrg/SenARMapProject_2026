@@ -23,6 +23,41 @@ function roomKey(r: IkuNaviRoom): string {
   return `${r.building}:${r.room}`;
 }
 
+interface RoomOptions {
+  template: DocumentFragment;          // 建物ごとの optgroup と教室の option 一式
+  roomsByKey: Map<string, IkuNaviRoom>;
+}
+
+// 教室は約300あり、「科目名から追加」の検索結果は最大30行それぞれに教室欄を出す。
+// 全部の欄に最初から option を入れると1回の検索で約9000個になり、ブラウザがプルダウンの幅を
+// 決めるために全部の文字幅を測るので、パソコンでも0.5秒以上、スマホではもっと固まっていた。
+// そこで、プルダウンには選んでいる教室1つだけを入れておき、触られた（開かれる直前の）ときに
+// 一覧を入れる。一覧の一式は一度だけ作り、各欄ではそれを複製する。
+const roomOptionsCache = new WeakMap<IkuNaviBuilding[], RoomOptions>();
+
+function roomOptionsFor(buildings: IkuNaviBuilding[]): RoomOptions {
+  let cached = roomOptionsCache.get(buildings);
+  if (!cached) {
+    const template = document.createDocumentFragment();
+    const roomsByKey = new Map<string, IkuNaviRoom>();
+    for (const b of buildings) {
+      const group = document.createElement("optgroup");
+      group.label = b.label;
+      for (const r of b.rooms) {
+        roomsByKey.set(roomKey(r), r);
+        const opt = document.createElement("option");
+        opt.value = roomKey(r);
+        opt.textContent = r.display;
+        group.appendChild(opt);
+      }
+      template.appendChild(group);
+    }
+    cached = { template, roomsByKey };
+    roomOptionsCache.set(buildings, cached);
+  }
+  return cached;
+}
+
 export function createLocationField(opts: { placeholder?: string; inputClass?: string } = {}): LocationField {
   const id = ++fieldSeq;
   const root = document.createElement("div");
@@ -61,14 +96,41 @@ export function createLocationField(opts: { placeholder?: string; inputClass?: s
   root.append(select, inputWrap);
 
   let buildings: IkuNaviBuilding[] = [];
-  const roomsByKey = new Map<string, IkuNaviRoom>();
+  let roomsByKey = new Map<string, IkuNaviRoom>();
+  let roomOptions: RoomOptions | null = null;
+  let filled = false;                              // プルダウンに教室の一覧を入れたか
+  let currentOpt: HTMLOptionElement | null = null; // 一覧を入れる前に、選んでいる教室を表示するための1件
   let shown: IkuNaviRoom[] = [];
   let activeIndex = -1;
 
+  /** プルダウンの表示をその教室にする（null なら未選択に戻す） */
+  function showInSelect(room: IkuNaviRoom | null): void {
+    if (!filled) {
+      if (room) {
+        currentOpt ??= document.createElement("option");
+        currentOpt.value = roomKey(room);
+        currentOpt.textContent = room.display;
+        if (!currentOpt.parentNode) select.appendChild(currentOpt);
+      } else {
+        currentOpt?.remove();
+      }
+    }
+    select.value = room ? roomKey(room) : "";
+  }
+
   /** 入力欄の値が IKU NAVI の教室と一致していれば、プルダウンもその教室にそろえる */
   function syncSelect(): void {
-    const room = findRoom(buildings, input.value);
-    select.value = room ? roomKey(room) : "";
+    showInSelect(findRoom(buildings, input.value));
+  }
+
+  /** プルダウンが開かれる直前に、教室の一覧を入れる */
+  function fillOptions(): void {
+    if (filled || !roomOptions) return;
+    const value = select.value;
+    select.replaceChildren(placeholderOpt, roomOptions.template.cloneNode(true));
+    currentOpt = null;
+    filled = true;
+    select.value = value;
   }
 
   // 候補一覧は画面に対して固定位置で出す。「科目名から追加」の一覧のようにスクロールする枠の中に
@@ -105,7 +167,7 @@ export function createLocationField(opts: { placeholder?: string; inputClass?: s
 
   function choose(room: IkuNaviRoom): void {
     input.value = room.display;
-    select.value = roomKey(room);
+    showInSelect(room);
     hideSuggestions();
   }
 
@@ -176,6 +238,13 @@ export function createLocationField(opts: { placeholder?: string; inputClass?: s
     }
   });
 
+  // マウスでもタッチでもキーボードでも、プルダウンが開くより前に届くイベントで一覧を入れる
+  select.addEventListener("pointerdown", fillOptions);
+  select.addEventListener("mousedown", fillOptions);
+  select.addEventListener("touchstart", fillOptions, { passive: true });
+  select.addEventListener("focus", fillOptions);
+  select.addEventListener("keydown", fillOptions);
+
   select.addEventListener("change", () => {
     const room = roomsByKey.get(select.value);
     if (room) input.value = room.display;
@@ -190,18 +259,8 @@ export function createLocationField(opts: { placeholder?: string; inputClass?: s
       return;
     }
     placeholderOpt.textContent = "IKU NAVI の教室から選ぶ";
-    for (const b of loaded) {
-      const group = document.createElement("optgroup");
-      group.label = b.label;
-      for (const r of b.rooms) {
-        roomsByKey.set(roomKey(r), r);
-        const opt = document.createElement("option");
-        opt.value = roomKey(r);
-        opt.textContent = r.display;
-        group.appendChild(opt);
-      }
-      select.appendChild(group);
-    }
+    roomOptions = roomOptionsFor(loaded);
+    roomsByKey = roomOptions.roomsByKey;
     select.disabled = false;
     syncSelect();
   });

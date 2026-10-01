@@ -36,6 +36,9 @@ body {
 }
 .brand { font-weight: 800; font-size: 16px; letter-spacing: -0.01em; }
 .brand-sub { font-size: 11px; color: var(--ink-soft); border-left: 1px solid var(--line-strong); padding-left: 8px; }
+/* 「IKU NAVI」は IKU NAVI のトップページへのリンク（見た目は元のラベルのまま、触れたときだけ下線） */
+.brand-link { color: var(--ink-soft); text-decoration: none; }
+.brand-link:hover, .brand-link:focus-visible { color: var(--ink); text-decoration: underline; }
 .user-box { margin-left: auto; display: flex; align-items: center; gap: 10px; font-size: 13px; }
 
 .app {

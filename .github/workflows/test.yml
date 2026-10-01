@@ -60,6 +60,33 @@ jobs:
       - name: ビルドが通るか
         run: npm run build
 
+  event-guide-counter:
+    name: 鳳祭 案内人数集計のテスト
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: programs/event_guide_counter
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: programs/event_guide_counter/package-lock.json
+
+      - name: 依存をインストール
+        run: npm ci
+
+      - name: 型チェック
+        run: npm run typecheck
+
+      - name: vitest
+        run: npm run test
+
+      - name: ビルドが通るか
+        run: npm run build
+
   navi-scripts:
     name: ナビ画面スクリプトの構文チェック
     runs-on: ubuntu-latest

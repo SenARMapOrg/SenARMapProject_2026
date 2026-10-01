@@ -122,10 +122,11 @@ export function buildNameForm(
   }
 
   async function onShow(): Promise<void> {
-    await loadFilterOptions();
-    if (offerings.length === 0) {
-      await loadOfferingsForYear(Number(yearSelect.value));
-    }
+    // 学部の選択肢と科目データは互いに関係ないので、順番に待たずに同時に取りに行く
+    await Promise.all([
+      loadFilterOptions(),
+      offerings.length === 0 ? loadOfferingsForYear(Number(yearSelect.value)) : Promise.resolve(),
+    ]);
   }
 
   yearSelect.addEventListener("change", () => {

@@ -14,7 +14,8 @@ HTML_DIR = Path(__file__).resolve().parents[1]
 SCRIPT_DIR = HTML_DIR / "navi" / "script"
 
 # 読み込み順の規約（config.js はビルド時生成なのでリポジトリには無い）
-APP_SCRIPTS = ["state.js", "data.js", "search-form.js", "gps.js", "route.js",
+# track.js は search-form.js が呼ぶ trackSearch() を定義するので、必ずその前に読み込む
+APP_SCRIPTS = ["state.js", "track.js", "data.js", "search-form.js", "gps.js", "route.js",
                "voice.js", "photo.js", "map.js", "floormap.js", "page.js"]
 TRAILING_SCRIPTS = ["ar.js", "maps-loader.js"]
 
