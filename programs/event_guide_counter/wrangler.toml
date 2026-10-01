@@ -1,0 +1,51 @@
+name = "senarmapproject-2026-event-guide-counter"
+compatibility_date = "2026-01-01"
+pages_build_output_dir = "dist"
+
+# D1データベースへのバインディング。
+# database_id は `wrangler d1 create event-guide-counter-db` 実行後に発行される値に書き換えること
+# （README「セットアップ」参照）。database_name はダッシュボード上の表示名なので変更しても動作に影響しない。
+[[d1_databases]]
+binding = "DB"
+database_name = "event-guide-counter-db"
+database_id = "00000000-0000-0000-0000-000000000000"
+
+# --- 環境変数 / シークレット (Cloudflare Pages ダッシュボードで設定する) ---
+# 平文でよいもの [vars] に、秘密情報は `wrangler pages secret put` で設定し、ここには書かない（README参照）。
+[vars]
+# OAuthコールバック先。実運用ドメインが決まったら書き換える。
+OAUTH_REDIRECT_URI = "https://event-guide-counter.iku-navi.net/api/auth/callback"
+# Google Cloud ConsoleでOAuthクライアントを作成すると発行される値。秘密情報ではない
+# （クライアントサイドに公開される前提の値。認可は GOOGLE_CLIENT_SECRET 側で担保される）。
+GOOGLE_CLIENT_ID = "REPLACE_ME.apps.googleusercontent.com"
+# QRコードの宛先（IKU NAVI本体）のベースURL。実運用ドメインが決まったら書き換える。
+NAVI_BASE_URL = "https://iku-navi.net"
+
+# 以下はダッシュボード or `wrangler pages secret put` で別途設定するシークレット:
+#   GOOGLE_CLIENT_SECRET
+#   ADMIN_EMAILS … 管理画面(/admin)を見られるメールアドレス（カンマ区切り）。Production のみに設定する。
+#                  未設定なら誰も見られない。ローカルでは `wrangler pages dev dist --binding ADMIN_EMAILS=...`
+
+# ------------------------------------------------------------------------------------------
+# プレビュー環境（main 以外のブランチのデプロイ、*.pages.dev）の設定。
+#
+# このファイルに pages_build_output_dir があるため、Pages のバインディングと環境変数は
+# ダッシュボードではなくこのファイルが正になる（ダッシュボードでは変更できない）。
+#
+# プレビューは本番と別のDB（event-guide-counter-db-preview）を使う（timetablesと同じ理由。
+# 本番DBを使うと、リポジトリに push できる人なら誰でも本番DBを読み書きするコードを
+# 公開URLで動かせてしまうため）。
+#
+# 注意: d1_databases と vars は「環境ごとに丸ごと書き直す」種類の設定で、[env.preview] で片方だけ書くと、
+# もう片方はプレビューで空になる。DB を分けるときは vars も同じ内容をここに書き直している。
+# 上の本番用の vars を変えたら、ここも合わせて変えること。
+# ------------------------------------------------------------------------------------------
+[[env.preview.d1_databases]]
+binding = "DB"
+database_name = "event-guide-counter-db-preview"
+database_id = "00000000-0000-0000-0000-000000000000"
+
+[env.preview.vars]
+OAUTH_REDIRECT_URI = "https://event-guide-counter.iku-navi.net/api/auth/callback"
+GOOGLE_CLIENT_ID = "REPLACE_ME.apps.googleusercontent.com"
+NAVI_BASE_URL = "https://iku-navi.net"
