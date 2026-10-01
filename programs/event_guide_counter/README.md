@@ -15,8 +15,8 @@
 （`wrangler.toml` の `OAUTH_REDIRECT_URI` と `track.js` の `TRACK_API_BASE`）。別のドメインにしたい場合だけ、最後の「ドメインを変える場合」を見る。
 
 - [x] **手順1. D1 データベースを2つ作る**（ターミナル）
-- [ ] **手順2. Google のログイン用のクライアントを作る**（Google Cloud Console）
-- [ ] **手順3. `wrangler.toml` に ID を書く**（手順1・2で出た値。Claude に頼んでもよい）
+- [x] **手順2. Google のログイン用のクライアントを作る**（Google Cloud Console）
+- [x] **手順3. `wrangler.toml` に ID を書く**（手順1・2で出た値。Claude に頼んでもよい）
 - [ ] **手順4. D1 に表を作る（マイグレーション）**（ターミナル）
 - [ ] **手順5. PR を main にマージする**（GitHub）
 - [ ] **手順6. Cloudflare Pages にこのサイトを作る**（Cloudflare）

@@ -17,7 +17,7 @@ database_id = "e7a4ac98-05c2-49a6-af38-5eef76d41920"
 OAUTH_REDIRECT_URI = "https://event-guide-counter.iku-navi.net/api/auth/callback"
 # Google Cloud ConsoleでOAuthクライアントを作成すると発行される値。秘密情報ではない
 # （クライアントサイドに公開される前提の値。認可は GOOGLE_CLIENT_SECRET 側で担保される）。
-GOOGLE_CLIENT_ID = "REPLACE_ME.apps.googleusercontent.com"
+GOOGLE_CLIENT_ID = "178048918023-ng28jumepqpe9spp4nf4v5i9uldfucsc.apps.googleusercontent.com"
 # QRコードの宛先（IKU NAVI本体）のベースURL。実運用ドメインが決まったら書き換える。
 NAVI_BASE_URL = "https://iku-navi.net"
 # 記録API（/api/track/*）を送ってよいページのオリジン（カンマ区切り）。IKU NAVI 本体のオリジン。
@@ -50,6 +50,6 @@ database_id = "e0a09355-d2f5-4c4d-afd6-ca66a464e7f7"
 
 [env.preview.vars]
 OAUTH_REDIRECT_URI = "https://event-guide-counter.iku-navi.net/api/auth/callback"
-GOOGLE_CLIENT_ID = "REPLACE_ME.apps.googleusercontent.com"
+GOOGLE_CLIENT_ID = "178048918023-ng28jumepqpe9spp4nf4v5i9uldfucsc.apps.googleusercontent.com"
 NAVI_BASE_URL = "https://iku-navi.net"
 TRACK_ALLOWED_ORIGINS = "https://iku-navi.net,https://www.iku-navi.net"
