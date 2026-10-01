@@ -8,7 +8,7 @@ pages_build_output_dir = "dist"
 [[d1_databases]]
 binding = "DB"
 database_name = "event-guide-counter-db"
-database_id = "00000000-0000-0000-0000-000000000000"
+database_id = "e7a4ac98-05c2-49a6-af38-5eef76d41920"
 
 # --- 環境変数 / シークレット (Cloudflare Pages ダッシュボードで設定する) ---
 # 平文でよいもの [vars] に、秘密情報は `wrangler pages secret put` で設定し、ここには書かない（README参照）。
@@ -46,7 +46,7 @@ TRACK_ALLOWED_ORIGINS = "https://iku-navi.net,https://www.iku-navi.net"
 [[env.preview.d1_databases]]
 binding = "DB"
 database_name = "event-guide-counter-db-preview"
-database_id = "00000000-0000-0000-0000-000000000000"
+database_id = "e0a09355-d2f5-4c4d-afd6-ca66a464e7f7"
 
 [env.preview.vars]
 OAUTH_REDIRECT_URI = "https://event-guide-counter.iku-navi.net/api/auth/callback"
