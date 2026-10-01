@@ -7,31 +7,34 @@
 
 ## 残っている作業（2026-10-02 時点）
 
-コードは一通り書いたが、**まだ一度も動かしていない**（開発機に Node が無いため）。
-A を上から順にやれば動く。各項目の詳しい手順は後述の「セットアップ」を参照。
+2026-10-02: Node のある開発機で `npm install`・型チェック・テスト・ビルドを通し、ローカル（wrangler + ローカルD1）で
+一通り動かした（QRのURLでナビを開く → 到着が1件だけ増える・再読み込みしても増えない、検索の記録、
+管理画面での人数・検索ログ・QRの表示）。残りは Cloudflare・Google 側の設定（A の後半）と本番での確認（B）。
+各項目の詳しい手順は後述の「セットアップ」を参照。
 
 ### A. まずこれをやらないと何も動かない
 
-- [ ] **`npm install` を実行する**（Node のある環境で）
-      → `package-lock.json` が未生成。これが無いと CI の `npm ci` も失敗する。生成されたら一緒にコミットする
-- [ ] **型チェック・テスト・ビルドを通す**：`npm run typecheck && npm test && npm run build`
-      → TypeScript 側は未実行なので、ここで初めてエラーが出る可能性がある
+- [x] **`npm install` を実行する**（`package-lock.json` をコミット済み）
+- [x] **型チェック・テスト・ビルドを通す**：`npm run typecheck && npm test && npm run build`
 - [ ] **D1 を2つ作る**：`npx wrangler d1 create event-guide-counter-db` と `…-db-preview`
-      → 発行された `database_id` を `wrangler.toml` の **11行目**（本番）と **46行目**（プレビュー）に書く
+      → 発行された `database_id` を `wrangler.toml` の `[[d1_databases]]`（本番）と `[[env.preview.d1_databases]]`（プレビュー）の `database_id` に書く
       （今は `00000000-0000-0000-0000-000000000000` のプレースホルダ）
 - [ ] **Google OAuth クライアントを作る**
-      → `GOOGLE_CLIENT_ID` を `wrangler.toml` の **20行目**と**50行目**に書く（今は `REPLACE_ME.apps.googleusercontent.com`）
+      → `GOOGLE_CLIENT_ID` を `wrangler.toml` の `[vars]` と `[env.preview.vars]` に書く（今は `REPLACE_ME.apps.googleusercontent.com`）
 - [ ] **シークレットを設定する**：`npx wrangler pages secret put GOOGLE_CLIENT_SECRET` と `ADMIN_EMAILS`
       → `ADMIN_EMAILS` が未設定だと**誰もログインできない**（意図どおりの安全側の挙動）
 - [ ] **マイグレーションを適用する**：`npm run db:migrate:remote`（＋ `:preview`、ローカルは `:local`）
       → デプロイでは自動適用されない。忘れると全API が 500 になる
 - [ ] **ドメインを決めて3箇所を書き換える**
-      → `wrangler.toml` の `OAUTH_REDIRECT_URI`（**17・49行目**）、
+      → `wrangler.toml` の `OAUTH_REDIRECT_URI`（`[vars]` と `[env.preview.vars]`）、
         `programs/html/navi/script/track.js` の **19行目** `TRACK_API_BASE`、
         Google Cloud Console の承認済みリダイレクト URI。
         今はすべて `event-guide-counter.iku-navi.net` を仮に入れている
-- [ ] **`NAVI_BASE_URL` を確認する**（`wrangler.toml` **22・51行目**、既定 `https://iku-navi.net`）
+- [ ] **`NAVI_BASE_URL` を確認する**（`wrangler.toml` の `[vars]` と `[env.preview.vars]`、既定 `https://iku-navi.net`）
       → 管理画面が出す QR の宛先になる
+- [ ] **`TRACK_ALLOWED_ORIGINS` を確認する**（同じく `[vars]` と `[env.preview.vars]`、既定 `https://iku-navi.net,https://www.iku-navi.net`）
+      → 記録を受け付けるページのオリジン。IKU NAVI 本体のURLと違うと**何も記録されない**
+- [ ] **Cloudflare のレート制限ルールを設定する**（下の「セキュリティ」参照）
 
 ### B. 鳳祭の前にやること
 
@@ -90,6 +93,35 @@ IKU NAVI のページが**実際に表示されたあと**、ページ内のJS�
 - 端末IDは初回に作るランダムな値で、個人情報とは結びつけない
 - 検索内容は「出発地・目的地の名前」だけで、個人を特定する情報は記録しない
 - 記録の保存期間は未定のため、自動削除は実装していない
+
+## セキュリティ
+
+### 記録API（`/api/track/*`）について
+
+記録APIはログイン不要で、案内係コード（QRに印刷されていて誰でも読める）さえ分かれば送れてしまう。
+**集計結果は「水増ししようと思えばできる」前提の目安**として扱い、人数に応じて賞品を出すなどの使い方はしないこと
+（案内係本人がプライベートウィンドウで何度も開くだけでも増やせる）。
+
+コードでは手軽な水増し・嫌がらせを止めている（`functions/api/_lib/track-guard.ts`）:
+
+- `TRACK_ALLOWED_ORIGINS` 以外のページからの送信は記録しない
+  （別のWebサイトに仕込んだスクリプトで、そのサイトの閲覧者のブラウザから大量に送らせる、を防ぐ）。
+  Origin ヘッダは自作のプログラムなら偽れるので、これだけでは「プログラムから直接大量に送る」は防げない
+- 本文は4KBまで、案内係コード・端末IDは決まった形式のものだけ受け付ける。登録されていない案内係コードは記録しない
+- 応答はいつも同じ204にして、記録したかどうか・案内係コードが存在するかを外から分からないようにしている
+
+**プログラムから大量に送られる場合への備えとして、Cloudflare のレート制限ルールを設定する**:
+ダッシュボード → このサイトのドメイン（iku-navi.net）→ Security → WAF → Rate limiting rules で、
+「URI Path が `/api/track/` で始まる」リクエストを「同じIPから10秒あたり20件まで」程度に制限する（超えたらブロック）。
+鳳祭当日は学内Wi-Fiなどで多くの来場者が同じIPになりうるので、厳しくしすぎないこと。
+
+### その他
+
+- 管理画面・管理APIは許可したメールアドレスだけ（`ADMIN_EMAILS`）・ログインから12時間以内・閲覧記録あり。
+  管理APIは別サイトからのリクエスト（`Sec-Fetch-Site` が same-origin 以外）を404で拒否する
+- 検索ログの出発地・目的地は来場者のブラウザから送られる値なので、管理画面では必ず文字として表示している
+  （`textContent`。HTMLとして解釈しない）
+- 記録・閲覧記録の保存期間は未定で、自動削除はしていない。鳳祭が終わったら不要な記録は管理画面のリセット・削除で消す
 
 ## 構成
 
@@ -173,8 +205,11 @@ npx wrangler pages dev dist --binding ADMIN_EMAILS=you@example.com
 記録APIはログイン不要なので `curl` で確認できる（`ref` は管理画面で案内係を追加すると発行される）:
 
 ```bash
+# Origin が無い・許可されていないページからの送信は記録されない（localhost どうしは許可される）。
+# ref は8文字の案内係コード、deviceId は UUID 形式でないと記録されない
 curl -X POST http://localhost:8788/api/track/arrival \
-  -H 'Content-Type: text/plain' -d '{"ref":"ABCD1234","deviceId":"test-device"}'
+  -H 'Origin: http://localhost:8000' -H 'Content-Type: text/plain' \
+  -d '{"ref":"ABCD2345","deviceId":"0b6f5c1e-3a7d-4f7e-9b1c-2d3e4f5a6b7c"}'
 
 npx wrangler d1 execute event-guide-counter-db --local --command "SELECT * FROM arrivals;"
 ```
