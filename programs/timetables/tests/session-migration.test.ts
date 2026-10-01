@@ -18,7 +18,8 @@ import { createTestD1, type TestD1 } from "./helpers/d1-sqlite";
 const migrations = import.meta.glob("../migrations/*.sql", { query: "?raw", import: "default", eager: true }) as
   Record<string, string>;
 const migrationFiles = Object.keys(migrations).sort();
-const before0009 = migrationFiles.filter((f) => !f.includes("0009"));
+// 0009 より前のマイグレーション（ファイル名の番号順。0010 以降は 0009 の確認には関係しないので当てない）
+const before0009 = migrationFiles.filter((f) => /\/(\d{4})_/.exec(f)![1] < "0009");
 const m0009 = migrationFiles.find((f) => f.includes("0009"))!;
 
 /** 本番に近いデータ（旧形式＝生のトークンのセッションを含む） */
