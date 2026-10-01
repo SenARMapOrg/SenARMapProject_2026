@@ -20,6 +20,9 @@ OAUTH_REDIRECT_URI = "https://event-guide-counter.iku-navi.net/api/auth/callback
 GOOGLE_CLIENT_ID = "REPLACE_ME.apps.googleusercontent.com"
 # QRコードの宛先（IKU NAVI本体）のベースURL。実運用ドメインが決まったら書き換える。
 NAVI_BASE_URL = "https://iku-navi.net"
+# 記録API（/api/track/*）を送ってよいページのオリジン（カンマ区切り）。IKU NAVI 本体のオリジン。
+# ここに無いページ（別のWebサイトなど）からの送信は記録しない。
+TRACK_ALLOWED_ORIGINS = "https://iku-navi.net,https://www.iku-navi.net"
 
 # 以下はダッシュボード or `wrangler pages secret put` で別途設定するシークレット:
 #   GOOGLE_CLIENT_SECRET
@@ -49,3 +52,4 @@ database_id = "00000000-0000-0000-0000-000000000000"
 OAUTH_REDIRECT_URI = "https://event-guide-counter.iku-navi.net/api/auth/callback"
 GOOGLE_CLIENT_ID = "REPLACE_ME.apps.googleusercontent.com"
 NAVI_BASE_URL = "https://iku-navi.net"
+TRACK_ALLOWED_ORIGINS = "https://iku-navi.net,https://www.iku-navi.net"

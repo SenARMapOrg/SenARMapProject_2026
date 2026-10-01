@@ -8,6 +8,9 @@ export type Bindings = {
   // 管理画面(/admin)にログインできるメールアドレス（カンマ区切り）。未設定なら誰もログインできない。
   // リポジトリには書かず、Cloudflare Pages の環境変数（本番のみ）で設定する。
   ADMIN_EMAILS?: string;
+  // 記録API（/api/track/*）を送ってよいページのオリジン（カンマ区切り）。IKU NAVI 本体のオリジンを書く。
+  // ここに無いページからの送信は記録しない（functions/api/_lib/track-guard.ts）
+  TRACK_ALLOWED_ORIGINS?: string;
 };
 
 export type Variables = {

@@ -62,12 +62,18 @@ function trackRef() {
 // sendBeacon は「ページを離れても送信を続ける」仕組みで、レスポンスは読めない。
 // Content-Type は text/plain にする（application/json だとCORSの事前確認が必要になり、
 // 事前確認に応答しない集計APIでは送れないため）。
+// 記録は「おまけ」なので、ここで何が起きてもナビ本体（検索・案内）を止めないよう、例外は外に出さない
+// （trackSearch は検索処理の途中で呼ばれるため、例外が出ると検索失敗の表示になってしまう）。
 function trackSend(path, payload) {
-  const ref = trackRef();
-  if (!ref) return;  // 案内係のQR以外から開いた場合は何も送らない
-  if (!navigator.sendBeacon) return;
-  const body = new Blob([JSON.stringify({ ref, deviceId: trackDeviceId(), ...payload })], { type: "text/plain" });
-  navigator.sendBeacon(`${TRACK_API_BASE}${path}`, body);
+  try {
+    const ref = trackRef();
+    if (!ref) return;  // 案内係のQR以外から開いた場合は何も送らない
+    if (!navigator.sendBeacon) return;
+    const body = new Blob([JSON.stringify({ ref, deviceId: trackDeviceId(), ...payload })], { type: "text/plain" });
+    navigator.sendBeacon(`${TRACK_API_BASE}${path}`, body);
+  } catch (e) {
+    console.warn("案内人数の記録を送れませんでした", e);
+  }
 }
 
 // 到着（ページを表示したとき）。ブラウザの先読み中（document.prerendering）は、まだ人が
