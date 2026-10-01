@@ -5,56 +5,190 @@
 
 ---
 
-## 残っている作業（2026-10-02 時点）
+## 残っている作業（2026-10-02 時点）— 上から順にやる
 
-2026-10-02: Node のある開発機で `npm install`・型チェック・テスト・ビルドを通し、ローカル（wrangler + ローカルD1）で
-一通り動かした（QRのURLでナビを開く → 到着が1件だけ増える・再読み込みしても増えない、検索の記録、
-管理画面での人数・検索ログ・QRの表示）。残りは Cloudflare・Google 側の設定（A の後半）と本番での確認（B）。
-各項目の詳しい手順は後述の「セットアップ」を参照。
+コードは Node のある開発機で型チェック・テスト・ビルドを通し、ローカル（wrangler + ローカルD1）で一通り動かした
+（QRのURLでナビを開く → 到着が1件だけ増える・再読み込みしても増えない、検索の記録、管理画面での人数・検索ログ・QRの表示）。
+残りは **Cloudflare と Google の画面での設定** と **本番での確認** だけ。
 
-### A. まずこれをやらないと何も動かない
+ドメインは **`event-guide-counter.iku-navi.net`** を使う前提で、コードにはすでにこの値が入っている
+（`wrangler.toml` の `OAUTH_REDIRECT_URI` と `track.js` の `TRACK_API_BASE`）。別のドメインにしたい場合だけ、最後の「ドメインを変える場合」を見る。
 
-- [x] **`npm install` を実行する**（`package-lock.json` をコミット済み）
-- [x] **型チェック・テスト・ビルドを通す**：`npm run typecheck && npm test && npm run build`
-- [ ] **D1 を2つ作る**：`npx wrangler d1 create event-guide-counter-db` と `…-db-preview`
-      → 発行された `database_id` を `wrangler.toml` の `[[d1_databases]]`（本番）と `[[env.preview.d1_databases]]`（プレビュー）の `database_id` に書く
-      （今は `00000000-0000-0000-0000-000000000000` のプレースホルダ）
-- [ ] **Google OAuth クライアントを作る**
-      → `GOOGLE_CLIENT_ID` を `wrangler.toml` の `[vars]` と `[env.preview.vars]` に書く（今は `REPLACE_ME.apps.googleusercontent.com`）
-- [ ] **シークレットを設定する**：`npx wrangler pages secret put GOOGLE_CLIENT_SECRET` と `ADMIN_EMAILS`
-      → `ADMIN_EMAILS` が未設定だと**誰もログインできない**（意図どおりの安全側の挙動）
-- [ ] **マイグレーションを適用する**：`npm run db:migrate:remote`（＋ `:preview`、ローカルは `:local`）
-      → デプロイでは自動適用されない。忘れると全API が 500 になる
-- [ ] **ドメインを決めて3箇所を書き換える**
-      → `wrangler.toml` の `OAUTH_REDIRECT_URI`（`[vars]` と `[env.preview.vars]`）、
-        `programs/html/navi/script/track.js` の **19行目** `TRACK_API_BASE`、
-        Google Cloud Console の承認済みリダイレクト URI。
-        今はすべて `event-guide-counter.iku-navi.net` を仮に入れている
-- [ ] **`NAVI_BASE_URL` を確認する**（`wrangler.toml` の `[vars]` と `[env.preview.vars]`、既定 `https://iku-navi.net`）
-      → 管理画面が出す QR の宛先になる
-- [ ] **`TRACK_ALLOWED_ORIGINS` を確認する**（同じく `[vars]` と `[env.preview.vars]`、既定 `https://iku-navi.net,https://www.iku-navi.net`）
-      → 記録を受け付けるページのオリジン。IKU NAVI 本体のURLと違うと**何も記録されない**
-- [ ] **Cloudflare のレート制限ルールを設定する**（下の「セキュリティ」参照）
+- [ ] **手順1. D1 データベースを2つ作る**（ターミナル）
+- [ ] **手順2. Google のログイン用のクライアントを作る**（Google Cloud Console）
+- [ ] **手順3. `wrangler.toml` に ID を書く**（手順1・2で出た値。Claude に頼んでもよい）
+- [ ] **手順4. D1 に表を作る（マイグレーション）**（ターミナル）
+- [ ] **手順5. PR を main にマージする**（GitHub）
+- [ ] **手順6. Cloudflare Pages にこのサイトを作る**（Cloudflare）
+- [ ] **手順7. シークレットを設定する**（Cloudflare）
+- [ ] **手順8. ドメインを付ける**（Cloudflare）
+- [ ] **手順9. 送りすぎを止めるルールを作る**（Cloudflare）
+- [ ] **手順10. 本番で動作確認する**（スマホ）
+- [ ] **手順11. 鳳祭の準備・後片付け**
 
-### B. 鳳祭の前にやること
+### 手順1. D1 データベースを2つ作る（ターミナル）
 
-- [ ] 管理画面 `/admin` にログインできるか確認する
-- [ ] 案内係を登録して、**QRを実機のスマホで読んで到着が1件だけ増えるか**確認する
-      （連続で読み込んでも増えない＝重複排除が効いている、が今回の作り替えの要点）
-- [ ] ルート検索して検索人数と検索ログ（出発地→目的地）が入るか確認する
-- [ ] 案内係ごとのQRを印刷して配る
-- [ ] 記録していることをイベントページなどで一言案内するか決める
+本番用とプレビュー用（main 以外のブランチのデプロイ用）の2つを作る。リポジトリの一番上で、1行ずつ実行する:
 
-### C. あとから判断すればよいこと
+```bash
+cd programs/event_guide_counter
+npm install
+npx wrangler login
+npx wrangler d1 create event-guide-counter-db
+npx wrangler d1 create event-guide-counter-db-preview
+```
 
-- [ ] **旧 Rails 版（別リポジトリ `User-counter`）をいつ止めるか**
-      → 今回は並行稼働させる方針なのでコードは一切触っていない。
-        鳳祭のQRを新システム向けに差し替えれば、Rails 版は実質使われなくなる
-- [ ] **記録の保存期間を決める**
-      → 自動削除は実装していない。必要になったら `functions/api/_lib/db/audit.ts` の
-        コメントにある通り `DELETE … WHERE created_at < …` を足すだけで足りる
+- `npx wrangler login` はブラウザが開くので、プロジェクトの Cloudflare アカウントで「Allow」を押す
+  （すでにログインしていれば不要。`npx wrangler whoami` で確認できる）
+- `d1 create` を実行するたびに `database_id = "xxxxxxxx-xxxx-..."` という行が出るので、**2つとも控える**（どちらが本番用かも）。
+  この ID は公開されても問題ない
 
----
+### 手順2. Google のログイン用のクライアントを作る（Google Cloud Console）
+
+管理画面に Google アカウントでログインするためのもの。時間割共有と同じ Google Cloud のプロジェクトを使えば、同意画面の設定はもう済んでいる。
+
+1. https://console.cloud.google.com/ を開き、上のプロジェクト選択で**時間割共有と同じプロジェクト**を選ぶ
+2. 左のメニュー → **「APIとサービス」→「認証情報」**
+3. 上の **「＋認証情報を作成」→「OAuth クライアント ID」**
+4. **アプリケーションの種類**: 「ウェブ アプリケーション」
+5. **名前**: `鳳祭 案内人数集計`（何でもよい）
+6. **承認済みのリダイレクト URI** の「＋URI を追加」に、次をそのまま貼る:
+   ```
+   https://event-guide-counter.iku-navi.net/api/auth/callback
+   ```
+   （「承認済みの JavaScript 生成元」は空のままでよい）
+7. **「作成」** を押すと **クライアント ID**（`….apps.googleusercontent.com`）と **クライアント シークレット**（`GOCSPX-…`）が出るので控える
+   - クライアント ID は公開されても問題ない（手順3で `wrangler.toml` に書く）
+   - **クライアント シークレットは秘密**。リポジトリ・チャット・PR に書かない（手順7で Cloudflare にだけ入れる）
+
+### 手順3. `wrangler.toml` に ID を書く
+
+`programs/event_guide_counter/wrangler.toml` の次の4か所を書き換えて、コミット・push・PR を出す
+（**D1 の ID 2つとクライアント ID を Claude に伝えて「書き換えて PR に載せて」と頼んでもよい**。シークレットは伝えない）。
+
+| 場所 | 今の値 | 書く値 |
+|---|---|---|
+| `[[d1_databases]]` の `database_id` | `00000000-0000-0000-0000-000000000000` | 手順1の **本番用**（`event-guide-counter-db`）の ID |
+| `[vars]` の `GOOGLE_CLIENT_ID` | `REPLACE_ME.apps.googleusercontent.com` | 手順2のクライアント ID |
+| `[[env.preview.d1_databases]]` の `database_id` | `00000000-0000-0000-0000-000000000000` | 手順1の **プレビュー用**（`event-guide-counter-db-preview`）の ID |
+| `[env.preview.vars]` の `GOOGLE_CLIENT_ID` | `REPLACE_ME.apps.googleusercontent.com` | 手順2のクライアント ID（同じ値） |
+
+### 手順4. D1 に表を作る（マイグレーション）（ターミナル）
+
+手順3で書き換えた `wrangler.toml` がある状態で、リポジトリの一番上から1行ずつ実行する（それぞれ「Ok to proceed?」と聞かれたら `y`）:
+
+```bash
+cd programs/event_guide_counter
+npm run db:migrate:remote
+npm run db:migrate:preview
+```
+
+最後に `0001_init.sql │ ✅` と出れば成功。**これを忘れると、デプロイ後にすべての API がエラー（500）になる。**
+
+### 手順5. PR を main にマージする（GitHub）
+
+この集計システムのコードと手順3の変更を含む PR を main にマージする（マージはレビュー担当の人）。
+手順6で作る Cloudflare Pages は main のコードをビルドするので、**マージ前に手順6をやるとビルドが失敗する**（失敗しても、マージ後にやり直せば直る）。
+
+ナビ画面（IKU NAVI 本体）にも記録用のスクリプトが入るが、QR に `ref` が付いているときしか送らず、
+送信先がまだ無くてもナビは普段どおり動くので、手順6〜9より先にマージして問題ない。
+
+### 手順6. Cloudflare Pages にこのサイトを作る（Cloudflare）
+
+1. https://dash.cloudflare.com/ を開き、プロジェクトのアカウントを選ぶ
+2. 左のメニュー → **「Workers & Pages」** → 右上の **「作成」（Create）**
+3. **「Pages」** タブ → **「Git に接続」（Connect to Git）**
+4. リポジトリ **`SenARMapOrg/SenARMapProject_2026`** を選んで **「セットアップの開始」**
+5. 次のとおり入力する:
+
+   | 項目 | 入れる値 |
+   |---|---|
+   | プロジェクト名 | **`senarmapproject-2026-event-guide-counter`**（`wrangler.toml` の `name` と同じにする。違うと設定が効かない） |
+   | 本番ブランチ | `main` |
+   | フレームワーク プリセット | なし（None） |
+   | ビルド コマンド | `npm install && npm run build` |
+   | ビルド出力ディレクトリ | `dist` |
+   | ルート ディレクトリ（「詳細設定」を開く） | **`programs/event_guide_counter`** |
+
+6. **「保存してデプロイする」** を押し、ビルドが「成功」になるのを待つ
+   - D1 の接続と環境変数は `wrangler.toml` から自動で入るので、ダッシュボードでは設定しない
+     （設定画面に「このプロジェクトのバインディングは wrangler.toml を通じて管理されています」と出るのが正しい状態）
+
+### 手順7. シークレットを設定する（Cloudflare）
+
+1. 手順6で作ったプロジェクト（`senarmapproject-2026-event-guide-counter`）を開く
+2. **「設定」（Settings）→「変数とシークレット」（Variables and Secrets）**
+3. 環境が **「本番」（Production）** になっていることを確認して **「追加」** を押し、次の2つを追加する（種類はどちらも **「シークレット」**）:
+
+   | 名前 | 値 |
+   |---|---|
+   | `GOOGLE_CLIENT_SECRET` | 手順2のクライアント シークレット（`GOCSPX-…`） |
+   | `ADMIN_EMAILS` | 管理画面を見る人のメールアドレス。複数ならカンマ区切り（例: `a@senshu-u.jp,b@senshu-u.jp`） |
+
+4. **「保存」**
+5. シークレットは次のデプロイから効くので、**「デプロイ」タブ → 一番上の本番デプロイの「…」→「デプロイを再試行」** を押す
+
+- **プレビュー（Preview）には設定しない**（プレビューの URL から本番の管理画面と同じものにログインできる経路を作らないため）
+- ターミナルでやる場合は次の2行（実行すると値を聞かれるので貼り付ける）:
+  ```bash
+  npx wrangler pages secret put GOOGLE_CLIENT_SECRET --project-name senarmapproject-2026-event-guide-counter
+  npx wrangler pages secret put ADMIN_EMAILS --project-name senarmapproject-2026-event-guide-counter
+  ```
+
+### 手順8. ドメインを付ける（Cloudflare）
+
+1. 同じプロジェクトの **「カスタム ドメイン」（Custom domains）** タブ → **「カスタム ドメインを設定」**
+2. `event-guide-counter.iku-navi.net` と入力 → **「続行」** → **「ドメインをアクティブ化」**
+3. 状態が **「アクティブ」** になるまで待つ（数分。iku-navi.net が Cloudflare にあるので DNS は自動で作られる。
+   **DNS レコードを自分で作らないこと**）
+4. ブラウザで https://event-guide-counter.iku-navi.net/admin を開き、「Googleでログイン」のボタンが出れば OK
+
+### 手順9. 送りすぎを止めるルールを作る（Cloudflare）
+
+記録の受け付け（`/api/track/`）はログイン不要なので、プログラムから大量に送られたときのために、同じ IP からの送信数に上限を付ける。
+
+1. https://dash.cloudflare.com/ → **`iku-navi.net`** のドメインを開く
+2. 左のメニュー → **「セキュリティ」（Security）→「WAF」→「レート制限ルール」（Rate limiting rules）タブ** → **「ルールを作成」**
+3. 次のとおり入力する:
+
+   | 項目 | 入れる値 |
+   |---|---|
+   | ルール名 | `event-guide-counter track` |
+   | 受信リクエストが一致する場合 | フィールド「ホスト名」・演算子「次と等しい」・値 `event-guide-counter.iku-navi.net`<br>**And** フィールド「URI パス」・演算子「次で始まる」・値 `/api/track/` |
+   | 同じ特性を持つ場合 | IP |
+   | レートが次を超えた場合 | リクエスト数 `20`、期間 `10 秒` |
+   | アクションを実行 | ブロック、期間 `10 秒` |
+
+4. **「デプロイ」**
+- 無料プランではレート制限ルールは1つしか作れない。すでに別のルールがある場合は、作る前に相談する
+- 鳳祭当日は学内 Wi-Fi などで多くの来場者が同じ IP になりうるので、これより厳しくしない
+
+### 手順10. 本番で動作確認する（スマホ）
+
+1. https://event-guide-counter.iku-navi.net/admin に `ADMIN_EMAILS` のアカウントでログインする
+2. 案内係の名前欄に `テスト` と入れて **「追加」**
+3. 「テスト」の行の **「QR表示」** を押し、出た QR を**スマホのカメラで読む** → IKU NAVI のナビ画面が開く
+4. 管理画面を再読み込みして、「テスト」の **到着人数が 1** になっていることを確認
+5. **もう一度同じ QR を読んで**から管理画面を再読み込みし、**到着人数が 1 のまま**であることを確認（2回数えないのが今回の作り替えの要点）
+6. スマホのナビ画面でルート検索をする → 管理画面で **検索人数が 1**、「検索ログ」に出発地 → 目的地が出ることを確認
+7. 確認が終わったら「テスト」の行の **「削除」** を押す
+
+### 手順11. 鳳祭の準備・後片付け
+
+- 案内係を全員分「追加」し、それぞれ「QR表示」の QR を印刷して配る（QR の下の URL の `ref=` が案内係のコード。名前は入っていない）
+- 記録していることを、イベントページなどで一言案内するか決める
+- 旧 Rails 版（別リポジトリ `User-counter`）をいつ止めるか決める（今は並行稼働の方針）
+- 終わったら、不要な記録は管理画面の「リセット」「削除」で消す（自動では消えない）
+
+### ドメインを変える場合
+
+`event-guide-counter.iku-navi.net` 以外にする場合は、手順2・8で入れるドメインを変え、次の3か所も同じドメインに書き換える:
+
+- `wrangler.toml` の `OAUTH_REDIRECT_URI`（`[vars]` と `[env.preview.vars]` の2か所）
+- `programs/html/navi/script/track.js` の `TRACK_API_BASE`（`https://event-guide-counter.iku-navi.net` の部分）
+
+IKU NAVI 本体のドメイン（`iku-navi.net`）を変える場合は、`wrangler.toml` の `NAVI_BASE_URL`（QR の宛先）と
+`TRACK_ALLOWED_ORIGINS`（記録を受け付けるページ。違うと何も記録されない）も書き換える。
 
 ## 何をどう数えているか
 
@@ -147,6 +281,8 @@ migrations/                   D1のスキーマ
   記録を書けない状態では一覧を表示しない（503）。
 
 ## セットアップ
+
+> 初めて本番に出すときの手順は、冒頭の「残っている作業」に画面の操作まで細かく書いてある。ここはその要点。
 
 ### 1. 依存のインストール
 
