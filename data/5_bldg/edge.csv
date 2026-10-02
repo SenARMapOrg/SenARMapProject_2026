@@ -2,7 +2,7 @@ id,name,from,to,building,floor,weight,length,type,left,right
 1,,1,5,5,1,1,3.9,1,,
 2,M_Toilet,5,6,5,1,1,2.4,1,,M_Toilet
 3,,6,7,5,1,1,2,1,,
-4,511;Natural_Science_Laboratory1;Natural_Science_Laboratory2;Life_Science_Laboratory1;Life_Science_Laboratory2;Life_Science_Laboratory3;PE_Practice _Room;Social _And_PE_Laboratory;Physiological_Laboratory;Physical_Fitness_Measurement Room;PE_Laboratory;Electrical_Room;Changing_Room,5,8,5,1,1,49.8,1,511;Natural_Science_Laboratory1;Natural_Science_Laboratory2;Life_Science_Laboratory1;Life_Science_Laboratory2;Life_Science_Laboratory3,Changing_Room;PE_Practice _Room;Social _And_PE_Laboratory;Physiological_Laboratory;Physical_Fitness_Measurement_Room;PE_Laboratory
+4,511;Natural_Science_Laboratory1;Natural_Science_Laboratory2;Life_Science_Laboratory1;Life_Science_Laboratory2;Life_Science_Laboratory3;PE_Practice _Room;Social _And_PE_Laboratory;Physiological_Laboratory;Physical_Fitness_Measurement Room;PE_Laboratory;Changing_Room,5,8,5,1,1,49.8,1,511;Natural_Science_Laboratory1;Natural_Science_Laboratory2;Life_Science_Laboratory1;Life_Science_Laboratory2;Life_Science_Laboratory3,Changing_Room;PE_Practice _Room;Social _And_PE_Laboratory;Physiological_Laboratory;Physical_Fitness_Measurement_Room;PE_Laboratory
 5,,8,9,5,1,1,2.1,1,,
 6,,9,10,5,1,1,2.299999999999997,1,,
 7,,10,2,5,1,1,2.3999999999999986,1,,
