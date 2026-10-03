@@ -21,7 +21,7 @@ document.getElementById("completion-modal").addEventListener("click", e => {
 
 function updateNavBar(node, step, total) {
   let label = "—";
-  if (node) label = node.building === 0 ? "屋外を移動中" : `${bldgLabel(node.building)} ${node.floor}階`;
+  if (node) label = node.building === 0 ? "屋外を移動中" : `${bldgLabel(node.building)} ${floorLabel(node.floor)}`;
   document.getElementById("step-label").textContent = label;
   document.getElementById("step-count").textContent = total ? `${step + 1} / ${total - 1}` : "";
   document.getElementById("prev-btn").disabled = step <= 0;
