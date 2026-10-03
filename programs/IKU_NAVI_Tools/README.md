@@ -26,7 +26,7 @@ Mac での Python のインストールから、つまずきやすい点（カ�
 | 画像チェック | `image_checker` | CDN 上の経路写真がエッジごとに揃っているかを確認する | `programs/Image_Checker` |
 | 画像リネーム | `image_renamer` | 経路写真を一括でリネーム・リサイズする（リサイズは裏で進み、下のステータスバーに進み具合と中止ボタンが出る） | `programs/Image_Renamer` |
 | 人物ぼかし | `human_remover` | YOLOv8 で経路写真の人物を検出し、ぼかし・モザイクで匿名化する | `programs/Human_Remover` |
-| SVG座標取得 | `svg_pointer` | SVGをクリックして座標を取得し、クリップボードにコピーする | `programs/SVG_Pointer`（PyQt5 から移植） |
+| SVG座標取得 | `svg_pointer` | SVGをクリックして座標を取得し、クリップボードにコピーする。既存の点の x・y の近くをクリックするとぴったり合わせる（吸着。Alt/option+クリックで解除）ほか、一覧で選んだ点を縦・横にそろえられる | `programs/SVG_Pointer`（PyQt5 から移植） |
 
 ルート検証・画像チェックは経路探索API（`programs/3D_Graph`、既定は `http://localhost:5001`）を使うので、
 先に `cd programs/3D_Graph && python app.py` で起動しておく。
