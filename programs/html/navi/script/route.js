@@ -98,6 +98,7 @@ async function initRoute(coords, edges, destInfo = {}) {
   svgFloor    = null;
   svgOverlay  = null;
   arMarkersBuilt = false;
+  arResetAutoAdvance();
   arHideView();
   arPrefetchCameraIfNeeded();  // 屋外AR区間がある場合のみカメラを先取り
   clearMapOverlays();
@@ -153,8 +154,13 @@ async function goToStep(step, { announce = false } = {}) {
 
 // 最終ノード（画像のない到着ステップ）へは進まない。
 // 目的地エッジを歩く「この辺です」区間（length-2）がナビの最終ステップ。
-function prevStep() { if (currentStep > 0) goToStep(currentStep - 1); }
-function nextStep() { if (currentStep < pathCoords.length - 2) goToStep(currentStep + 1, { announce: true }); }
+// ボタンで動かしたときは、屋外の自動送り（ar.js）をしばらく止める（戻した直後に勝手に進み直さないように）
+function prevStep() {
+  if (currentStep > 0) { arPauseAutoAdvance(); goToStep(currentStep - 1); }
+}
+function nextStep() {
+  if (currentStep < pathCoords.length - 2) { arPauseAutoAdvance(); goToStep(currentStep + 1, { announce: true }); }
+}
 
 // ================================================================
 // AR ハードウェア解放判定
