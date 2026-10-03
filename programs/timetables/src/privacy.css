@@ -1,0 +1,96 @@
+/* プライバシーポリシーのページ（privacy.html）。色・フォント・上部の帯・フッターは style.css を使い、
+   ここでは長い文章を読みやすくするための見た目だけを足す。 */
+
+.policy {
+  flex: 1;
+  width: 100%;
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 24px 20px 40px;
+  line-height: 1.85;
+  font-size: 15px;
+}
+
+.policy h1 {
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  margin-bottom: 4px;
+}
+
+.policy-dates {
+  font-size: 13px;
+  color: var(--ink-soft);
+  margin-bottom: 20px;
+}
+
+.policy h2 {
+  font-size: 16px;
+  font-weight: 800;
+  margin: 32px 0 8px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--ink);
+}
+
+.policy h3 {
+  font-size: 15px;
+  font-weight: 700;
+  margin: 18px 0 4px;
+}
+
+.policy p { margin: 8px 0; }
+
+.policy ul,
+.policy ol { margin: 8px 0 8px 1.4em; }
+
+.policy li { margin: 4px 0; }
+
+.policy a { color: var(--transit-blue); overflow-wrap: anywhere; }
+
+.policy strong { font-weight: 700; }
+
+.policy-note {
+  margin: 12px 0;
+  padding: 10px 14px;
+  background: var(--accent-light);
+  border-left: 3px solid var(--accent);
+  font-size: 14px;
+}
+
+/* 取得する情報の表。スマホでは枠の中だけ横にスクロールさせ、ページ全体ははみ出さない */
+.policy-table-wrap { overflow-x: auto; margin: 10px 0; }
+
+.policy table {
+  width: 100%;
+  min-width: 520px;
+  border-collapse: collapse;
+  font-size: 14px;
+  line-height: 1.7;
+  background: #fff;
+}
+
+.policy th,
+.policy td {
+  border: 1px solid var(--line-strong);
+  padding: 8px 10px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.policy th { background: var(--paper); font-weight: 700; white-space: nowrap; }
+
+.policy td:first-child { width: 11em; font-weight: 700; }
+
+.policy-contact { font-size: 15px; }
+
+.policy-back {
+  margin-top: 32px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+  font-size: 14px;
+}
+
+@media (max-width: 600px) {
+  .policy { padding: 18px 16px 32px; font-size: 14.5px; }
+  .policy h1 { font-size: 20px; }
+}
