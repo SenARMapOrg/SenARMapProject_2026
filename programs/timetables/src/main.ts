@@ -53,6 +53,7 @@ function renderLoginView(loginError: string | null, hasSharedLink: boolean): voi
     ${loginError ? `<p class="message message-error">${describeLoginError(loginError)}</p>` : ""}
     ${hasSharedLink ? '<p class="hint">共有リンクを見るにはログインが必要です。ログイン後、もう一度リンクを開いてください。</p>' : ""}
     <p class="hint">大学発行のメールアドレス以外ではログインできません。</p>
+    <p class="hint">ログインすると、<a href="/terms">利用規約</a>と<a href="/privacy">プライバシーポリシー</a>に同意したものとみなします。</p>
   `;
   appRoot.appendChild(section);
 }
