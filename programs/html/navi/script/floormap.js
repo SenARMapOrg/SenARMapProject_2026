@@ -7,7 +7,7 @@
 // SVG — load floor plan
 // ================================================================
 async function loadSvg(building, floor) {
-  document.getElementById("floor-badge").textContent = `${bldgLabel(building)} ${floor}階`;
+  document.getElementById("floor-badge").textContent = `${bldgLabel(building)} ${floorLabel(floor)}`;
   const container = document.getElementById("svg-container");
   svgOverlay = null;
 
@@ -30,7 +30,7 @@ async function loadSvg(building, floor) {
   if (!text) {
     container.innerHTML = `
       <div class="err-box">
-        <div class="err-title">${bldgLabel(building)} ${floor}階のマップが見つかりません</div>
+        <div class="err-title">${bldgLabel(building)} ${floorLabel(floor)}のマップが見つかりません</div>
         <div class="err-desc">このフロアのSVGデータはまだ登録されていません。</div>
         <div class="err-hint">◀ ▶ で他のステップに進んでください</div>
       </div>`;
