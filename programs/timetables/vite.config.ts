@@ -11,6 +11,9 @@ export default defineConfig({
       input: {
         main: resolve(__dirname, "index.html"),
         admin: resolve(__dirname, "admin.html"),
+        // プライバシーポリシー（スクリプトの無い、文章だけのページ）。/privacy で開ける
+        privacy: resolve(__dirname, "privacy.html"),
+        terms: resolve(__dirname, "terms.html"),
       },
     },
   },
