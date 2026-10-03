@@ -126,6 +126,14 @@ function bldgLabel(b) {
   return buildingNames[Number(b)] || (Number(b) === 0 ? "屋外" : `${b}号館`);
 }
 
+// 階の表示名。経路データでは地下1階を 0、地下2階を -1 …と整数で持っている
+// （SVG のファイル名も 7_0F.svg のように同じ値を使う）ので、表示と読み上げのときだけ「地下◯階」に直す。
+function floorLabel(floor) {
+  const f = Number(floor);
+  if (!Number.isFinite(f)) return `${floor}階`;
+  return f <= 0 ? `地下${1 - f}階` : `${f}階`;
+}
+
 function initBuildingNames(buildings) {
   buildingNames = {};
   buildings.forEach(b => { buildingNames[Number(b.id)] = b.display_name; });

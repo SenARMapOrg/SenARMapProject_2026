@@ -118,8 +118,8 @@ function buildStepAnnouncement(step) {
     const label = VERTICAL_LABELS[type];
     if (fromFloor == null || toFloor == null || fromFloor === toFloor) return `${label}で移動します`;
     return toFloor > fromFloor
-      ? `${label}で${toFloor}階まで上がってください`
-      : `${label}で${toFloor}階まで下りてください`;
+      ? `${label}で${floorLabel(toFloor)}まで上がってください`
+      : `${label}で${floorLabel(toFloor)}まで下りてください`;
   }
 
   // 最終区間（目的地エッジ上を歩く「この辺です」区間）
