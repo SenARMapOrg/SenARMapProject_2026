@@ -82,7 +82,20 @@ let walkerT = 0;
 const clickTargets = [];  // タップで建物に寄るための、建物名の札
 
 // ---------------------------------------------------------------- 座標
-// API の座標（x: 東, y: 北, z: 高さ。単位m）→ Three.js（x: 東, y: 上, z: 南）。
+// データの x・y は東西南北に対して鏡写しになっている（docs/XYZ_Design.md の定義が「X: 山を登る方向、
+// Y: X の右向き」で、上から見ると普通の地図と左右が逆になる）。屋外ノードの緯度経度と比べると、
+// おおよそ「東 = -y」「北 = -x」になる。これを Three.js（x: 東, y: 上, z: 南）に直す。
+//   Three.x = 東 = -y、Three.z = 南 = -北 = x
+function sceneXZ(x, y) {
+  return { x: -(y - state.center.y), z: x - state.center.x };
+}
+
+// データの向き（x・y の平面での角度 rad）を、Three.js の y 軸まわりの回転角に直す。
+// データの向き (cos, sin) は sceneXZ で (-sin, cos) に移るので、それが +x になる回転角を求める
+function sceneRotationY(dataAngle) {
+  return Math.atan2(-Math.cos(dataAngle), -Math.sin(dataAngle));
+}
+
 // 建物の中は、その建物の一番低い点を基準に高さを spread 倍して、階の間を見やすく広げる。
 function toScene(n) {
   const b = n.building;
@@ -93,7 +106,8 @@ function toScene(n) {
     const base = state.buildingBaseZ[b];
     up = (base - state.baseZ) + (n.z - base) * state.spread;
   }
-  return new THREE.Vector3(n.x - state.center.x, up, -(n.y - state.center.y));
+  const p = sceneXZ(n.x, n.y);
+  return new THREE.Vector3(p.x, up, p.z);
 }
 
 function buildingColor(b) {
@@ -196,7 +210,7 @@ function buildWorld() {
     const dimmed = state.focus !== null && state.focus !== b;
     const rot = ((state.config[String(b)] || {}).rot_deg || 0) * Math.PI / 180;
     const cos = Math.cos(-rot), sin = Math.sin(-rot);
-    // 建物の向きに合わせた座標で範囲を求める
+    // 建物の向きに合わせた座標（データの x・y のまま）で範囲を求める
     let minU = Infinity, maxU = -Infinity, minV = Infinity, maxV = -Infinity;
     for (const n of list) {
       const u = cos * n.x - sin * n.y, v = sin * n.x + cos * n.y;
@@ -214,7 +228,7 @@ function buildWorld() {
       new THREE.MeshStandardMaterial({ color, transparent: true, opacity: dimmed ? 0.07 : 0.3, depthWrite: false }),
     );
     slab.position.set(p.x, p.y - 0.4, p.z);
-    slab.rotation.y = rot;
+    slab.rotation.y = sceneRotationY(rot);
     world.add(slab);
     const outline = new THREE.LineSegments(
       new THREE.EdgesGeometry(slab.geometry),
