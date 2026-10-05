@@ -39,8 +39,7 @@ const state = {
   shownBuildings: new Set(),
   center: { x: 0, y: 0 },
   baseZ: 0,
-  buildingBaseZ: {},
-  spread: 1.8,
+  spread: 1.8,            // 高さの強調（すべての点の高さをこの倍率で描く）
   focus: null,            // 寄っている建物（null = 全体）
   showLabels: true,
   route: null,            // { points: Vector3[], ... }
@@ -72,7 +71,7 @@ const sun = new THREE.DirectionalLight(0xFFF6E8, 0.55);
 sun.position.set(-200, 400, 150);
 scene.add(sun);
 
-const world = new THREE.Group();        // 建物・通路・屋外の道（階の間隔を変えたら作り直す）
+const world = new THREE.Group();        // 建物・通路・屋外の道（高さの強調を変えたら作り直す）
 const routeGroup = new THREE.Group();   // 道順
 const labelGroup = new THREE.Group();   // 建物名・教室名
 scene.add(world, routeGroup, labelGroup);
@@ -96,16 +95,10 @@ function sceneRotationY(dataAngle) {
   return Math.atan2(-Math.cos(dataAngle), -Math.sin(dataAngle));
 }
 
-// 建物の中は、その建物の一番低い点を基準に高さを spread 倍して、階の間を見やすく広げる。
+// 高さは、建物の中も屋外もすべて同じ倍率（spread）で強調する。建物の中だけを強調すると、上の階の出入口と
+// 屋外の点の高さの関係が崩れて、つなぐ線が垂直に落ちたように見えてしまうため（データ上は差が2m程度でも）。
 function toScene(n) {
-  const b = n.building;
-  let up;
-  if (b === 0 || !(b in state.buildingBaseZ)) {
-    up = n.z - state.baseZ;
-  } else {
-    const base = state.buildingBaseZ[b];
-    up = (base - state.baseZ) + (n.z - base) * state.spread;
-  }
+  const up = (n.z - state.baseZ) * state.spread;
   const p = sceneXZ(n.x, n.y);
   return new THREE.Vector3(p.x, up, p.z);
 }
@@ -549,10 +542,6 @@ async function init() {
   state.center.x = shownNodes.reduce((s, n) => s + n.x, 0) / shownNodes.length;
   state.center.y = shownNodes.reduce((s, n) => s + n.y, 0) / shownNodes.length;
   state.baseZ = Math.min(...shownNodes.map(n => n.z));
-  for (const n of shownNodes) {
-    if (n.building === 0) continue;
-    state.buildingBaseZ[n.building] = Math.min(state.buildingBaseZ[n.building] ?? Infinity, n.z);
-  }
 
   fillRoomSelects();
   fillBuildingChips();
