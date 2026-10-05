@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="description" content="専修大学 生田キャンパスの建物・通路・階段を3Dで見られるマップ。教室を選ぶと、道順を3Dで表示します。">
+  <title>3Dキャンパスマップ | IKU NAVI</title>
+  <link rel="icon" href="/images/favicon.ico">
+  <link rel="stylesheet" href="map3d.css">
+</head>
+<body>
+  <canvas id="scene" aria-label="キャンパスの3Dマップ"></canvas>
+
+  <header class="panel" id="panel">
+    <div class="panel-head">
+      <a class="brand" href="/">IKU NAVI</a>
+      <span class="brand-sub">3Dキャンパスマップ</span>
+      <button class="panel-toggle" id="panel-toggle" type="button" aria-expanded="true" aria-controls="panel-body">閉じる</button>
+    </div>
+
+    <div class="panel-body" id="panel-body">
+      <form class="route-form" id="route-form">
+        <label>出発
+          <select id="from-room" required><option value="">教室を選ぶ</option></select>
+        </label>
+        <label>目的地
+          <select id="to-room" required><option value="">教室を選ぶ</option></select>
+        </label>
+        <div class="route-actions">
+          <label class="check"><input type="checkbox" id="use-elevator" checked> エレベーターを使う</label>
+          <button type="submit" class="btn-primary">道順を見る</button>
+        </div>
+      </form>
+      <p class="route-summary" id="route-summary" hidden></p>
+
+      <div class="controls">
+        <div class="control-row">
+          <span class="control-label">建物</span>
+          <div class="chips" id="building-chips"></div>
+        </div>
+        <label class="control-row">
+          <span class="control-label">高さの強調</span>
+          <input type="range" id="spread" min="1" max="4" step="0.1" value="1.8">
+        </label>
+        <div class="control-row toggles">
+          <label class="check"><input type="checkbox" id="show-labels" checked> 教室名</label>
+          <label class="check"><input type="checkbox" id="auto-rotate"> 自動で回る</label>
+        </div>
+      </div>
+
+      <ul class="legend">
+        <li><span class="swatch corridor"></span>通路</li>
+        <li><span class="swatch stairs"></span>階段</li>
+        <li><span class="swatch elevator"></span>エレベーター</li>
+        <li><span class="swatch escalator"></span>エスカレーター</li>
+        <li><span class="swatch outdoor"></span>屋外の道</li>
+        <li><span class="swatch route"></span>道順</li>
+      </ul>
+      <p class="hint">ドラッグで回転、2本指・ホイールで拡大縮小、右ドラッグ（2本指でずらす）で移動。建物名をタップするとその建物に寄ります。</p>
+    </div>
+  </header>
+
+  <div class="status" id="status">読み込み中…</div>
+
+  <script src="https://cdn.jsdelivr.net/npm/three@0.137.0/build/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.137.0/examples/js/controls/OrbitControls.js"></script>
+  <script src="map3d.js"></script>
+</body>
+</html>
