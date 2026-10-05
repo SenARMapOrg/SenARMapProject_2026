@@ -1,0 +1,153 @@
+/* 3Dキャンパスマップ（/map3d/）。画面いっぱいの3D表示の上に、左上の操作パネルを重ねる */
+
+:root {
+  --ink: #1C2333;
+  --muted: #5B6476;
+  --panel: rgba(255, 255, 255, 0.9);
+  --line: rgba(28, 35, 51, 0.12);
+  --accent: #FF7A1A;
+  --accent-dark: #D95F00;
+  --green: #3bab64;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body { height: 100%; overflow: hidden; }
+
+body {
+  font-family: -apple-system, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', 'Noto Sans JP', sans-serif;
+  color: var(--ink);
+  background: #DCE7F2;
+  -webkit-font-smoothing: antialiased;
+}
+
+#scene {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  touch-action: none;
+}
+
+.panel {
+  position: fixed;
+  top: max(12px, env(safe-area-inset-top));
+  left: 12px;
+  width: min(340px, calc(100vw - 24px));
+  max-height: calc(100vh - 24px);
+  overflow-y: auto;
+  background: var(--panel);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  box-shadow: 0 8px 28px rgba(20, 30, 50, 0.16);
+  padding: 12px 14px;
+  z-index: 2;
+}
+
+.panel-head { display: flex; align-items: center; gap: 8px; }
+.brand { font-weight: 800; color: var(--green); text-decoration: none; letter-spacing: 0.02em; }
+.brand-sub { font-size: 13px; color: var(--muted); }
+.panel-toggle {
+  margin-left: auto;
+  border: 1px solid var(--line);
+  background: #fff;
+  border-radius: 999px;
+  padding: 3px 10px;
+  font-size: 12px;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.panel.collapsed .panel-body { display: none; }
+
+.panel-body { margin-top: 10px; display: flex; flex-direction: column; gap: 12px; }
+
+.route-form { display: flex; flex-direction: column; gap: 8px; }
+.route-form label { display: flex; flex-direction: column; gap: 3px; font-size: 12px; color: var(--muted); }
+.route-form select {
+  font-size: 14px;
+  padding: 7px 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--ink);
+}
+.route-actions { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.route-form label.check { flex-direction: row; font-size: 13px; color: var(--ink); }
+
+.btn-primary {
+  border: none;
+  background: var(--accent);
+  color: #fff;
+  font-weight: 700;
+  font-size: 14px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+.btn-primary:hover { background: var(--accent-dark); }
+
+.check { display: inline-flex; align-items: center; gap: 5px; font-size: 13px; color: var(--ink); cursor: pointer; }
+
+.route-summary {
+  font-size: 13px;
+  line-height: 1.6;
+  background: #FFF4EA;
+  border-left: 3px solid var(--accent);
+  padding: 8px 10px;
+  border-radius: 6px;
+}
+
+.controls { display: flex; flex-direction: column; gap: 8px; }
+.control-row { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+.control-label { flex: 0 0 auto; width: 4.5em; color: var(--muted); font-size: 12px; }
+.control-row input[type="range"] { flex: 1; accent-color: var(--accent); }
+.toggles { gap: 14px; padding-left: calc(4.5em + 8px); }
+
+.chips { display: flex; flex-wrap: wrap; gap: 5px; }
+.chip {
+  border: 1px solid var(--line);
+  background: #fff;
+  border-radius: 999px;
+  padding: 3px 9px;
+  font-size: 12px;
+  cursor: pointer;
+  color: var(--ink);
+}
+.chip .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 4px; vertical-align: 0; }
+.chip.active { background: var(--ink); color: #fff; border-color: var(--ink); }
+
+.legend { list-style: none; display: grid; grid-template-columns: repeat(3, auto); gap: 4px 10px; font-size: 12px; color: var(--muted); }
+.legend li { display: flex; align-items: center; gap: 5px; }
+.swatch { width: 16px; height: 5px; border-radius: 3px; display: inline-block; }
+.swatch.corridor { background: #F2F5FA; box-shadow: 0 0 0 1px #AEB8C8 inset; }
+.swatch.stairs { background: #2FB36D; }
+.swatch.elevator { background: #2F7FE0; }
+.swatch.escalator { background: #9B51E0; }
+.swatch.outdoor { background: #9AA4B2; }
+.swatch.route { background: var(--accent); }
+
+.hint { font-size: 11px; color: var(--muted); line-height: 1.6; }
+
+.status {
+  position: fixed;
+  right: 12px;
+  bottom: max(12px, env(safe-area-inset-bottom));
+  background: rgba(28, 35, 51, 0.82);
+  color: #fff;
+  font-size: 12px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  z-index: 2;
+  pointer-events: none;
+  transition: opacity 0.4s;
+}
+.status.hidden { opacity: 0; }
+
+@media (max-width: 600px) {
+  .panel { padding: 10px 12px; }
+  .legend { grid-template-columns: repeat(2, auto); }
+}
