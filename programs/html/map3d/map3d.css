@@ -103,9 +103,9 @@ body {
 
 .controls { display: flex; flex-direction: column; gap: 8px; }
 .control-row { display: flex; align-items: center; gap: 8px; font-size: 13px; }
-.control-label { flex: 0 0 auto; width: 4.5em; color: var(--muted); font-size: 12px; }
+.control-label { flex: 0 0 auto; width: 5.5em; color: var(--muted); font-size: 12px; }
 .control-row input[type="range"] { flex: 1; accent-color: var(--accent); }
-.toggles { gap: 14px; padding-left: calc(4.5em + 8px); }
+.toggles { gap: 14px; padding-left: calc(5.5em + 8px); }
 
 .chips { display: flex; flex-wrap: wrap; gap: 5px; }
 .chip {
