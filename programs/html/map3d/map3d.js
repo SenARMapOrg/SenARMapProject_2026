@@ -29,7 +29,10 @@ const COLOR = {
 // 床の形（computeFloorOutline）の決め方
 const FLOOR_CELL = 1;          // 形を計算するマス目の大きさ（m）
 const FLOOR_REACH = 5;         // 通路から何mまでを床とみなすか（両側の教室ぶん）
-const FLOOR_CLOSE = 2;         // 何マスぶんの細い隙間・くぼみを埋めて、建物らしい形にするか
+const FLOOR_CLOSE = 4;         // 何マスぶんの細い隙間・くぼみを埋めて、建物らしい形にするか
+const FLOOR_SPIKE = 1;         // 削ったあとに残る、何マスぶんの細い出っ張りを取るか
+const FLOOR_SMOOTH = 1.2;      // 輪郭のギザギザをならす強さ（何マスぶんまでのずれを、まっすぐな線にまとめるか）
+const AXIS_TOLERANCE = 0.18;   // 通路が建物の向きから何ラジアン以内なら「建物の向きにそろった通路」とみなすか
 const OUTDOOR_CLEAR = 2;       // 屋外の道から何mまでは床から削るか
 const CORRIDOR_KEEP = 1.5;     // 通路から何mまでは、屋外の道と重なっても必ず床に残すか（データのずれで重なる場所がある）
 const CORRIDOR_R = 0.45;    // 通路の太さ（半径m）
@@ -181,10 +184,13 @@ function distToSegment(px, py, ax, ay, bx, by) {
   return Math.hypot(px - (ax + t * dx), py - (ay + t * dy));
 }
 
-// マス目の上で、線分（点だけなら長さ0の線分）から r 以内のマスに value を書く
-function paintNearSegments(grid, segs, r, value) {
+// マス目の上で、線分（点だけなら長さ0の線分）から r 以内のマスに value を書く。
+// boxy なら、建物の向きにそろった通路は「通路を r だけ広げた長方形」で塗る（円で測ると角が丸くなり、縁がでこぼこするため）
+function paintNearSegments(grid, segs, r, value, boxy = false) {
   const { w, h, u0, v0 } = grid;
   for (const [au, av, bu, bv] of segs) {
+    const ang = Math.atan2(Math.abs(bv - av), Math.abs(bu - au));
+    const aligned = boxy && (ang <= AXIS_TOLERANCE || ang >= Math.PI / 2 - AXIS_TOLERANCE || (au === bu && av === bv));
     const i0 = Math.max(0, Math.floor((Math.min(au, bu) - r - u0) / FLOOR_CELL));
     const i1 = Math.min(w - 1, Math.floor((Math.max(au, bu) + r - u0) / FLOOR_CELL));
     const j0 = Math.max(0, Math.floor((Math.min(av, bv) - r - v0) / FLOOR_CELL));
@@ -192,14 +198,15 @@ function paintNearSegments(grid, segs, r, value) {
     for (let j = j0; j <= j1; j++) {
       for (let i = i0; i <= i1; i++) {
         const cu = u0 + (i + 0.5) * FLOOR_CELL, cv = v0 + (j + 0.5) * FLOOR_CELL;
-        if (distToSegment(cu, cv, au, av, bu, bv) <= r) grid.cells[j * w + i] = value;
+        if (aligned || distToSegment(cu, cv, au, av, bu, bv) <= r) grid.cells[j * w + i] = value;
       }
     }
   }
 }
 
-// 広げる（value のマスの r マス以内を value に）／縮める（value でないマスの r マス以内を value でなく）
-function morph(grid, r, grow) {
+// 広げる（床のマスの r マス以内を床に）／縮める（床でないマスの r マス以内を床でなく）。
+// square なら正方形の範囲で見る（角が丸くならず、四角い形のまま広げ縮めできる）
+function morph(grid, r, grow, square = false) {
   const { w, h, cells } = grid;
   const out = new Uint8Array(cells.length);
   for (let j = 0; j < h; j++) {
@@ -207,7 +214,7 @@ function morph(grid, r, grow) {
       let hit = !grow;
       for (let dj = -r; dj <= r && hit !== grow; dj++) {
         for (let di = -r; di <= r; di++) {
-          if (di * di + dj * dj > r * r) continue;
+          if (!square && di * di + dj * dj > r * r) continue;
           const x = i + di, y = j + dj;
           const filled = x >= 0 && y >= 0 && x < w && y < h && cells[y * w + x] === 1;
           if (grow ? filled : !filled) { hit = grow; break; }
@@ -254,7 +261,7 @@ function traceLoops(grid) {
         edge = next.shift();
         loop.push([edge[0], edge[1]]);
       }
-      loops.push(simplifyLoop(loop));
+      loops.push(smoothLoop(simplifyLoop(loop), FLOOR_SMOOTH));
     }
   }
   return loops.filter(l => l.length >= 3);
@@ -273,6 +280,33 @@ function simplifyLoop(loop) {
     const a = loop[(k - 1 + n) % n], b = loop[(k + 1) % n];
     return (p[0] - a[0]) * (b[1] - p[1]) - (p[1] - a[1]) * (b[0] - p[0]) !== 0;
   });
+}
+
+// 閉じた輪郭を、tol マス以内のずれは無視してまっすぐな線にまとめる（ダグラス・ポイカー法）。
+// 斜めに削った所の1マスずつの階段が、なめらかな斜めの線になる
+function smoothLoop(loop, tol) {
+  if (loop.length <= 4) return loop;
+  const rdp = (pts) => {
+    if (pts.length <= 2) return pts;
+    const [ax, ay] = pts[0], [bx, by] = pts[pts.length - 1];
+    let worst = 0, at = 0;
+    for (let k = 1; k < pts.length - 1; k++) {
+      const d = distToSegment(pts[k][0], pts[k][1], ax, ay, bx, by);
+      if (d > worst) { worst = d; at = k; }
+    }
+    if (worst <= tol) return [pts[0], pts[pts.length - 1]];
+    return [...rdp(pts.slice(0, at + 1)).slice(0, -1), ...rdp(pts.slice(at))];
+  };
+  // 一番離れた2点で輪郭を2つに分け、それぞれをならしてつなぐ
+  let far = 0, fd = -1;
+  for (let k = 1; k < loop.length; k++) {
+    const d = Math.hypot(loop[k][0] - loop[0][0], loop[k][1] - loop[0][1]);
+    if (d > fd) { fd = d; far = k; }
+  }
+  const a = rdp(loop.slice(0, far + 1));
+  const b = rdp([...loop.slice(far), loop[0]]);
+  const out = [...a.slice(0, -1), ...b.slice(0, -1)];
+  return out.length >= 3 ? out : loop;
 }
 
 function loopArea(loop) {
@@ -333,10 +367,12 @@ function computeFloorOutline(b, floor) {
   const h = Math.ceil((Math.max(...vs) + margin - v0) / FLOOR_CELL);
   const grid = { w, h, u0, v0, cells: new Uint8Array(w * h) };
 
-  paintNearSegments(grid, corridor, FLOOR_REACH, 1);
-  morph(grid, FLOOR_CLOSE, true);
-  morph(grid, FLOOR_CLOSE, false);
+  paintNearSegments(grid, corridor, FLOOR_REACH, 1, true);
+  morph(grid, FLOOR_CLOSE, true, true);    // 隙間・くぼみを埋める（広げてから縮める）
+  morph(grid, FLOOR_CLOSE, false, true);
   paintNearSegments(grid, outdoor, OUTDOOR_CLEAR, 0);
+  morph(grid, FLOOR_SPIKE, false, true);   // 削ったあとに残る細い出っ張りを取る（縮めてから広げる）
+  morph(grid, FLOOR_SPIKE, true, true);
   paintNearSegments(grid, corridor, CORRIDOR_KEEP, 1);
 
   // 輪郭（マス目の座標）→ データの x・y。外周に穴を割り当てる
