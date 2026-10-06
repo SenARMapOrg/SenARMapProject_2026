@@ -137,6 +137,7 @@ function makeLabel(text, { size = 2.2, bg = "rgba(255,255,255,0.92)", fg = "#1C2
   }));
   sprite.scale.set(size * w / h, size, 1);
   sprite.renderOrder = 10;
+  sprite.userData.text = text;   // 札の文字（画像になるので、あとから確かめられるよう残す）
   return sprite;
 }
 
@@ -512,9 +513,13 @@ function buildWorld() {
 }
 
 // 線（from → to）の left・right に書かれた教室を、通路の左右に分けて、書かれている順番どおりに from から to へ並べる。
-// left・right が無い線の name だけの教室は、通路の上に並べる。同じ階の同じ教室は1回だけ（left・right で書かれた方を優先）。
+// left・right が無い線の name だけの教室は、通路の上に並べる。同じ階で近くに同じ名前がある場合だけ1回にまとめる
+// （left・right で書かれた方を優先）。
 // 左右は、鏡写しを直した換算（sceneXZ）のあとの実際の東西南北で決める（データを入れた人が見た建物の左右とそろう）。
 const ROOM_SIDE_OFFSET = 3.2;   // 通路の中心から、左右の教室名の札までの距離（m）
+// 同じ名前の札がこの距離（m、上から見た距離）より近くに既にあれば出さない。同じ教室が隣り合う複数の線に
+// 書かれている場合の重複を除くため。離れた場所の同じ名前（別々のトイレなど）は、それぞれ出す
+const ROOM_SAME_DISTANCE = 8;
 const ROOM_LABEL_STYLE = {
   M_Toilet: { bg: "#2F7FE0", fg: "#FFFFFF" },
   F_Toilet: { bg: "#E2508E", fg: "#FFFFFF" },
@@ -526,7 +531,8 @@ function splitRooms(value) {
 }
 
 function addRoomLabels(byId) {
-  const seen = new Set();
+  const placed = new Map();   // "階:名前" -> 置いた位置の一覧
+  const nearSame = (key, p) => (placed.get(key) || []).some(q => Math.hypot(p.x - q.x, p.z - q.z) < ROOM_SAME_DISTANCE);
   const pinMat = new THREE.LineBasicMaterial({ color: 0x55606E, transparent: true, opacity: 0.55 });
   const pins = [];
   const edges = state.graph.edges.filter(e => {
@@ -543,10 +549,14 @@ function addRoomLabels(byId) {
     if (dir.lengthSq() < 1e-6) dir.set(1, 0, 0);
     dir.normalize();
     const left = new THREE.Vector3(dir.z, 0, -dir.x);   // 上から見て進行方向の左（東向きなら北）
-    const list = rooms.filter(raw => !seen.has(`${a.floor}:${raw}`));
+    // 書かれている順に from → to へ並べる。近くに同じ名前が既にあるものは除いてから間隔を決める
+    const mid = pa.clone().lerp(pb, 0.5);
+    const list = rooms.filter(raw => !nearSame(`${a.floor}:${raw}`, mid));
     list.forEach((raw, k) => {
-      seen.add(`${a.floor}:${raw}`);
-      const base = pa.clone().lerp(pb, (k + 1) / (list.length + 1));   // 書かれている順に from → to へ
+      const base = pa.clone().lerp(pb, (k + 1) / (list.length + 1));
+      const key = `${a.floor}:${raw}`;
+      if (!placed.has(key)) placed.set(key, []);
+      placed.get(key).push(base);
       const foot = base.clone().addScaledVector(left, side * ROOM_SIDE_OFFSET);
       const top = foot.clone().add(new THREE.Vector3(0, side === 0 ? 1.6 + (k % 2) * 1.6 : 2.2, 0));
       const label = makeLabel(roomLabelText(e.building, raw), { size: 1.5, ...(ROOM_LABEL_STYLE[raw] || {}) });
