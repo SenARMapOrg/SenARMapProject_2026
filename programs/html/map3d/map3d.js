@@ -49,6 +49,7 @@ const state = {
   baseZ: 0,
   spread: 1.8,            // 高さの強調（すべての点の高さをこの倍率で描く）
   focus: null,            // 寄っている建物（null = 全体）
+  floor: null,            // 寄っている建物で、教室名を出す階（null = 全部の階）
   showLabels: true,
   route: null,            // { points: Vector3[], ... }
 };
@@ -440,6 +441,8 @@ function buildWorld() {
   for (const list of floors.values()) {
     const b = list[0].building, floor = list[0].floor;
     const dimmed = state.focus !== null && state.focus !== b;
+    const selected = state.focus === b && state.floor === floor;
+    const otherFloor = state.focus === b && state.floor !== null && !selected;
     const outline = computeFloorOutline(b, floor);
     const zs = list.map(n => n.z).sort((p, q) => p - q);
     const floorY = toScene({ building: b, x: list[0].x, y: list[0].y, z: zs[Math.floor(zs.length / 2)] }).y;
@@ -447,7 +450,7 @@ function buildWorld() {
     if (outline.length) {
       const geo = floorSlabGeometry(outline, floorY - 0.4);
       world.add(new THREE.Mesh(geo, new THREE.MeshStandardMaterial({
-        color, transparent: true, opacity: dimmed ? 0.07 : 0.3, depthWrite: false, side: THREE.DoubleSide,
+        color, transparent: true, opacity: dimmed ? 0.07 : selected ? 0.55 : otherFloor ? 0.12 : 0.3, depthWrite: false, side: THREE.DoubleSide,
       })));
       world.add(new THREE.LineSegments(new THREE.EdgesGeometry(geo, 30),
         new THREE.LineBasicMaterial({ color, transparent: true, opacity: dimmed ? 0.12 : 0.65 })));
@@ -484,7 +487,8 @@ function buildWorld() {
       });
       mesh = tubeBetween(pa, pb, 0.38, verticalMats[key]);
     } else if (WALK_TYPES.has(type) || a.floor === b.floor) {
-      const dimmed = state.focus !== null && state.focus !== a.building;
+      // 寄っている建物では、選んだ階以外の通路も薄くして、選んだ階が見やすいようにする
+      const dimmed = state.focus !== null && (state.focus !== a.building || (state.floor !== null && a.floor !== state.floor));
       mesh = tubeBetween(pa, pb, CORRIDOR_R, dimmed ? mats.corridorDim : mats.corridor);
     }
     if (mesh) world.add(mesh);
@@ -504,24 +508,64 @@ function buildWorld() {
   }
 
   // 教室名（寄っている建物だけ。全体表示では多すぎて読めないため）
-  if (state.showLabels && state.focus !== null) {
-    const seen = new Set();
-    for (const e of state.graph.edges) {
-      if (e.building !== state.focus) continue;
-      const a = byId.get(e.from), b = byId.get(e.to);
-      if (!a || !b || a.floor !== b.floor) continue;
-      // 同じ階の同じ教室は1回だけ。1本の通路に教室がいくつもあるときは、上に積まずに通路に沿って並べる
-      const names = [...new Set([e.left, e.right, e.name].join(";").split(";").map(s => s.trim()).filter(Boolean))]
-        .filter(raw => !seen.has(`${a.floor}:${raw}`));
-      const pa = toScene(a), pb = toScene(b);
-      names.forEach((raw, k) => {
-        seen.add(`${a.floor}:${raw}`);
-        const pos = pa.clone().lerp(pb, (k + 1) / (names.length + 1));
-        const label = makeLabel(roomLabelText(e.building, raw), { size: 1.5 });
-        label.position.set(pos.x, pos.y + 1.6 + (k % 2) * 1.6, pos.z);   // 隣どうしは高さを少しずらして重なりにくく
-        labelGroup.add(label);
-      });
-    }
+  if (state.showLabels && state.focus !== null) addRoomLabels(byId);
+}
+
+// 線（from → to）の left・right に書かれた教室を、通路の左右に分けて、書かれている順番どおりに from から to へ並べる。
+// left・right が無い線の name だけの教室は、通路の上に並べる。同じ階の同じ教室は1回だけ（left・right で書かれた方を優先）。
+// 左右は、鏡写しを直した換算（sceneXZ）のあとの実際の東西南北で決める（データを入れた人が見た建物の左右とそろう）。
+const ROOM_SIDE_OFFSET = 3.2;   // 通路の中心から、左右の教室名の札までの距離（m）
+const ROOM_LABEL_STYLE = {
+  M_Toilet: { bg: "#2F7FE0", fg: "#FFFFFF" },
+  F_Toilet: { bg: "#E2508E", fg: "#FFFFFF" },
+  C_Toilet: { bg: "#2FB36D", fg: "#FFFFFF" },
+};
+
+function splitRooms(value) {
+  return String(value || "").split(";").map(s => s.trim()).filter(Boolean);
+}
+
+function addRoomLabels(byId) {
+  const seen = new Set();
+  const pinMat = new THREE.LineBasicMaterial({ color: 0x55606E, transparent: true, opacity: 0.55 });
+  const pins = [];
+  const edges = state.graph.edges.filter(e => {
+    if (e.building !== state.focus) return false;
+    const a = byId.get(e.from), b = byId.get(e.to);
+    return a && b && a.floor === b.floor && (state.floor === null || a.floor === state.floor);
+  });
+  const hasSides = e => splitRooms(e.left).length || splitRooms(e.right).length;
+
+  const place = (e, rooms, side) => {
+    const a = byId.get(e.from), b = byId.get(e.to);
+    const pa = toScene(a), pb = toScene(b);
+    const dir = new THREE.Vector3(pb.x - pa.x, 0, pb.z - pa.z);
+    if (dir.lengthSq() < 1e-6) dir.set(1, 0, 0);
+    dir.normalize();
+    const left = new THREE.Vector3(dir.z, 0, -dir.x);   // 上から見て進行方向の左（東向きなら北）
+    const list = rooms.filter(raw => !seen.has(`${a.floor}:${raw}`));
+    list.forEach((raw, k) => {
+      seen.add(`${a.floor}:${raw}`);
+      const base = pa.clone().lerp(pb, (k + 1) / (list.length + 1));   // 書かれている順に from → to へ
+      const foot = base.clone().addScaledVector(left, side * ROOM_SIDE_OFFSET);
+      const top = foot.clone().add(new THREE.Vector3(0, side === 0 ? 1.6 + (k % 2) * 1.6 : 2.2, 0));
+      const label = makeLabel(roomLabelText(e.building, raw), { size: 1.5, ...(ROOM_LABEL_STYLE[raw] || {}) });
+      label.position.copy(top).add(new THREE.Vector3(0, 0.75, 0));
+      labelGroup.add(label);
+      if (side !== 0) pins.push(foot.x, foot.y, foot.z, top.x, top.y, top.z);   // 札から床までの細い線（どちら側かを分かりやすく）
+    });
+  };
+
+  for (const e of edges.filter(hasSides)) {
+    place(e, splitRooms(e.left), 1);
+    place(e, splitRooms(e.right), -1);
+  }
+  for (const e of edges.filter(e => !hasSides(e))) place(e, splitRooms(e.name), 0);
+
+  if (pins.length) {
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute("position", new THREE.Float32BufferAttribute(pins, 3));
+    labelGroup.add(new THREE.LineSegments(geo, pinMat));
   }
 }
 
@@ -624,9 +668,37 @@ function fitTo(points, margin = 1.3) {
   flyTo(center, center.clone().addScaledVector(dir, radius));
 }
 
+function floorName(f) {
+  return f <= 0 ? `地下${1 - f}階` : `${f}階`;
+}
+
+// 寄っている建物の階の選択肢。「全部」（state.floor = null）は全部の階の教室名を出し、どの階も薄くしない。
+// 階を選ぶと、その階の教室名だけを出し、ほかの階の床と通路を薄くする。寄った直後は「全部」
+function fillFloorChips(b) {
+  const row = $("floor-row"), wrap = $("floor-chips");
+  wrap.replaceChildren();
+  state.floor = null;
+  if (b === null) { row.hidden = true; return; }
+  const floors = [...new Set(state.graph.nodes.filter(n => n.building === b).map(n => n.floor))].sort((p, q) => p - q);
+  for (const f of [null, ...floors]) {
+    const chip = document.createElement("button");
+    chip.type = "button";
+    chip.className = "chip" + (f === state.floor ? " active" : "");
+    chip.textContent = f === null ? "全部" : floorName(f);
+    chip.addEventListener("click", () => {
+      state.floor = f;
+      wrap.querySelectorAll(".chip").forEach(c => c.classList.toggle("active", c === chip));
+      buildWorld();
+    });
+    wrap.appendChild(chip);
+  }
+  row.hidden = false;
+}
+
 function focusBuilding(b) {
   state.focus = b;
-  document.querySelectorAll(".chip").forEach(chip => chip.classList.toggle("active", chip.dataset.building === String(b ?? "all")));
+  fillFloorChips(b);
+  document.querySelectorAll("#building-chips .chip").forEach(chip => chip.classList.toggle("active", chip.dataset.building === String(b ?? "all")));
   buildWorld();
   const nodes = state.graph.nodes.filter(n => (b === null ? state.shownBuildings.has(n.building) || n.building === 0 : n.building === b));
   fitTo(nodes.map(toScene), b === null ? 1.0 : 1.6);
