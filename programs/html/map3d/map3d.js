@@ -26,7 +26,15 @@ const COLOR = {
   goal: 0xE5484D,
   ground: 0xA9C79A,
 };
-const FLOOR_PAD = 3;        // 床の板を、その階の点の範囲より何mはみ出させるか
+// 床の形（computeFloorOutline）の決め方
+const FLOOR_CELL = 1;          // 形を計算するマス目の大きさ（m）
+const FLOOR_REACH = 5;         // 通路から何mまでを床とみなすか（両側の教室ぶん）
+const FLOOR_CLOSE = 4;         // 何マスぶんの細い隙間・くぼみを埋めて、建物らしい形にするか
+const FLOOR_SPIKE = 1;         // 削ったあとに残る、何マスぶんの細い出っ張りを取るか
+const FLOOR_SMOOTH = 1.2;      // 輪郭のギザギザをならす強さ（何マスぶんまでのずれを、まっすぐな線にまとめるか）
+const AXIS_TOLERANCE = 0.18;   // 通路が建物の向きから何ラジアン以内なら「建物の向きにそろった通路」とみなすか
+const OUTDOOR_CLEAR = 2;       // 屋外の道から何mまでは床から削るか
+const CORRIDOR_KEEP = 1.5;     // 通路から何mまでは、屋外の道と重なっても必ず床に残すか（データのずれで重なる場所がある）
 const CORRIDOR_R = 0.45;    // 通路の太さ（半径m）
 
 const $ = (id) => document.getElementById(id);
@@ -87,12 +95,6 @@ const clickTargets = [];  // タップで建物に寄るための、建物名の
 //   Three.x = 東 = -y、Three.z = 南 = -北 = x
 function sceneXZ(x, y) {
   return { x: -(y - state.center.y), z: x - state.center.x };
-}
-
-// データの向き（x・y の平面での角度 rad）を、Three.js の y 軸まわりの回転角に直す。
-// データの向き (cos, sin) は sceneXZ で (-sin, cos) に移るので、それが +x になる回転角を求める
-function sceneRotationY(dataAngle) {
-  return Math.atan2(-Math.cos(dataAngle), -Math.sin(dataAngle));
 }
 
 // 高さは、建物の中も屋外もすべて同じ倍率（spread）で強調する。建物の中だけを強調すると、上の階の出入口と
@@ -165,6 +167,243 @@ function disposeGroup(group) {
   group.clear();
 }
 
+// ---------------------------------------------------------------- 床の形
+// 各階の床を「その階の点をすべて囲む長方形」にすると、L字の建物や離れた棟のある建物で、何もない所まで
+// 床になってしまう。そこで、建物の向きにそろえた1m角のマス目の上で
+//   1. その階の通路から FLOOR_REACH m 以内のマスを床にする（両側の教室ぶん）
+//   2. 細い隙間・くぼみを埋める（広げてから縮める）
+//   3. 屋外の道から OUTDOOR_CLEAR m 以内のマスを削る（建物の外の道に床がかぶらないように）
+//   4. 通路から CORRIDOR_KEEP m 以内のマスは必ず残す（データのずれで屋外の道と重なっていても通路は床の上に）
+// とし、床のマスの輪郭をなぞって多角形（穴あり）にする。座標はデータの x・y のまま返す。
+const floorOutlineCache = new Map();
+
+function distToSegment(px, py, ax, ay, bx, by) {
+  const dx = bx - ax, dy = by - ay;
+  const len2 = dx * dx + dy * dy;
+  const t = len2 ? Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / len2)) : 0;
+  return Math.hypot(px - (ax + t * dx), py - (ay + t * dy));
+}
+
+// マス目の上で、線分（点だけなら長さ0の線分）から r 以内のマスに value を書く。
+// boxy なら、建物の向きにそろった通路は「通路を r だけ広げた長方形」で塗る（円で測ると角が丸くなり、縁がでこぼこするため）
+function paintNearSegments(grid, segs, r, value, boxy = false) {
+  const { w, h, u0, v0 } = grid;
+  for (const [au, av, bu, bv] of segs) {
+    const ang = Math.atan2(Math.abs(bv - av), Math.abs(bu - au));
+    const aligned = boxy && (ang <= AXIS_TOLERANCE || ang >= Math.PI / 2 - AXIS_TOLERANCE || (au === bu && av === bv));
+    const i0 = Math.max(0, Math.floor((Math.min(au, bu) - r - u0) / FLOOR_CELL));
+    const i1 = Math.min(w - 1, Math.floor((Math.max(au, bu) + r - u0) / FLOOR_CELL));
+    const j0 = Math.max(0, Math.floor((Math.min(av, bv) - r - v0) / FLOOR_CELL));
+    const j1 = Math.min(h - 1, Math.floor((Math.max(av, bv) + r - v0) / FLOOR_CELL));
+    for (let j = j0; j <= j1; j++) {
+      for (let i = i0; i <= i1; i++) {
+        const cu = u0 + (i + 0.5) * FLOOR_CELL, cv = v0 + (j + 0.5) * FLOOR_CELL;
+        if (aligned || distToSegment(cu, cv, au, av, bu, bv) <= r) grid.cells[j * w + i] = value;
+      }
+    }
+  }
+}
+
+// 広げる（床のマスの r マス以内を床に）／縮める（床でないマスの r マス以内を床でなく）。
+// square なら正方形の範囲で見る（角が丸くならず、四角い形のまま広げ縮めできる）
+function morph(grid, r, grow, square = false) {
+  const { w, h, cells } = grid;
+  const out = new Uint8Array(cells.length);
+  for (let j = 0; j < h; j++) {
+    for (let i = 0; i < w; i++) {
+      let hit = !grow;
+      for (let dj = -r; dj <= r && hit !== grow; dj++) {
+        for (let di = -r; di <= r; di++) {
+          if (!square && di * di + dj * dj > r * r) continue;
+          const x = i + di, y = j + dj;
+          const filled = x >= 0 && y >= 0 && x < w && y < h && cells[y * w + x] === 1;
+          if (grow ? filled : !filled) { hit = grow; break; }
+        }
+      }
+      out[j * w + i] = hit ? 1 : 0;
+    }
+  }
+  grid.cells = out;
+}
+
+// 床のマスの輪郭を、床を左手に見ながら一周する線の集まりにする（外周は反時計回り、穴は時計回り）
+function traceLoops(grid) {
+  const { w, h, cells } = grid;
+  const filled = (i, j) => i >= 0 && j >= 0 && i < w && j < h && cells[j * w + i] === 1;
+  const out = new Map();   // 始点 "i,j" -> 境界の辺 [i0, j0, i1, j1] の一覧
+  const add = (i0, j0, i1, j1) => {
+    const k = `${i0},${j0}`;
+    if (!out.has(k)) out.set(k, []);
+    out.get(k).push([i0, j0, i1, j1]);
+  };
+  for (let j = 0; j < h; j++) {
+    for (let i = 0; i < w; i++) {
+      if (!filled(i, j)) continue;
+      if (!filled(i, j - 1)) add(i, j, i + 1, j);
+      if (!filled(i + 1, j)) add(i + 1, j, i + 1, j + 1);
+      if (!filled(i, j + 1)) add(i + 1, j + 1, i, j + 1);
+      if (!filled(i - 1, j)) add(i, j + 1, i, j);
+    }
+  }
+  // 辺を1本ずつたどって一周させる（各辺は1回だけ使う）
+  const loops = [];
+  for (const list of out.values()) {
+    while (list.length) {
+      let edge = list.pop();
+      const start = [edge[0], edge[1]];
+      const loop = [start];
+      while (edge[2] !== start[0] || edge[3] !== start[1]) {
+        const next = out.get(`${edge[2]},${edge[3]}`);
+        if (!next || !next.length) break;   // 念のため（閉じない線は無いはず）
+        // 2本以上の候補がある角（斜めに接するマス）では、左に曲がる辺を優先して、形を正しく分ける
+        const dx = edge[2] - edge[0], dy = edge[3] - edge[1];
+        next.sort((p, q) => turnRank(dx, dy, p) - turnRank(dx, dy, q));
+        edge = next.shift();
+        loop.push([edge[0], edge[1]]);
+      }
+      loops.push(smoothLoop(simplifyLoop(loop), FLOOR_SMOOTH));
+    }
+  }
+  return loops.filter(l => l.length >= 3);
+}
+
+function turnRank(dx, dy, e) {
+  const ex = e[2] - e[0], ey = e[3] - e[1];
+  const cross = dx * ey - dy * ex;
+  return cross > 0 ? 0 : cross === 0 ? 1 : 2;   // 左折 → 直進 → 右折 の順
+}
+
+// 一直線に並んだ途中の点を除く
+function simplifyLoop(loop) {
+  const n = loop.length;
+  return loop.filter((p, k) => {
+    const a = loop[(k - 1 + n) % n], b = loop[(k + 1) % n];
+    return (p[0] - a[0]) * (b[1] - p[1]) - (p[1] - a[1]) * (b[0] - p[0]) !== 0;
+  });
+}
+
+// 閉じた輪郭を、tol マス以内のずれは無視してまっすぐな線にまとめる（ダグラス・ポイカー法）。
+// 斜めに削った所の1マスずつの階段が、なめらかな斜めの線になる
+function smoothLoop(loop, tol) {
+  if (loop.length <= 4) return loop;
+  const rdp = (pts) => {
+    if (pts.length <= 2) return pts;
+    const [ax, ay] = pts[0], [bx, by] = pts[pts.length - 1];
+    let worst = 0, at = 0;
+    for (let k = 1; k < pts.length - 1; k++) {
+      const d = distToSegment(pts[k][0], pts[k][1], ax, ay, bx, by);
+      if (d > worst) { worst = d; at = k; }
+    }
+    if (worst <= tol) return [pts[0], pts[pts.length - 1]];
+    return [...rdp(pts.slice(0, at + 1)).slice(0, -1), ...rdp(pts.slice(at))];
+  };
+  // 一番離れた2点で輪郭を2つに分け、それぞれをならしてつなぐ
+  let far = 0, fd = -1;
+  for (let k = 1; k < loop.length; k++) {
+    const d = Math.hypot(loop[k][0] - loop[0][0], loop[k][1] - loop[0][1]);
+    if (d > fd) { fd = d; far = k; }
+  }
+  const a = rdp(loop.slice(0, far + 1));
+  const b = rdp([...loop.slice(far), loop[0]]);
+  const out = [...a.slice(0, -1), ...b.slice(0, -1)];
+  return out.length >= 3 ? out : loop;
+}
+
+function loopArea(loop) {
+  let s = 0;
+  for (let k = 0; k < loop.length; k++) {
+    const [x1, y1] = loop[k], [x2, y2] = loop[(k + 1) % loop.length];
+    s += x1 * y2 - x2 * y1;
+  }
+  return s / 2;
+}
+
+function pointInLoop(x, y, loop) {
+  let inside = false;
+  for (let k = 0, m = loop.length - 1; k < loop.length; m = k++) {
+    const [xi, yi] = loop[k], [xj, yj] = loop[m];
+    if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) inside = !inside;
+  }
+  return inside;
+}
+
+/** 建物 b の階 floor の床の形。[{ outer: [[x,y],...], holes: [[[x,y],...], ...] }]（データの x・y） */
+function computeFloorOutline(b, floor) {
+  const key = `${b}_${floor}`;
+  if (floorOutlineCache.has(key)) return floorOutlineCache.get(key);
+
+  const rot = ((state.config[String(b)] || {}).rot_deg || 0) * Math.PI / 180;
+  const c = Math.cos(-rot), s = Math.sin(-rot);
+  const toUV = (x, y) => [c * x - s * y, s * x + c * y];
+  const fromUV = (u, v) => [Math.cos(rot) * u - Math.sin(rot) * v, Math.sin(rot) * u + Math.cos(rot) * v];
+
+  const nodes = state.graph.nodes;
+  const byId = new Map(nodes.map(n => [n.id, n]));
+  const floorNodes = nodes.filter(n => n.building === b && n.floor === floor);
+  // その階の通路（同じ階の中の線）。線の無い点（階段の踊り場など）は長さ0の線として扱う
+  const corridor = [];
+  const onEdge = new Set();
+  for (const e of state.graph.edges) {
+    const p = byId.get(e.from), q = byId.get(e.to);
+    if (!p || !q || p.building !== b || q.building !== b || p.floor !== floor || q.floor !== floor) continue;
+    corridor.push([...toUV(p.x, p.y), ...toUV(q.x, q.y)]);
+    onEdge.add(p.id); onEdge.add(q.id);
+  }
+  for (const n of floorNodes) if (!onEdge.has(n.id)) corridor.push([...toUV(n.x, n.y), ...toUV(n.x, n.y)]);
+  if (!corridor.length) { floorOutlineCache.set(key, []); return []; }
+
+  // 屋外の道（上から見て重ならないようにする。建物と屋外をつなぐ入口の線は除く）
+  const outdoor = [];
+  for (const e of state.graph.edges) {
+    const p = byId.get(e.from), q = byId.get(e.to);
+    if (!p || !q || p.building !== 0 || q.building !== 0 || Number(e.type) === 7) continue;
+    outdoor.push([...toUV(p.x, p.y), ...toUV(q.x, q.y)]);
+  }
+
+  const margin = FLOOR_REACH + FLOOR_CLOSE + 2;
+  const us = corridor.flatMap(sg => [sg[0], sg[2]]), vs = corridor.flatMap(sg => [sg[1], sg[3]]);
+  const u0 = Math.min(...us) - margin, v0 = Math.min(...vs) - margin;
+  const w = Math.ceil((Math.max(...us) + margin - u0) / FLOOR_CELL);
+  const h = Math.ceil((Math.max(...vs) + margin - v0) / FLOOR_CELL);
+  const grid = { w, h, u0, v0, cells: new Uint8Array(w * h) };
+
+  paintNearSegments(grid, corridor, FLOOR_REACH, 1, true);
+  morph(grid, FLOOR_CLOSE, true, true);    // 隙間・くぼみを埋める（広げてから縮める）
+  morph(grid, FLOOR_CLOSE, false, true);
+  paintNearSegments(grid, outdoor, OUTDOOR_CLEAR, 0);
+  morph(grid, FLOOR_SPIKE, false, true);   // 削ったあとに残る細い出っ張りを取る（縮めてから広げる）
+  morph(grid, FLOOR_SPIKE, true, true);
+  paintNearSegments(grid, corridor, CORRIDOR_KEEP, 1);
+
+  // 輪郭（マス目の座標）→ データの x・y。外周に穴を割り当てる
+  const toXY = loop => loop.map(([i, j]) => fromUV(u0 + i * FLOOR_CELL, v0 + j * FLOOR_CELL));
+  const loops = traceLoops(grid);
+  const outers = loops.filter(l => loopArea(l) > 0).map(l => ({ grid: l, outer: toXY(l), holes: [] }));
+  for (const hole of loops.filter(l => loopArea(l) < 0)) {
+    const [hi, hj] = hole[0];
+    const owner = outers.find(o => pointInLoop(hi + 0.5, hj + 0.5, o.grid) || pointInLoop(hi - 0.5, hj - 0.5, o.grid));
+    if (owner) owner.holes.push(toXY(hole));
+  }
+  const result = outers.map(({ outer, holes }) => ({ outer, holes }));
+  floorOutlineCache.set(key, result);
+  return result;
+}
+
+// 床の形（データの x・y）を、高さ y の薄い板にする
+function floorSlabGeometry(outline, y) {
+  const shapes = outline.map(({ outer, holes }) => {
+    // Three.js の形は x・y 平面で作り、あとで寝かせる。寝かせたあと (X, Z) になるよう (X, -Z) で書く
+    const toV2 = ([x, yy]) => { const p = sceneXZ(x, yy); return new THREE.Vector2(p.x, -p.z); };
+    const shape = new THREE.Shape(outer.map(toV2));
+    for (const hole of holes) shape.holes.push(new THREE.Path(hole.map(toV2)));
+    return shape;
+  });
+  const geo = new THREE.ExtrudeGeometry(shapes, { depth: 0.35, bevelEnabled: false });
+  geo.rotateX(-Math.PI / 2);   // (x, y, z) → (x, z, -y)：形が地面と平行になり、厚みが上向きになる
+  geo.translate(0, y, 0);
+  return geo;
+}
+
 // ---------------------------------------------------------------- キャンパスを組み立てる
 function buildWorld() {
   disposeGroup(world);
@@ -188,7 +427,7 @@ function buildWorld() {
   grid.position.y = -1.45;
   world.add(grid);
 
-  // 各階の床の板（建物の向きにそろえた長方形）
+  // 各階の床の板（通路の形に沿った形。computeFloorOutline 参照）
   const floors = new Map();   // "建物_階" -> 点の一覧
   for (const n of nodes) {
     if (n.building === 0) continue;
@@ -198,41 +437,27 @@ function buildWorld() {
   }
   const buildingTop = {};     // 建物名の札を置く高さ
   const buildingCenter = {};
-  for (const [key, list] of floors) {
-    const b = list[0].building;
+  for (const list of floors.values()) {
+    const b = list[0].building, floor = list[0].floor;
     const dimmed = state.focus !== null && state.focus !== b;
-    const rot = ((state.config[String(b)] || {}).rot_deg || 0) * Math.PI / 180;
-    const cos = Math.cos(-rot), sin = Math.sin(-rot);
-    // 建物の向きに合わせた座標（データの x・y のまま）で範囲を求める
-    let minU = Infinity, maxU = -Infinity, minV = Infinity, maxV = -Infinity;
-    for (const n of list) {
-      const u = cos * n.x - sin * n.y, v = sin * n.x + cos * n.y;
-      minU = Math.min(minU, u); maxU = Math.max(maxU, u); minV = Math.min(minV, v); maxV = Math.max(maxV, v);
-    }
-    const cu = (minU + maxU) / 2, cv = (minV + maxV) / 2;
-    const cx = Math.cos(rot) * cu - Math.sin(rot) * cv, cy = Math.sin(rot) * cu + Math.cos(rot) * cv;
+    const outline = computeFloorOutline(b, floor);
     const zs = list.map(n => n.z).sort((p, q) => p - q);
-    const floorZ = zs[Math.floor(zs.length / 2)];
-    const p = toScene({ building: b, x: cx, y: cy, z: floorZ });
-    const w = maxU - minU + FLOOR_PAD * 2, d = maxV - minV + FLOOR_PAD * 2;
+    const floorY = toScene({ building: b, x: list[0].x, y: list[0].y, z: zs[Math.floor(zs.length / 2)] }).y;
     const color = buildingColor(b);
-    const slab = new THREE.Mesh(
-      new THREE.BoxGeometry(w, 0.35, d),
-      new THREE.MeshStandardMaterial({ color, transparent: true, opacity: dimmed ? 0.07 : 0.3, depthWrite: false }),
-    );
-    slab.position.set(p.x, p.y - 0.4, p.z);
-    slab.rotation.y = sceneRotationY(rot);
-    world.add(slab);
-    const outline = new THREE.LineSegments(
-      new THREE.EdgesGeometry(slab.geometry),
-      new THREE.LineBasicMaterial({ color, transparent: true, opacity: dimmed ? 0.12 : 0.65 }),
-    );
-    outline.position.copy(slab.position);
-    outline.rotation.copy(slab.rotation);
-    world.add(outline);
-    buildingTop[b] = Math.max(buildingTop[b] ?? -Infinity, p.y);
+    if (outline.length) {
+      const geo = floorSlabGeometry(outline, floorY - 0.4);
+      world.add(new THREE.Mesh(geo, new THREE.MeshStandardMaterial({
+        color, transparent: true, opacity: dimmed ? 0.07 : 0.3, depthWrite: false, side: THREE.DoubleSide,
+      })));
+      world.add(new THREE.LineSegments(new THREE.EdgesGeometry(geo, 30),
+        new THREE.LineBasicMaterial({ color, transparent: true, opacity: dimmed ? 0.12 : 0.65 })));
+    }
+    buildingTop[b] = Math.max(buildingTop[b] ?? -Infinity, floorY);
     if (!buildingCenter[b]) buildingCenter[b] = { x: 0, z: 0, n: 0 };
-    buildingCenter[b].x += p.x; buildingCenter[b].z += p.z; buildingCenter[b].n += 1;
+    for (const n of list) {
+      const p = toScene(n);
+      buildingCenter[b].x += p.x; buildingCenter[b].z += p.z; buildingCenter[b].n += 1;
+    }
   }
 
   // 通路・階段・エレベーター・屋外の道
@@ -285,14 +510,15 @@ function buildWorld() {
       if (e.building !== state.focus) continue;
       const a = byId.get(e.from), b = byId.get(e.to);
       if (!a || !b || a.floor !== b.floor) continue;
-      const names = [e.left, e.right, e.name].join(";").split(";").map(s => s.trim()).filter(Boolean);
-      const mid = toScene(a).lerp(toScene(b), 0.5);
+      // 同じ階の同じ教室は1回だけ。1本の通路に教室がいくつもあるときは、上に積まずに通路に沿って並べる
+      const names = [...new Set([e.left, e.right, e.name].join(";").split(";").map(s => s.trim()).filter(Boolean))]
+        .filter(raw => !seen.has(`${a.floor}:${raw}`));
+      const pa = toScene(a), pb = toScene(b);
       names.forEach((raw, k) => {
-        const key = `${a.floor}:${raw}`;
-        if (seen.has(key)) return;   // 同じ階の同じ教室は1回だけ
-        seen.add(key);
+        seen.add(`${a.floor}:${raw}`);
+        const pos = pa.clone().lerp(pb, (k + 1) / (names.length + 1));
         const label = makeLabel(roomLabelText(e.building, raw), { size: 1.5 });
-        label.position.set(mid.x, mid.y + 1.6 + k * 1.7, mid.z);
+        label.position.set(pos.x, pos.y + 1.6 + (k % 2) * 1.6, pos.z);   // 隣どうしは高さを少しずらして重なりにくく
         labelGroup.add(label);
       });
     }
