@@ -49,7 +49,7 @@ const state = {
   baseZ: 0,
   spread: 1.8,            // 高さの強調（すべての点の高さをこの倍率で描く）
   focus: null,            // 寄っている建物（null = 全体）
-  floor: null,            // 寄っている建物で、教室名を出す階
+  floor: null,            // 寄っている建物で、教室名を出す階（null = 全部の階）
   showLabels: true,
   route: null,            // { points: Vector3[], ... }
 };
@@ -672,18 +672,19 @@ function floorName(f) {
   return f <= 0 ? `地下${1 - f}階` : `${f}階`;
 }
 
-// 寄っている建物の階の選択肢。最初は一番下の地上階（1階。無ければ一番下の階）を選ぶ
+// 寄っている建物の階の選択肢。「全部」（state.floor = null）は全部の階の教室名を出し、どの階も薄くしない。
+// 階を選ぶと、その階の教室名だけを出し、ほかの階の床と通路を薄くする。寄った直後は「全部」
 function fillFloorChips(b) {
   const row = $("floor-row"), wrap = $("floor-chips");
   wrap.replaceChildren();
-  if (b === null) { row.hidden = true; state.floor = null; return; }
+  state.floor = null;
+  if (b === null) { row.hidden = true; return; }
   const floors = [...new Set(state.graph.nodes.filter(n => n.building === b).map(n => n.floor))].sort((p, q) => p - q);
-  state.floor = floors.includes(1) ? 1 : floors[0];
-  for (const f of floors) {
+  for (const f of [null, ...floors]) {
     const chip = document.createElement("button");
     chip.type = "button";
     chip.className = "chip" + (f === state.floor ? " active" : "");
-    chip.textContent = floorName(f);
+    chip.textContent = f === null ? "全部" : floorName(f);
     chip.addEventListener("click", () => {
       state.floor = f;
       wrap.querySelectorAll(".chip").forEach(c => c.classList.toggle("active", c === chip));
@@ -697,7 +698,7 @@ function fillFloorChips(b) {
 function focusBuilding(b) {
   state.focus = b;
   fillFloorChips(b);
-  document.querySelectorAll(".chip").forEach(chip => chip.classList.toggle("active", chip.dataset.building === String(b ?? "all")));
+  document.querySelectorAll("#building-chips .chip").forEach(chip => chip.classList.toggle("active", chip.dataset.building === String(b ?? "all")));
   buildWorld();
   const nodes = state.graph.nodes.filter(n => (b === null ? state.shownBuildings.has(n.building) || n.building === 0 : n.building === b));
   fitTo(nodes.map(toScene), b === null ? 1.0 : 1.6);
