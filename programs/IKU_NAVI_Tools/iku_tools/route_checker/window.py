@@ -8,6 +8,8 @@
   4. 行をダブルクリックすると経路詳細と異常の原因を確認できる
 """
 
+from __future__ import annotations
+
 import csv
 import json
 import threading

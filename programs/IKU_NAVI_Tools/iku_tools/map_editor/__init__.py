@@ -1,1 +1,3 @@
 """マップ編集: SVGフロアマップ上でノード・エッジ・経路写真をまとめて入力する（旧 programs/Map_Editor）"""
+
+from __future__ import annotations

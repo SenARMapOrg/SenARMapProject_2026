@@ -29,7 +29,7 @@ python3.13 --version    # Python 3.13.x と出れば OK
 ```
 
 > 本番サーバー（Docker）と GitHub Actions も Python 3.13 を使っているので、合わせておくと安全。
-> 3.10 でも動くことは確認している。
+> IKU NAVI ツールは、Mac に最初から入っている `python3`（3.9）でも動く（venv を作って requirements.txt を入れれば可）。
 
 ## 2. リポジトリを取得する（初回のみ）
 
@@ -120,6 +120,10 @@ pytest programs/IKU_NAVI_Tools/tests    # ツールのテスト
 ```
 
 ## 6. Mac でつまずきやすい点
+
+IKU NAVI ツールが起動しないときは、まず `python main.py --doctor`（`programs/IKU_NAVI_Tools` で）を実行すると、
+原因の手がかり（Python・Qt の版、プラグインの場所、足りないライブラリ）がまとめて表示される。
+OS ごとの直し方は `programs/IKU_NAVI_Tools/README.md` の「起動しないとき」も参照。
 
 | 症状 | 対処 |
 |---|---|

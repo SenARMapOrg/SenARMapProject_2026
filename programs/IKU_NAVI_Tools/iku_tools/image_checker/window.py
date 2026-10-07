@@ -13,6 +13,8 @@
                  edge_image.csv 未登録でも欠損・未登録として扱わない。
 """
 
+from __future__ import annotations
+
 import threading
 import unicodedata
 from concurrent.futures import ThreadPoolExecutor

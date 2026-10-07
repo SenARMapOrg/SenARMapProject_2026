@@ -3,6 +3,8 @@
 各ツールが `Path(__file__)` から相対でパスを組み立てていると、ファイルを移したときに
 静かに壊れるため、ここ一箇所で解決する。
 """
+
+from __future__ import annotations
 from pathlib import Path
 
 # このファイル → common → iku_tools → IKU_NAVI_Tools → programs → リポジトリ直下

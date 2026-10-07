@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """マップ編集タブ — メインウィンドウ"""
 
+from __future__ import annotations
+
 import cv2
 
 from PyQt6.QtCore import Qt

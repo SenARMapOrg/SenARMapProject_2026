@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """IKU NAVI Map Editor — ノード/エッジ入力ダイアログ"""
 
+from __future__ import annotations
+
 from PyQt6.QtWidgets import (
     QComboBox, QDialog, QDialogButtonBox, QDoubleSpinBox, QFormLayout,
     QLabel, QLineEdit, QSpinBox,
