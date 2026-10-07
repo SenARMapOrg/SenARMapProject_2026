@@ -5,6 +5,8 @@ OpenCV (cv2.VideoCapture) でライブプレビューを表示し、ボタン押
 実際のファイル保存・edge_image.csv 登録は app_window 側で行う（このクラスは撮影のみ担当）。
 """
 
+from __future__ import annotations
+
 import cv2
 import numpy as np
 from PyQt6.QtCore import Qt, QTimer

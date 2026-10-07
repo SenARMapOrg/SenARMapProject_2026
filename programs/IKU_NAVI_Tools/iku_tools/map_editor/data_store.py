@@ -10,6 +10,8 @@ data/{building}_bldg/node.csv・edge.csv・data/edge_image.csv の読み書き�
   - グローバルID = building * 100000 + ローカルID (programs/3D_Graph/ikunavi/config.py の ID_OFFSET と同じ)
 """
 
+from __future__ import annotations
+
 import csv
 import re
 from pathlib import Path

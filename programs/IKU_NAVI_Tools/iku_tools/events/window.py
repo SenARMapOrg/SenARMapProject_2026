@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """イベント設定タブ — メインウィンドウ"""
 
+from __future__ import annotations
+
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
     QHBoxLayout, QLabel, QLineEdit, QListWidget, QListWidgetItem,

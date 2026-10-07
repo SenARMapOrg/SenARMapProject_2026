@@ -13,6 +13,8 @@ SVGフロアマップを表示し、モードに応じてクリックを解釈�
 モード固有のアクションを発火する。ズームはホイールで常時可能。
 """
 
+from __future__ import annotations
+
 from PyQt6.QtCore import Qt, QTimer, pyqtSignal
 from PyQt6.QtGui import QBrush, QColor, QFont, QPainter, QPen
 from PyQt6.QtSvgWidgets import QGraphicsSvgItem

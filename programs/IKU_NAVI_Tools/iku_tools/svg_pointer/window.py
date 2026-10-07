@@ -13,6 +13,8 @@ SVGファイルを表示し、クリックした位置のSVG座標(x, y)を取�
 選ぶ作りだった。タブとして開けるよう、ファイルはタブ内の「SVGを開く」で選ぶようにしている。
 """
 
+from __future__ import annotations
+
 from pathlib import Path
 
 from PyQt6.QtCore import Qt, QTimer

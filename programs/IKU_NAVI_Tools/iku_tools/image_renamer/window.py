@@ -5,6 +5,8 @@
 進み具合をステータスバーに出す。処理中も画面は固まらず、「中止」で途中で止められる。
 """
 
+from __future__ import annotations
+
 import os
 from pathlib import Path
 
