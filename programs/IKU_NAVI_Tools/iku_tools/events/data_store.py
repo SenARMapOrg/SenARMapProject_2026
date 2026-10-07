@@ -12,6 +12,8 @@ data/event.csv の読み書きと、紐付け先（教室名・ノードID・エ
   - 同じ title の行が複数あれば、複数箇所で開催するイベントとして統合される
 """
 
+from __future__ import annotations
+
 import csv
 
 from ..common.paths import (  # noqa: F401  (他モジュールが data_store 経由で参照する)

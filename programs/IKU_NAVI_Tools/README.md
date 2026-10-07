@@ -16,6 +16,32 @@ python main.py route_checker   # 指定したタブで起動
 Mac での Python のインストールから、つまずきやすい点（カメラの許可など）までは
 [docs/setup_mac.md](../../docs/setup_mac.md) を参照。
 
+Python は **3.9 以上**で動く（Mac に最初から入っている `python3`（3.9）でも可）。
+
+## 起動しないとき
+
+まず次を実行し、表示されたものをまるごとコピーして相談相手に送る。OS・Python・Qt の版、Qt のプラグインの場所、
+タブごとに必要なライブラリが入っているかが一度に分かる。
+
+```bash
+python main.py --doctor
+```
+
+`python main.py` は画面を作る前に、よくある原因（古い Python・PyQt6 が入っていない／壊れている・画面のプラグインが無い・
+別の Qt の設定が混ざっている）を確かめ、分かったものは直し方を日本語で表示する。
+Anaconda や別の Qt が残した `QT_PLUGIN_PATH` などの設定は、自動で無視して PyQt6 自身のプラグインを使う。
+
+| 症状 | 直し方 |
+|---|---|
+| `TypeError: unsupported operand type(s) for \|`（古い版のツール） | 最新のツールに更新する（Python 3.9 でも動くよう直してある） |
+| `No module named 'PyQt6'` | `pip install -r requirements.txt`（venv を使っているなら、有効にしてから） |
+| **Windows**: `DLL load failed while importing QtCore` | Microsoft Visual C++ 再頒布可能パッケージ（https://aka.ms/vs/17/release/vc_redist.x64.exe ）を入れる。直らなければ `py -m pip install --upgrade --force-reinstall PyQt6 PyQt6-Qt6` |
+| `Could not find the Qt platform plugin "cocoa"/"windows"` / `no Qt platform plugin could be initialized` | PyQt6 を入れ直す: `pip install --upgrade --force-reinstall PyQt6 PyQt6-Qt6`。Anaconda の環境で動かしている場合は、Anaconda ではない Python の venv で動かす |
+| **Linux**: `Could not load the Qt platform plugin "xcb"` | `sudo apt install libxcb-cursor0`（Qt 6.5 以降で必要）。WSL なら WSLg が使えるか、SSH なら `ssh -X` を確かめる |
+| **Mac（Apple シリコン）**: ライブラリが入らない・`incompatible architecture` | Intel 用の Python（Rosetta）で動いている。`--doctor` の CPU が `arm64` になる Python（Homebrew など）を使う |
+| `Populating font family aliases took … Replace uses of missing font family …` | 害の無い警告（無いフォントの代わりを探した）。最新のツールでは出ないようにしてある（ツール内のフォント指定を OS の標準フォントに変え、手描きのフロアマップの中のフォント指定による警告は表示しない） |
+| 人物ぼかしのタブだけ使えない | `pip install ultralytics`（PyTorch ごと入るので数百MB〜1GB）。ほかのタブはこれが無くても使える |
+
 ## タブ一覧
 
 | タブ | 引数名 | 内容 | 旧プログラム |

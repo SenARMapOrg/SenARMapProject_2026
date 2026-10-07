@@ -8,6 +8,8 @@
   4. 行をダブルクリックすると経路詳細と異常の原因を確認できる
 """
 
+from __future__ import annotations
+
 import csv
 import json
 import threading
@@ -59,6 +61,7 @@ from ..common.theme import (
     TXT_SUB,
     base_stylesheet,
 )
+from ..common.fonts import mono_family, mono_font
 
 # ── 定数 ──────────────────────────────────────────────────────────────────────
 MAX_WORKERS = 8
@@ -519,7 +522,7 @@ class PathDetailDialog(QDialog):
         tbl.verticalHeader().setVisible(False)
         tbl.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
         tbl.horizontalHeader().setStretchLastSection(True)
-        tbl.setFont(QFont("Courier New", 11))
+        tbl.setFont(mono_font(11))
         tbl.setStyleSheet(f"""
             QTableWidget {{
                 alternate-background-color: {BG_ROW_ALT};
@@ -587,7 +590,7 @@ class PathDetailDialog(QDialog):
             QDialog {{ background: {BG_WIN}; }}
             QTextEdit {{ background: #1A2233; color: {TXT_PRIMARY};
                 border: 1px solid {BORDER}; border-radius: 4px;
-                font-family: "Courier New"; font-size: 12px; }}
+                font-family: "{mono_family()}"; font-size: 12px; }}
             QPushButton {{ background: {BTN_IDLE}; color: {TXT_PRIMARY};
                 border-radius: 5px; padding: 4px 14px; border: none; }}
         """)

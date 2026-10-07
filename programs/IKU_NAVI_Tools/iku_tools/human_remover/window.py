@@ -4,6 +4,8 @@ Human Remover
 写真内の人物（立ち/座り問わず）を自動検出してぼかし・モザイク・消去するツール
 """
 
+from __future__ import annotations
+
 import os
 import cv2
 import numpy as np

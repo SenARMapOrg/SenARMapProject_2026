@@ -1,4 +1,4 @@
-# IKU NAVI ツール（全タブ分）
+# IKU NAVI ツール（全タブ分）。Python 3.9 以上
 #   pip install -r requirements.txt
 # 人物ぼかしのタブを使わないなら ultralytics の行は省いてよい（PyTorch ごと入るので数百MB〜1GB程度ある）。
 # 入っていなくても他のタブは使える。

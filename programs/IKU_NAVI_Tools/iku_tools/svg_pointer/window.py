@@ -13,10 +13,12 @@ SVGファイルを表示し、クリックした位置のSVG座標(x, y)を取�
 選ぶ作りだった。タブとして開けるよう、ファイルはタブ内の「SVGを開く」で選ぶようにしている。
 """
 
+from __future__ import annotations
+
 from pathlib import Path
 
 from PyQt6.QtCore import Qt, QTimer
-from PyQt6.QtGui import QBrush, QColor, QFont, QPainter, QPen
+from PyQt6.QtGui import QBrush, QColor, QPainter, QPen
 from PyQt6.QtSvgWidgets import QGraphicsSvgItem
 from PyQt6.QtWidgets import (
     QAbstractItemView,
@@ -37,6 +39,7 @@ from PyQt6.QtWidgets import (
 )
 
 from ..common.paths import SVG_DIR
+from ..common.fonts import mono_font, ui_font
 
 PIN_R = 6
 PIN_FILL = QColor("#ff3333")
@@ -202,7 +205,7 @@ class MainWindow(QMainWindow):
         vl.addWidget(QLabel("<b>取得座標一覧</b>"))
 
         self._list = QListWidget()
-        self._list.setFont(QFont("Courier", 11))
+        self._list.setFont(mono_font(11))
         self._list.setStyleSheet("background:white; color:black;")
         # Shift・Cmd(Ctrl)クリックで複数選べる（整列に使う）
         self._list.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
@@ -296,7 +299,7 @@ class MainWindow(QMainWindow):
 
         text = self._scene.addSimpleText(str(n))
         text.setBrush(QBrush(PIN_TEXT))
-        text.setFont(QFont("Helvetica", 8, QFont.Weight.Bold))
+        text.setFont(ui_font(8, bold=True))
         self._keep_screen_size(text, sx, sy, 10)
         text.setTransform(text.transform().translate(r + 2, -8))
 

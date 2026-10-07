@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """IKU NAVI Event Editor — イベント1箇所分（建物・種別・値）を編集する行ウィジェット"""
 
+from __future__ import annotations
+
 from PyQt6.QtCore import pyqtSignal
 from PyQt6.QtWidgets import QComboBox, QHBoxLayout, QLabel, QPushButton, QWidget
 

@@ -79,7 +79,7 @@ def _error_page(spec: ToolSpec, err: BaseException) -> QWidget:
     head.setWordWrap(True)
     body = QLabel(hint)
     body.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
-    detail = QPlainTextEdit("".join(traceback.format_exception(err)))
+    detail = QPlainTextEdit("".join(traceback.format_exception(type(err), err, err.__traceback__)))
     detail.setReadOnly(True)
     layout.addWidget(head)
     layout.addWidget(body)
