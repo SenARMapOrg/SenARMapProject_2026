@@ -39,6 +39,7 @@ Anaconda や別の Qt が残した `QT_PLUGIN_PATH` などの設定は、自動�
 | `Could not find the Qt platform plugin "cocoa"/"windows"` / `no Qt platform plugin could be initialized` | PyQt6 を入れ直す: `pip install --upgrade --force-reinstall PyQt6 PyQt6-Qt6`。Anaconda の環境で動かしている場合は、Anaconda ではない Python の venv で動かす |
 | **Linux**: `Could not load the Qt platform plugin "xcb"` | `sudo apt install libxcb-cursor0`（Qt 6.5 以降で必要）。WSL なら WSLg が使えるか、SSH なら `ssh -X` を確かめる |
 | **Mac（Apple シリコン）**: ライブラリが入らない・`incompatible architecture` | Intel 用の Python（Rosetta）で動いている。`--doctor` の CPU が `arm64` になる Python（Homebrew など）を使う |
+| `Populating font family aliases took … Replace uses of missing font family …` | 害の無い警告（無いフォントの代わりを探した）。最新のツールでは出ないようにしてある（ツール内のフォント指定を OS の標準フォントに変え、手描きのフロアマップの中のフォント指定による警告は表示しない） |
 | 人物ぼかしのタブだけ使えない | `pip install ultralytics`（PyTorch ごと入るので数百MB〜1GB）。ほかのタブはこれが無くても使える |
 
 ## タブ一覧

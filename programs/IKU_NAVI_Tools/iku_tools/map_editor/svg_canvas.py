@@ -16,9 +16,10 @@ SVGフロアマップを表示し、モードに応じてクリックを解釈�
 from __future__ import annotations
 
 from PyQt6.QtCore import Qt, QTimer, pyqtSignal
-from PyQt6.QtGui import QBrush, QColor, QFont, QPainter, QPen
+from PyQt6.QtGui import QBrush, QColor, QPainter, QPen
 from PyQt6.QtSvgWidgets import QGraphicsSvgItem
 from PyQt6.QtWidgets import QGraphicsLineItem, QGraphicsScene, QGraphicsView
+from ..common.fonts import ui_font
 
 NODE_COLOR = {1: QColor("#3B82F6"), 2: QColor("#EF4444")}
 NODE_COLOR_DEFAULT = QColor("#3B82F6")
@@ -158,7 +159,7 @@ class SvgCanvas(QGraphicsView):
                 text = self._scene.addSimpleText(str(label))
                 text.setPos(n["sx"] + r + 2, n["sy"] - r - 4)
                 text.setBrush(QBrush(QColor("#1E293B")))
-                text.setFont(QFont("Helvetica", max(7, int(r))))
+                text.setFont(ui_font(max(7, int(r))))
                 text.setZValue(11)
 
     def highlight_edge(self, edge_id):
