@@ -9,6 +9,7 @@ Python のエラーにならずに終了してしまうことが多く、原因�
   - 画面の表示に使う Qt のプラグイン（macOS: cocoa / Windows: windows / Linux: xcb）が無い
   - Anaconda や別の Qt が残した設定（QT_PLUGIN_PATH など）が、別の版の Qt のプラグインを指している
   - Linux で、Qt 6.5 以降に必要な libxcb-cursor0 が入っていない
+あわせて、害は無いのにエラーに見える Qt の警告（無いフォントの代わりを探した、など）を出さないようにする。
 
 このファイルの一番上では PyQt6 を読み込まない（PyQt6 が読み込めない環境でも案内を出すため）。
 """
@@ -152,10 +153,22 @@ def linux_display_problems(environ=os.environ) -> list[str]:
     return problems
 
 
+# Qt が出すメッセージのうち、害が無いのに利用者にはエラーに見えるものを出さないようにする設定。
+#   qt.qpa.fonts: 指定されたフォントが無いときの「Populating font family aliases took … Replace uses of missing
+#   font family …」。手描きのフロアマップ（SVG）の中のフォント指定（'HiraginoSans-W4', 'Hiragino Sans', sans-serif）を
+#   Qt が1つの名前として読んでしまうため、地図を開くたびに出る。文字は代わりのフォントで正しく表示される
+QUIET_QT_LOG_RULES = "qt.qpa.fonts.warning=false"
+
+
+def quiet_harmless_qt_warnings(QtCore) -> None:
+    QtCore.QLoggingCategory.setFilterRules(QUIET_QT_LOG_RULES)
+
+
 def prepare() -> list[str]:
     """画面を作る前に呼ぶ。起動できない原因が分かれば StartupError、直せたもの・注意は説明の一覧で返す"""
     check_python()
     QtCore = import_qtcore()
+    quiet_harmless_qt_warnings(QtCore)
     plugin_dir = qt_plugin_dir(QtCore)
     notes = [f"別の Qt のプラグインを指す設定を無視しました（PyQt6 自身のプラグインを使います）: {r}"
              for r in remove_foreign_qt_env(plugin_dir)]

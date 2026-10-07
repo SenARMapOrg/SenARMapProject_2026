@@ -85,3 +85,24 @@ def test_main_の_doctor_は画面を作らずに診断を出す(capsys):
     finally:
         sys.argv = monkey_argv
     assert "環境診断" in capsys.readouterr().out
+
+
+# ---------------------------------------------------------------- フォント（Qt の警告の元）
+
+def test_OSに無いことがあるフォント名をコードに直接書いていない():
+    """"Courier"（Mac に無い）や "Helvetica"（Windows に無い）を書くと、Qt が代わりを探して警告を出す。
+    iku_tools/common/fonts.py の ui_font / mono_font（OS の標準のフォント）を使う"""
+    import re
+    root = Path(__file__).resolve().parents[1] / "iku_tools"
+    pattern = re.compile(r"""QFont\(\s*["'](Courier|Courier New|Helvetica|Arial|Menlo|Consolas)["']|font-family:\s*["']?(Courier|Helvetica)""")
+    hits = [f"{p.relative_to(root)}:{n}" for p in root.rglob("*.py") if p.name != "fonts.py"
+            for n, line in enumerate(p.read_text(encoding="utf-8").splitlines(), 1) if pattern.search(line)]
+    assert hits == []
+
+
+def test_OSの標準フォントを大きさ_太さを指定して使える(qapp):
+    from iku_tools.common.fonts import mono_family, mono_font, ui_font
+    f = mono_font(11, bold=True)
+    assert f.pointSizeF() == 11 and f.bold() and f.family()
+    assert ui_font(9).pointSizeF() == 9
+    assert mono_family()
