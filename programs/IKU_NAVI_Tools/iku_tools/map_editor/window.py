@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """マップ編集タブ — メインウィンドウ"""
 
+from __future__ import annotations
+
 import cv2
 
 from PyQt6.QtCore import Qt
@@ -18,6 +20,7 @@ from .data_store import (
 )
 from .dialogs import EdgeDialog, NodeDialog, suggest_edge_type
 from .svg_canvas import SvgCanvas
+from ..common.fonts import mono_font
 
 MODE_LABELS = [
     (SvgCanvas.MODE_MOVE,   "🖐 移動"),
@@ -173,12 +176,12 @@ class MainWindow(QMainWindow):
 
         vbox.addWidget(self._lbl("ノード一覧 (現在の階):"))
         self.node_list = QListWidget()
-        self.node_list.setFont(QFont("Courier", 10))
+        self.node_list.setFont(mono_font(10))
         vbox.addWidget(self.node_list, 1)
 
         vbox.addWidget(self._lbl("エッジ一覧 (現在の階):"))
         self.edge_list = QListWidget()
-        self.edge_list.setFont(QFont("Courier", 10))
+        self.edge_list.setFont(mono_font(10))
         vbox.addWidget(self.edge_list, 1)
 
         note = QLabel(

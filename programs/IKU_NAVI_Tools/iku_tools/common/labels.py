@@ -1,5 +1,7 @@
 """建物・階・トイレなど、ツール間で表記を揃えたい表示名。"""
 
+from __future__ import annotations
+
 TOILET_ROOMS = {"M_Toilet", "F_Toilet", "C_Toilet"}
 
 

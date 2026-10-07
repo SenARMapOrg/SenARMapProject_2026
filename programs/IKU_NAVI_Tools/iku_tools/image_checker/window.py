@@ -13,6 +13,8 @@
                  edge_image.csv 未登録でも欠損・未登録として扱わない。
 """
 
+from __future__ import annotations
+
 import threading
 import unicodedata
 from concurrent.futures import ThreadPoolExecutor
@@ -48,6 +50,7 @@ from ..common.theme import (
     TXT_SUB,
     base_stylesheet,
 )
+from ..common.fonts import mono_family, mono_font
 
 
 # ── 設定 ──────────────────────────────────────────────────────────────────────
@@ -230,7 +233,7 @@ class ImageCard(QFrame):
 
         parts    = self.key.split("_")
         key_lbl  = QLabel(f"{parts[0]} →\n{parts[1]}")
-        key_lbl.setFont(QFont("Courier New", 10, QFont.Weight.Bold))
+        key_lbl.setFont(mono_font(10, bold=True))
         key_lbl.setStyleSheet(f"color: {TXT_KEY}; background: transparent;")
         vb.addWidget(key_lbl)
 
@@ -355,7 +358,7 @@ class ExportDialog(QDialog):
             QTextEdit {{
                 background: #1A2233; color: {TXT_PRIMARY};
                 border: 1px solid {BORDER}; border-radius: 6px;
-                font-family: "Courier New", monospace; font-size: 13px;
+                font-family: "{mono_family()}", monospace; font-size: 13px;
             }}
             QComboBox {{
                 background: #374151; color: {TXT_PRIMARY};

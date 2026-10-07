@@ -3,6 +3,8 @@
 チェッカー系ツールは何百リクエストも並列に投げるため、リトライ付きの
 Session を使う。ツールによって必要なヘッダとリトライ回数が違うので引数で渡す。
 """
+
+from __future__ import annotations
 import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
