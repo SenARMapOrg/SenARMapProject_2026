@@ -847,6 +847,9 @@ const photo = {
 const STRAIGHT_LIMIT = 60;      // 前へ・後ろへで「まっすぐ」とみなす曲がりの角度（度）
 const TURN_RANGE = [30, 150];   // 左・右とみなす曲がりの角度（度）
 const PICK_RADIUS = 22;         // タップした場所から何ピクセル以内の線を選ぶか
+// パソコン（広い画面でマウスを使う）では、前後左右の写真も周りに並べる。スマートフォンでは真ん中の1枚だけ
+// （通信量を抑えるため、周りの写真はパソコンのときだけ読む）。map3d.css の同じ条件と合わせる
+const WIDE_PHOTO = window.matchMedia("(min-width: 900px) and (hover: hover) and (pointer: fine)");
 
 function hasPhoto(from, to) {
   return !!photo.images && !!(photo.images[`${from}_${to}`] || photo.images[`${to}_${from}`]);
@@ -1084,6 +1087,18 @@ function showEdge(from, to, { fly = true } = {}) {
     btn.classList.toggle("has-photo", !!(m && m.photo));
     if (m && m.photo) new Image().src = photo.images[`${m.from}_${m.to}`];
   });
+  fillPhotoThumbs();
+}
+
+// パソコンで、前後左右の行き先の写真を周りに並べる（行き先が無ければ枠を薄く、写真が無ければ「写真なし」）
+function fillPhotoThumbs() {
+  document.querySelectorAll("#photo-viewer [data-thumb]").forEach(btn => {
+    const m = photo.moves && photo.moves[btn.dataset.thumb];
+    const img = btn.querySelector("img");
+    const url = WIDE_PHOTO.matches && m && m.photo ? photo.images[`${m.from}_${m.to}`] : null;
+    if (url) img.src = url; else img.removeAttribute("src");
+    btn.classList.toggle("no-photo", !!m && !m.photo);
+  });
 }
 
 function movePhoto(name) {
@@ -1156,6 +1171,7 @@ function setupPhotoMode() {
   $("photo-mode").addEventListener("click", () => setPhotoMode(!photo.on));
   $("photo-close").addEventListener("click", closePhoto);
   document.querySelectorAll("#photo-viewer [data-move]").forEach(btn => btn.addEventListener("click", () => movePhoto(btn.dataset.move)));
+  WIDE_PHOTO.addEventListener("change", fillPhotoThumbs);   // 窓の大きさを変えたとき
   // パソコンでは矢印キーでも動ける（↑前へ ↓後ろへ ←→左右、PageUp/PageDown で上下の階、Escで閉じる）
   const keys = { ArrowUp: "forward", ArrowDown: "back", ArrowLeft: "left", ArrowRight: "right", PageUp: "up", PageDown: "down" };
   window.addEventListener("keydown", e => {
