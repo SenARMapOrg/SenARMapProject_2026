@@ -25,6 +25,8 @@ const COLOR = {
   start: 0x2FB36D,
   goal: 0xE5484D,
   ground: 0xA9C79A,
+  photo: 0x14B8D0,     // 写真モードで、写真のある通路
+  viewing: 0xFFB000,   // 写真モードで、いま写真を見ている通路
 };
 // 床の形（computeFloorOutline）の決め方
 const FLOOR_CELL = 1;          // 形を計算するマス目の大きさ（m）
@@ -51,6 +53,7 @@ const state = {
   focus: null,            // 寄っている建物（null = 全体）
   floor: null,            // 寄っている建物で、教室名を出す階（null = 全部の階）
   showLabels: true,
+  nodeById: new Map(),    // すべての点（番号 -> 点）
   route: null,            // { points: Vector3[], ... }
 };
 
@@ -88,6 +91,9 @@ scene.add(world, routeGroup, labelGroup);
 let walker = null;        // 道順の上を動く点
 let walkerT = 0;
 const clickTargets = [];  // タップで建物に寄るための、建物名の札
+const photoGroup = new THREE.Group();   // 写真モードで見ている通路の目印
+scene.add(photoGroup);
+const edgeSegments = [];  // 描いた線（通路・階段など）。写真モードで、タップした場所に近い線を探すのに使う
 
 // ---------------------------------------------------------------- 座標
 // データの x・y は東西南北に対して鏡写しになっている（docs/XYZ_Design.md の定義が「X: 山を登る方向、
@@ -469,18 +475,22 @@ function buildWorld() {
     corridor: new THREE.MeshStandardMaterial({ color: COLOR.corridor, emissive: 0x334455, emissiveIntensity: 0.12, roughness: 0.6 }),
     corridorDim: new THREE.MeshStandardMaterial({ color: COLOR.corridor, transparent: true, opacity: 0.25 }),
     outdoor: new THREE.MeshStandardMaterial({ color: COLOR.outdoor, roughness: 0.9 }),
+    photo: new THREE.MeshStandardMaterial({ color: COLOR.photo, emissive: COLOR.photo, emissiveIntensity: 0.3, roughness: 0.6 }),
   };
+  edgeSegments.length = 0;
   const verticalMats = {};
   for (const e of state.graph.edges) {
     const a = byId.get(e.from), b = byId.get(e.to);
     if (!a || !b) continue;
     const type = Number(e.type);
     const pa = toScene(a), pb = toScene(b);
-    let mesh = null;
+    let mesh = null, dimmed = false;
+    // 写真モードでは、写真のある線（どちらかの向きだけでも）を色を変えて目立たせる
+    const withPhoto = photo.on && hasPhoto(e.from, e.to);
     if (a.building === 0 || b.building === 0 || type === 7) {
-      mesh = tubeBetween(pa, pb, 0.7, mats.outdoor);
+      mesh = tubeBetween(pa, pb, 0.7, withPhoto ? mats.photo : mats.outdoor);
     } else if (VERTICAL_STYLE[type] && a.floor !== b.floor) {
-      const dimmed = state.focus !== null && state.focus !== a.building;
+      dimmed = state.focus !== null && state.focus !== a.building;
       const key = `${type}_${dimmed}`;
       verticalMats[key] ??= new THREE.MeshStandardMaterial({
         color: VERTICAL_STYLE[type].color, emissive: VERTICAL_STYLE[type].color, emissiveIntensity: 0.25,
@@ -489,10 +499,13 @@ function buildWorld() {
       mesh = tubeBetween(pa, pb, 0.38, verticalMats[key]);
     } else if (WALK_TYPES.has(type) || a.floor === b.floor) {
       // 寄っている建物では、選んだ階以外の通路も薄くして、選んだ階が見やすいようにする
-      const dimmed = state.focus !== null && (state.focus !== a.building || (state.floor !== null && a.floor !== state.floor));
-      mesh = tubeBetween(pa, pb, CORRIDOR_R, dimmed ? mats.corridorDim : mats.corridor);
+      dimmed = state.focus !== null && (state.focus !== a.building || (state.floor !== null && a.floor !== state.floor));
+      mesh = tubeBetween(pa, pb, CORRIDOR_R, dimmed ? mats.corridorDim : withPhoto ? mats.photo : mats.corridor);
     }
-    if (mesh) world.add(mesh);
+    if (mesh) {
+      world.add(mesh);
+      edgeSegments.push({ e, pa, pb, dimmed });
+    }
   }
 
   // 建物名の札（タップでその建物に寄る）
@@ -510,6 +523,7 @@ function buildWorld() {
 
   // 教室名（寄っている建物だけ。全体表示では多すぎて読めないため）
   if (state.showLabels && state.focus !== null) addRoomLabels(byId);
+  drawPhotoMarker();   // 高さの強調などで作り直したら、見ている通路の目印も描き直す
 }
 
 // 線（from → to）の left・right に書かれた教室を、通路の左右に分けて、書かれている順番どおりに from から to へ並べる。
@@ -694,6 +708,7 @@ function fillFloorChips(b) {
     const chip = document.createElement("button");
     chip.type = "button";
     chip.className = "chip" + (f === state.floor ? " active" : "");
+    chip.dataset.floor = f === null ? "all" : String(f);
     chip.textContent = f === null ? "全部" : floorName(f);
     chip.addEventListener("click", () => {
       state.floor = f;
@@ -787,7 +802,11 @@ canvas.addEventListener("pointerup", e => {
   const ndc = new THREE.Vector2((e.clientX / window.innerWidth) * 2 - 1, -(e.clientY / window.innerHeight) * 2 + 1);
   raycaster.setFromCamera(ndc, camera);
   const hit = raycaster.intersectObjects(clickTargets)[0];
-  if (hit) focusBuilding(hit.object.userData.building);
+  if (hit) { focusBuilding(hit.object.userData.building); return; }
+  if (photo.on) {
+    const seg = pickEdge(e.clientX, e.clientY);
+    if (seg) openEdgeFromTap(seg.e);
+  }
 });
 
 function animate(now) {
@@ -807,6 +826,359 @@ function animate(now) {
   }
   controls.update();
   renderer.render(scene, camera);
+}
+
+// ---------------------------------------------------------------- 写真モード（ストリートビューのように通路の写真を見る）
+// 写真は線の向きごとにある（edge_image.csv。from → to の写真は from に立って to の方を向いて撮ったもの）。
+// いま見ている向きの線（from → to）を基準に、矢印で隣の線へ移る:
+//   前へ   … to から先へ、いちばんまっすぐ続く線（先が曲がり角で1本しか無ければ、曲がってその線へ）
+//   後ろへ … from より手前の、まっすぐ後ろにある線（向きはそのまま、後ずさりする）
+//   左・右 … この先の分かれ道（to）で左・右に曲がる線。to に無ければ、立っている from で曲がる線
+//   上・下 … from か to にある階段・エレベーター・エスカレーターで、上・下の階へ
+//   振り返る … 同じ線の反対向き
+// 左右は、鏡写しを直したあとの実際の東西南北で決める（教室名の左右と同じ）。データも API も変えず、読むだけ
+const photo = {
+  on: false,
+  images: null,       // /api/edge_images（{"from_to": 写真のURL}）。写真モードを初めて使うときに読む
+  adjacency: null,    // 点の番号 -> [{ to: 点の番号, e: 線 }]
+  from: null, to: null,
+  heading: null,      // いま向いている水平の向き（階段・エレベーターのように水平の長さが無い線では、直前の向きを引き継ぐ）
+};
+const STRAIGHT_LIMIT = 60;      // 前へ・後ろへで「まっすぐ」とみなす曲がりの角度（度）
+const TURN_RANGE = [30, 150];   // 左・右とみなす曲がりの角度（度）
+const PICK_RADIUS = 22;         // タップした場所から何ピクセル以内の線を選ぶか
+// パソコン（広い画面でマウスを使う）では、前後左右の写真も周りに並べる。スマートフォンでは真ん中の1枚だけ
+// （通信量を抑えるため、周りの写真はパソコンのときだけ読む）。map3d.css の同じ条件と合わせる
+const WIDE_PHOTO = window.matchMedia("(min-width: 900px) and (hover: hover) and (pointer: fine)");
+
+function hasPhoto(from, to) {
+  return !!photo.images && !!(photo.images[`${from}_${to}`] || photo.images[`${to}_${from}`]);
+}
+
+function nodeById(id) {
+  return state.nodeById.get(id);
+}
+
+// 上から見た向き（鏡写しを直したあとの東西の x・南北の z）
+function flatDir(a, b) {
+  const pa = sceneXZ(a.x, a.y), pb = sceneXZ(b.x, b.y);
+  const v = { x: pb.x - pa.x, z: pb.z - pa.z };
+  const len = Math.hypot(v.x, v.z);
+  return len < 0.5 ? null : { x: v.x / len, z: v.z / len };
+}
+
+// h から c への曲がりの角度（度）。右が正、左が負
+function turnAngle(h, c) {
+  return Math.atan2(h.x * c.z - h.z * c.x, h.x * c.x + h.z * c.z) * 180 / Math.PI;
+}
+
+function isVertical(a, b) {
+  return a.building !== 0 && a.building === b.building && a.floor !== b.floor;
+}
+
+function buildAdjacency() {
+  photo.adjacency = new Map();
+  const add = (p, q, e) => {
+    if (!photo.adjacency.has(p)) photo.adjacency.set(p, []);
+    if (!photo.adjacency.get(p).some(x => x.to === q)) photo.adjacency.get(p).push({ to: q, e });
+  };
+  for (const e of state.graph.edges) {
+    if (!nodeById(e.from) || !nodeById(e.to) || e.from === e.to) continue;
+    add(e.from, e.to, e);
+    add(e.to, e.from, e);
+  }
+}
+
+function neighbors(id) {
+  return (photo.adjacency.get(id) || []).filter(x => {
+    const n = nodeById(x.to);
+    return n && (n.building === 0 || state.shownBuildings.has(n.building));
+  });
+}
+
+// 候補のうち、写真のある向きを優先して1つ選ぶ（score が小さいほど良い）
+function best(cands) {
+  cands.sort((p, q) => (p.photo === q.photo ? p.score - q.score : p.photo ? -1 : 1));
+  return cands[0] || null;
+}
+
+function candidate(from, to, score) {
+  return { from, to, score, photo: !!photo.images[`${from}_${to}`] };
+}
+
+// 矢印ごとの行き先（{from, to}）。行けなければ null
+function photoMoves() {
+  const u = photo.from, v = photo.to;
+  const nu = nodeById(u), nv = nodeById(v);
+  const h = photo.heading;
+  const flat = (p, q) => !isVertical(nodeById(p), nodeById(q)) && flatDir(nodeById(p), nodeById(q));
+  const moves = {};
+
+  // 前へ: to から先へ。いま階段などの上なら向きの決まりが無いので、また先が曲がり角（続く線が1本だけ）なら、
+  // どの向きでも一番まっすぐなものへ
+  const onVertical = isVertical(nu, nv) || !flatDir(nu, nv);
+  const ahead = neighbors(v).filter(x => x.to !== u && flat(v, x.to));
+  moves.forward = best(ahead.map(x => {
+    const a = h ? Math.abs(turnAngle(h, flatDir(nv, nodeById(x.to)))) : 0;
+    return (onVertical || ahead.length === 1 || a <= STRAIGHT_LIMIT) ? candidate(v, x.to, a) : null;
+  }).filter(Boolean));
+
+  // 後ろへ: from から真後ろへ延びる線を、同じ向きのまま（手前の点 → from）たどる
+  moves.back = h ? best(neighbors(u).filter(x => x.to !== v && flat(u, x.to)).map(x => {
+    const a = 180 - Math.abs(turnAngle(h, flatDir(nu, nodeById(x.to))));
+    return a <= STRAIGHT_LIMIT ? candidate(x.to, u, a) : null;
+  }).filter(Boolean)) : null;
+
+  // 左・右: この先の分かれ道（to）で曲がる。to に無ければ、立っている場所（from）で向きを変える。
+  // 前へで曲がり角を曲がる場合（続く線が1本だけ）は、同じ線を左右にも出さない
+  const turns = (p, np, skip, sign) => neighbors(p).filter(x => x.to !== skip && flat(p, x.to)).map(x => {
+    const a = turnAngle(h, flatDir(np, nodeById(x.to))) * sign;
+    return a > TURN_RANGE[0] && a < TURN_RANGE[1] ? candidate(p, x.to, Math.abs(a - 90)) : null;
+  }).filter(Boolean);
+  for (const [name, sign] of [["left", -1], ["right", 1]]) {
+    if (!h) { moves[name] = null; continue; }
+    const atV = onVertical ? [] : turns(v, nv, u, sign).filter(c => !(moves.forward && c.to === moves.forward.to && c.from === moves.forward.from));
+    moves[name] = best(atV.length ? atV : turns(u, nu, v, sign));
+  }
+
+  // 上・下: from と to にある、階をまたぐ線。from にあるものを優先する
+  for (const [name, sign] of [["up", 1], ["down", -1]]) {
+    const cands = [];
+    [u, v].forEach((p, k) => {
+      const np = nodeById(p);
+      for (const x of neighbors(p)) {
+        if (x.to === u || x.to === v) continue;
+        const nq = nodeById(x.to);
+        if (isVertical(np, nq) && (nq.floor - np.floor) * sign > 0) cands.push(candidate(p, x.to, k));
+      }
+    });
+    moves[name] = best(cands);
+  }
+
+  moves.flip = candidate(v, u, 0);
+  return moves;
+}
+
+// 線の両端に建物の点があれば、その建物の名前と階
+function placeName(a, b) {
+  const n = a.building !== 0 ? a : b.building !== 0 ? b : null;
+  if (!n) return "屋外";
+  const bn = state.buildingNames[n.building] || `${n.building}号館`;
+  if (isVertical(a, b)) return `${bn} ${floorName(a.floor)} → ${floorName(b.floor)}`;
+  return `${bn} ${floorName(n.floor)}${a.building === 0 || b.building === 0 ? "（出入口）" : ""}`;
+}
+
+function edgeBetween(p, q) {
+  const hit = (photo.adjacency.get(p) || []).find(x => x.to === q);
+  return hit ? hit.e : null;
+}
+
+// 見ている向きでの、左右の教室（データの left・right は from → to の向きで書かれている）
+function sideRooms(e, from) {
+  const forward = e.from === from;
+  const left = splitRooms(forward ? e.left : e.right).map(r => roomLabelText(e.building, r));
+  const right = splitRooms(forward ? e.right : e.left).map(r => roomLabelText(e.building, r));
+  const name = splitRooms(e.name).map(r => roomLabelText(e.building, r));
+  return { left, right, name };
+}
+
+// 寄っている建物・選んでいる階と違う場所へ移ったら、そこが見えるように合わせる
+function followPlace(n) {
+  if (state.focus === null || n.building === 0) return false;
+  let changed = false;
+  if (state.focus !== n.building) {
+    state.focus = n.building;
+    fillFloorChips(n.building);
+    document.querySelectorAll("#building-chips .chip").forEach(chip => chip.classList.toggle("active", chip.dataset.building === String(n.building)));
+    changed = true;
+  }
+  if (state.floor !== null && state.floor !== n.floor) {
+    state.floor = n.floor;
+    document.querySelectorAll("#floor-chips .chip").forEach(chip => chip.classList.toggle("active", chip.dataset.floor === String(n.floor)));
+    changed = true;
+  }
+  return changed;
+}
+
+function drawPhotoMarker() {
+  disposeGroup(photoGroup);
+  if (!photo.on || photo.from === null) return;
+  const a = nodeById(photo.from), b = nodeById(photo.to);
+  if (!a || !b) return;
+  const lift = new THREE.Vector3(0, 0.6, 0);
+  const pa = toScene(a).add(lift), pb = toScene(b).add(lift);
+  const mat = new THREE.MeshBasicMaterial({ color: COLOR.viewing, depthTest: false, transparent: true, opacity: 0.95 });
+  const tube = tubeBetween(pa, pb, 0.9, mat);
+  if (tube) { tube.renderOrder = 5; photoGroup.add(tube); }
+  // 立っている場所（from）の丸と、向いている方（to）を指す矢印
+  const dot = new THREE.Mesh(new THREE.SphereGeometry(1.6, 20, 14), mat);
+  dot.position.copy(pa);
+  dot.renderOrder = 6;
+  const dir = new THREE.Vector3().subVectors(pb, pa);
+  const len = dir.length();
+  if (len > 0.01) {
+    const cone = new THREE.Mesh(new THREE.ConeGeometry(1.5, 3.6, 20), mat);
+    cone.position.copy(pa).addScaledVector(dir, Math.max(0.5, 1 - 2.5 / len));
+    cone.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.clone().normalize());
+    cone.renderOrder = 6;
+    photoGroup.add(cone);
+  }
+  photoGroup.add(dot);
+}
+
+// 立っている場所の少し後ろ・上から、向いている方を見下ろす
+function flyToPhoto() {
+  const a = nodeById(photo.from), b = nodeById(photo.to);
+  const pa = toScene(a), pb = toScene(b);
+  const h = photo.heading || { x: 0, z: -1 };
+  const target = pa.clone().lerp(pb, 0.5);
+  const pos = pa.clone().add(new THREE.Vector3(-h.x * 30, 26, -h.z * 30));
+  flyTo(target, pos, 650);
+}
+
+let photoToken = 0;
+function showEdge(from, to, { fly = true } = {}) {
+  const a = nodeById(from), b = nodeById(to);
+  if (!a || !b) return;
+  photo.from = from; photo.to = to;
+  photo.heading = flatDir(a, b) || photo.heading;
+  if (followPlace(a.building !== 0 ? a : b)) buildWorld(); else drawPhotoMarker();
+  if (fly) flyToPhoto();
+
+  const e = edgeBetween(from, to);
+  const url = photo.images[`${from}_${to}`];
+  const reverse = photo.images[`${to}_${from}`];
+  $("photo-viewer").hidden = false;
+  $("photo-title").textContent = placeName(a, b);
+  const rooms = e ? sideRooms(e, from) : { left: [], right: [], name: [] };
+  const parts = [];
+  if (rooms.left.length) parts.push(`左: ${rooms.left.join("・")}`);
+  if (rooms.right.length) parts.push(`右: ${rooms.right.join("・")}`);
+  if (!parts.length && rooms.name.length) parts.push(rooms.name.join("・"));
+  $("photo-rooms").textContent = parts.join("　");
+
+  const img = $("photo-img"), empty = $("photo-empty");
+  const token = ++photoToken;
+  if (url) {
+    empty.hidden = true;
+    img.classList.add("loading");
+    img.onload = () => { if (token === photoToken) img.classList.remove("loading"); };
+    img.onerror = () => {
+      if (token !== photoToken) return;
+      img.removeAttribute("src");
+      empty.textContent = "写真を読み込めませんでした";
+      empty.hidden = false;
+    };
+    img.src = url;
+    img.alt = `${placeName(a, b)}の通路の写真`;
+  } else {
+    img.removeAttribute("src");
+    img.alt = "";
+    empty.textContent = reverse ? "この向きの写真はまだありません（「振り返る」で反対向きの写真を見られます）" : "この通路の写真はまだありません";
+    empty.hidden = false;
+  }
+
+  // 矢印: 行ける方向だけ押せるようにし、写真のある行き先には印を付ける。行き先の写真は先に読んでおく
+  const moves = photoMoves();
+  photo.moves = moves;
+  document.querySelectorAll("#photo-viewer [data-move]").forEach(btn => {
+    const m = moves[btn.dataset.move];
+    btn.disabled = !m;
+    btn.classList.toggle("has-photo", !!(m && m.photo));
+    if (m && m.photo) new Image().src = photo.images[`${m.from}_${m.to}`];
+  });
+  fillPhotoThumbs();
+}
+
+// パソコンで、前後左右の行き先の写真を周りに並べる（行き先が無ければ枠を薄く、写真が無ければ「写真なし」）
+function fillPhotoThumbs() {
+  document.querySelectorAll("#photo-viewer [data-thumb]").forEach(btn => {
+    const m = photo.moves && photo.moves[btn.dataset.thumb];
+    const img = btn.querySelector("img");
+    const url = WIDE_PHOTO.matches && m && m.photo ? photo.images[`${m.from}_${m.to}`] : null;
+    if (url) img.src = url; else img.removeAttribute("src");
+    btn.classList.toggle("no-photo", !!m && !m.photo);
+  });
+}
+
+function movePhoto(name) {
+  const m = photo.moves && photo.moves[name];
+  if (m) showEdge(m.from, m.to);
+}
+
+function closePhoto() {
+  photo.from = photo.to = null;
+  photo.moves = null;
+  $("photo-viewer").hidden = true;
+  $("photo-img").removeAttribute("src");
+  disposeGroup(photoGroup);
+}
+
+// タップした場所（画面のピクセル）に一番近い線。薄く描いている線（ほかの階など）は、近くに濃い線が無いときだけ選ぶ
+function pickEdge(cx, cy) {
+  const w = window.innerWidth, h = window.innerHeight;
+  let found = null, bestScore = Infinity;
+  const toPx = v => { const p = v.clone().project(camera); return { x: (p.x + 1) / 2 * w, y: (1 - p.y) / 2 * h, z: p.z }; };
+  for (const s of edgeSegments) {
+    const a = toPx(s.pa), b = toPx(s.pb);
+    if (a.z > 1 || b.z > 1) continue;   // カメラの後ろ
+    const d = distToSegment(cx, cy, a.x, a.y, b.x, b.y);
+    const score = d + (s.dimmed ? PICK_RADIUS : 0) + (a.z + b.z);   // 同じくらい近ければ手前の線
+    if (d <= PICK_RADIUS && score < bestScore) { bestScore = score; found = s; }
+  }
+  return found;
+}
+
+// タップした線は、カメラの向きに近い方の向きで見る（その向きの写真が無く、反対向きにあれば反対向き）
+function openEdgeFromTap(e) {
+  const a = nodeById(e.from), b = nodeById(e.to);
+  const look = new THREE.Vector3().subVectors(controls.target, camera.position);
+  const d = flatDir(a, b);
+  let [from, to] = !d || d.x * look.x + d.z * look.z >= 0 ? [e.from, e.to] : [e.to, e.from];
+  if (!photo.images[`${from}_${to}`] && photo.images[`${to}_${from}`]) [from, to] = [to, from];
+  photo.heading = null;
+  showEdge(from, to);
+}
+
+async function setPhotoMode(on) {
+  photo.on = on;
+  const btn = $("photo-mode");
+  btn.classList.toggle("active", on);
+  btn.setAttribute("aria-pressed", String(on));
+  $("legend-photo").hidden = !on;
+  if (!on) {
+    closePhoto();
+    buildWorld();
+    return;
+  }
+  if (!photo.images) {
+    setStatus("写真の一覧を読み込んでいます…");
+    try {
+      const res = await fetch(`${API_BASE}/api/edge_images`);
+      photo.images = res.ok ? await res.json() : {};
+    } catch {
+      photo.images = {};
+    }
+    if (!photo.on) return;   // 読み込み中にオフにされた
+  }
+  if (!photo.adjacency) buildAdjacency();
+  buildWorld();
+  const count = Object.keys(photo.images).length;
+  setStatus(count ? "通路をタップすると、その場所の写真を表示します（水色の通路に写真があります）" : "写真の一覧を読み込めませんでした", !count, 4000);
+}
+
+function setupPhotoMode() {
+  $("photo-mode").addEventListener("click", () => setPhotoMode(!photo.on));
+  $("photo-close").addEventListener("click", closePhoto);
+  document.querySelectorAll("#photo-viewer [data-move]").forEach(btn => btn.addEventListener("click", () => movePhoto(btn.dataset.move)));
+  WIDE_PHOTO.addEventListener("change", fillPhotoThumbs);   // 窓の大きさを変えたとき
+  // パソコンでは矢印キーでも動ける（↑前へ ↓後ろへ ←→左右、PageUp/PageDown で上下の階、Escで閉じる）
+  const keys = { ArrowUp: "forward", ArrowDown: "back", ArrowLeft: "left", ArrowRight: "right", PageUp: "up", PageDown: "down" };
+  window.addEventListener("keydown", e => {
+    if ($("photo-viewer").hidden || (e.target instanceof Element && e.target.closest("select, input, textarea"))) return;
+    if (e.key === "Escape") { closePhoto(); return; }
+    if (keys[e.key]) { e.preventDefault(); movePhoto(keys[e.key]); }
+  });
 }
 
 // ---------------------------------------------------------------- 起動
@@ -836,6 +1208,7 @@ async function init() {
   state.graph = graph;
   state.config = graph.config || {};
   state.rooms = all.rooms || [];
+  state.nodeById = new Map(graph.nodes.map(n => [n.id, n]));
   for (const b of all.buildings || []) state.buildingNames[Number(b.id)] = b.display_name;
 
   // 位置合わせ（anchors.csv など）が設定されている建物だけを表示する。未設定の建物は座標が原点付近に
@@ -872,6 +1245,7 @@ async function init() {
   });
   $("show-labels").addEventListener("change", e => { state.showLabels = e.target.checked; buildWorld(); });
   $("auto-rotate").addEventListener("change", e => { controls.autoRotate = e.target.checked; });
+  setupPhotoMode();
 
   // ナビ画面と同じURLの形（?from=101&from_bldg=10&to=225&to_bldg=2）で開いたら、すぐ道順を出す
   const q = new URLSearchParams(location.search);

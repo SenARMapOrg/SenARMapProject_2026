@@ -50,6 +50,10 @@
           <label class="check"><input type="checkbox" id="show-labels" checked> 教室名</label>
           <label class="check"><input type="checkbox" id="auto-rotate"> 自動で回る</label>
         </div>
+        <div class="control-row">
+          <span class="control-label">写真</span>
+          <button type="button" class="chip photo-mode" id="photo-mode" aria-pressed="false">写真モード</button>
+        </div>
       </div>
 
       <ul class="legend">
@@ -59,12 +63,43 @@
         <li><span class="swatch escalator"></span>エスカレーター</li>
         <li><span class="swatch outdoor"></span>屋外の道</li>
         <li><span class="swatch route"></span>道順</li>
+        <li id="legend-photo" hidden><span class="swatch photo"></span>写真あり</li>
       </ul>
-      <p class="hint">ドラッグで回転、2本指・ホイールで拡大縮小、右ドラッグ（2本指でずらす）で移動。建物名をタップするとその建物に寄り、教室名を通路の左右に表示します。階を選ぶと、その階だけを見やすくします。</p>
+      <p class="hint">ドラッグで回転、2本指・ホイールで拡大縮小、右ドラッグ（2本指でずらす）で移動。建物名をタップするとその建物に寄り、教室名を通路の左右に表示します。階を選ぶと、その階だけを見やすくします。写真モードでは、通路をタップするとその場所の写真を表示し、矢印（パソコンでは周りに並ぶ前後左右の写真）で前後・左右・上下の通路へ移れます。</p>
     </div>
   </header>
 
   <div class="status" id="status">読み込み中…</div>
+
+  <section class="photo-viewer" id="photo-viewer" hidden aria-label="通路の写真">
+    <div class="photo-head">
+      <div class="photo-place">
+        <strong id="photo-title"></strong>
+        <span class="photo-rooms" id="photo-rooms"></span>
+      </div>
+      <button type="button" class="photo-close" id="photo-close" aria-label="写真を閉じる">閉じる</button>
+    </div>
+    <!-- スマートフォンでは真ん中の写真1枚（矢印で移る）、パソコンでは前後左右の写真も周りに並べる（押すとそこへ移る） -->
+    <div class="photo-grid">
+      <div class="photo-frame">
+        <img id="photo-img" alt="">
+        <p class="photo-empty" id="photo-empty" hidden></p>
+        <button type="button" class="photo-arrow forward" data-move="forward" aria-label="前へ" title="前へ（↑）"><span>▲</span></button>
+        <button type="button" class="photo-arrow back" data-move="back" aria-label="後ろへ" title="後ろへ（↓）"><span>▼</span></button>
+        <button type="button" class="photo-arrow left" data-move="left" aria-label="左へ" title="左へ（←）"><span>◀</span></button>
+        <button type="button" class="photo-arrow right" data-move="right" aria-label="右へ" title="右へ（→）"><span>▶</span></button>
+      </div>
+      <button type="button" class="photo-thumb forward" data-move="forward" data-thumb="forward" title="前へ（↑）"><img alt=""><span class="photo-thumb-label">前へ</span><span class="photo-thumb-empty">写真なし</span></button>
+      <button type="button" class="photo-thumb left" data-move="left" data-thumb="left" title="左へ（←）"><img alt=""><span class="photo-thumb-label">左へ</span><span class="photo-thumb-empty">写真なし</span></button>
+      <button type="button" class="photo-thumb right" data-move="right" data-thumb="right" title="右へ（→）"><img alt=""><span class="photo-thumb-label">右へ</span><span class="photo-thumb-empty">写真なし</span></button>
+      <button type="button" class="photo-thumb back" data-move="back" data-thumb="back" title="後ろへ（↓）"><img alt=""><span class="photo-thumb-label">後ろへ</span><span class="photo-thumb-empty">写真なし</span></button>
+    </div>
+    <div class="photo-pad">
+      <button type="button" class="photo-btn" data-move="up" title="上の階へ（PageUp）">上の階へ</button>
+      <button type="button" class="photo-btn" data-move="down" title="下の階へ（PageDown）">下の階へ</button>
+      <button type="button" class="photo-btn" data-move="flip">振り返る</button>
+    </div>
+  </section>
 
   <script src="https://cdn.jsdelivr.net/npm/three@0.137.0/build/three.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@0.137.0/examples/js/controls/OrbitControls.js"></script>
