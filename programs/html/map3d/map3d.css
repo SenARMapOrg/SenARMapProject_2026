@@ -3,8 +3,10 @@
 :root {
   --ink: #1C2333;
   --muted: #5B6476;
-  --panel: rgba(255, 255, 255, 0.9);
-  --line: rgba(28, 35, 51, 0.12);
+  --panel: #FFFFFF;
+  --line: #DDE2EA;
+  --shadow: 0 1px 2px rgba(20, 30, 50, 0.12), 0 3px 10px rgba(20, 30, 50, 0.1);
+  --photo: #3DA2DB;
   --accent: #FF7A1A;
   --accent-dark: #D95F00;
   --green: #3bab64;
@@ -38,11 +40,9 @@ body {
   max-height: calc(100vh - 24px);
   overflow-y: auto;
   background: var(--panel);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
   border: 1px solid var(--line);
-  border-radius: 14px;
-  box-shadow: 0 8px 28px rgba(20, 30, 50, 0.16);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
   padding: 12px 14px;
   z-index: 2;
 }
@@ -54,7 +54,7 @@ body {
   margin-left: auto;
   border: 1px solid var(--line);
   background: #fff;
-  border-radius: 999px;
+  border-radius: 6px;
   padding: 3px 10px;
   font-size: 12px;
   color: var(--muted);
@@ -85,7 +85,7 @@ body {
   font-weight: 700;
   font-size: 14px;
   padding: 8px 14px;
-  border-radius: 999px;
+  border-radius: 6px;
   cursor: pointer;
 }
 .btn-primary:hover { background: var(--accent-dark); }
@@ -111,7 +111,7 @@ body {
 .chip {
   border: 1px solid var(--line);
   background: #fff;
-  border-radius: 999px;
+  border-radius: 6px;
   padding: 3px 9px;
   font-size: 12px;
   cursor: pointer;
@@ -136,11 +136,11 @@ body {
   position: fixed;
   right: 12px;
   bottom: max(12px, env(safe-area-inset-bottom));
-  background: rgba(28, 35, 51, 0.82);
+  background: rgba(28, 35, 51, 0.88);
   color: #fff;
   font-size: 12px;
   padding: 6px 12px;
-  border-radius: 999px;
+  border-radius: 6px;
   z-index: 2;
   pointer-events: none;
   transition: opacity 0.4s;
@@ -153,146 +153,229 @@ body {
 }
 
 /* ---------------------------------------------------------------- 写真モード */
-.chip.photo-mode.active { background: #14B8D0; border-color: #14B8D0; color: #fff; }
-.swatch.photo { background: #14B8D0; }
+.swatch.photo { background: var(--photo); }
+
+/* 地図の上の「写真で見る」ボタン（パネルを開かなくても押せるよう、右上に常に出す） */
+.map-btn {
+  position: fixed;
+  top: max(12px, env(safe-area-inset-top));
+  right: 12px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 38px;
+  padding: 0 14px 0 11px;
+  background: #fff;
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.map-btn svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linejoin: round; }
+.map-btn:hover { background: #F4F6F9; }
+.map-btn.active { background: var(--ink); border-color: var(--ink); color: #fff; }
 
 .photo-viewer {
   position: fixed;
   right: 12px;
   bottom: max(12px, env(safe-area-inset-bottom));
-  width: min(460px, calc(100vw - 24px));
-  background: var(--panel);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  box-shadow: 0 8px 28px rgba(20, 30, 50, 0.22);
-  padding: 10px;
+  width: min(440px, calc(100vw - 24px));
+  background: #16191F;
+  border-radius: 8px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25), 0 8px 24px rgba(0, 0, 0, 0.2);
+  overflow: hidden;
   z-index: 3;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+  color: #fff;
 }
 .photo-viewer[hidden] { display: none; }
-
-.photo-head { display: flex; align-items: flex-start; gap: 8px; }
-.photo-place { display: flex; flex-direction: column; gap: 2px; min-width: 0; font-size: 14px; }
-.photo-rooms { font-size: 12px; color: var(--muted); line-height: 1.5; }
-.photo-close {
-  margin-left: auto;
-  flex: 0 0 auto;
-  border: 1px solid var(--line);
-  background: #fff;
-  border-radius: 999px;
-  padding: 3px 10px;
-  font-size: 12px;
-  color: var(--muted);
-  cursor: pointer;
-}
 
 .photo-frame {
   position: relative;
   aspect-ratio: 4 / 3;
-  background: #1C2333;
-  border-radius: 10px;
+  background: #0E1014;
   overflow: hidden;
+  touch-action: none;   /* スワイプで移るため、ブラウザのスクロールに取られないようにする */
+  user-select: none;
+  -webkit-user-select: none;
 }
-.photo-frame img { width: 100%; height: 100%; object-fit: contain; display: block; transition: opacity 0.2s; }
+.photo-frame img { width: 100%; height: 100%; object-fit: cover; display: block; transition: opacity 0.18s; -webkit-user-drag: none; }
 .photo-frame img:not([src]) { visibility: hidden; }
-.photo-frame img.loading { opacity: 0.35; }
+.photo-frame img.loading { opacity: 0.4; }
 .photo-empty {
   position: absolute;
   inset: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 0 56px;
+  padding: 0 64px;
   text-align: center;
-  color: #fff;
+  color: #C9CFD9;
   font-size: 13px;
-  line-height: 1.6;
+  line-height: 1.7;
 }
 .photo-empty[hidden] { display: none; }
 
-/* 写真の上に重ねる矢印（ストリートビューのように、行ける方向だけ押せる） */
-.photo-arrow {
+/* 写真の上に重ねる場所の名前（写真を隠しすぎないよう、上端に薄い影を敷いて白い文字で） */
+.photo-caption {
   position: absolute;
-  width: 44px;
-  height: 44px;
+  left: 0;
+  right: 0;
+  top: 0;
+  padding: 10px 52px 22px 12px;
+  background: linear-gradient(rgba(0, 0, 0, 0.62), rgba(0, 0, 0, 0));
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  pointer-events: none;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+.photo-caption strong { font-size: 15px; font-weight: 700; }
+.photo-caption span { font-size: 12px; color: #E3E7EE; }
+.photo-caption span:empty { display: none; }
+
+.photo-icon {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 34px;
+  height: 34px;
   border: none;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.88);
-  color: var(--ink);
-  font-size: 16px;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.45);
+  color: #fff;
   cursor: pointer;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
   display: flex;
   align-items: center;
   justify-content: center;
 }
-.photo-arrow:disabled { opacity: 0; pointer-events: none; }
-.photo-arrow.has-photo { box-shadow: 0 0 0 3px #14B8D0, 0 2px 8px rgba(0, 0, 0, 0.3); }
-.photo-arrow.forward { top: 10px; left: calc(50% - 22px); }
-.photo-arrow.back { bottom: 10px; left: calc(50% - 22px); }
-.photo-arrow.left { left: 10px; top: calc(50% - 22px); }
-.photo-arrow.right { right: 10px; top: calc(50% - 22px); }
+.photo-icon:hover { background: rgba(0, 0, 0, 0.7); }
+.photo-icon svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; }
 
-.photo-pad { display: flex; gap: 6px; }
+/* 行ける方向の矢印。写真のある行き先ははっきり、写真の無い行き先は控えめに */
+.photo-arrow {
+  position: absolute;
+  width: 48px;
+  height: 48px;
+  border: none;
+  background: none;
+  color: #fff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.7)) drop-shadow(0 0 6px rgba(0, 0, 0, 0.35));
+}
+.photo-arrow svg { width: 34px; height: 34px; fill: none; stroke: currentColor; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; transition: transform 0.12s; }
+.photo-arrow:hover svg { transform: scale(1.15); }
+.photo-arrow:disabled { display: none; }
+.photo-arrow:not(.has-photo) { opacity: 0.55; }
+.photo-arrow.forward { left: calc(50% - 24px); bottom: 52px; }
+.photo-arrow.back { left: calc(50% - 24px); bottom: 4px; }
+.photo-arrow.back svg { transform: rotate(180deg); }
+.photo-arrow.back:hover svg { transform: rotate(180deg) scale(1.15); }
+.photo-arrow.left { left: 4px; top: calc(50% - 24px); }
+.photo-arrow.left svg { transform: rotate(-90deg); }
+.photo-arrow.left:hover svg { transform: rotate(-90deg) scale(1.15); }
+.photo-arrow.right { right: 4px; top: calc(50% - 24px); }
+.photo-arrow.right svg { transform: rotate(90deg); }
+.photo-arrow.right:hover svg { transform: rotate(90deg) scale(1.15); }
+
+.photo-bar {
+  display: flex;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
 .photo-btn {
   flex: 1;
-  border: 1px solid var(--line);
-  background: #fff;
-  border-radius: 999px;
-  padding: 6px 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  height: 42px;
+  border: none;
+  background: none;
+  color: #E8ECF2;
+  font: inherit;
   font-size: 13px;
-  color: var(--ink);
   cursor: pointer;
 }
-.photo-btn:disabled { color: #B5BCC8; cursor: default; }
+.photo-btn + .photo-btn { border-left: 1px solid rgba(255, 255, 255, 0.08); }
+.photo-btn:hover:not(:disabled) { background: rgba(255, 255, 255, 0.07); }
+.photo-btn:disabled { color: #5D6573; cursor: default; }
+.photo-btn svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 
-/* 前後左右の写真（パソコンだけ。スマートフォンでは出さない） */
+/* 大きく表示（画面いっぱいに写真を出す） */
+.photo-viewer.expanded {
+  inset: 0;
+  width: auto;
+  border-radius: 0;
+  display: flex;
+  flex-direction: column;
+  z-index: 10;
+}
+.photo-viewer.expanded .photo-grid { flex: 1; min-height: 0; display: flex; }
+.photo-viewer.expanded .photo-frame { flex: 1; aspect-ratio: auto; }
+.photo-viewer.expanded .photo-frame img { object-fit: contain; }
+.photo-viewer.expanded .photo-thumb { display: none; }
+.photo-viewer.expanded .photo-arrow { width: 64px; height: 64px; }
+.photo-viewer.expanded .photo-arrow svg { width: 44px; height: 44px; }
+.photo-viewer.expanded .photo-arrow.forward { left: calc(50% - 32px); bottom: 76px; }
+.photo-viewer.expanded .photo-arrow.back { left: calc(50% - 32px); bottom: 12px; }
+.photo-viewer.expanded .photo-arrow.left { left: 12px; top: calc(50% - 32px); }
+.photo-viewer.expanded .photo-arrow.right { right: 12px; top: calc(50% - 32px); }
+.photo-viewer.expanded .photo-bar { padding-bottom: env(safe-area-inset-bottom); }
+
+/* 前後左右の写真（パソコンだけ） */
 .photo-thumb { display: none; }
 
 @media (min-width: 900px) and (hover: hover) and (pointer: fine) {
-  .photo-viewer { width: min(780px, calc(100vw - 380px), calc((100vh - 150px) * 1.2)); }
-  .photo-grid {
+  .photo-viewer:not(.expanded) { width: min(760px, calc(100vw - 380px), calc((100vh - 120px) * 1.2)); }
+  .photo-viewer:not(.expanded) .photo-grid {
     display: grid;
     grid-template-columns: 1fr 2.3fr 1fr;
     grid-template-areas: ". forward ." "left main right" ". back .";
     align-items: center;
     gap: 6px;
+    padding: 6px;
   }
-  .photo-frame { grid-area: main; }
-  .photo-arrow { display: none; }   /* 周りの写真を押して移る */
+  .photo-viewer:not(.expanded) .photo-frame { grid-area: main; border-radius: 4px; }
+  .photo-viewer:not(.expanded) .photo-arrow { display: none; }   /* 周りの写真を押して移る */
   .photo-thumb {
     position: relative;
     display: block;
     width: 100%;
     aspect-ratio: 4 / 3;
     padding: 0;
-    border: 2px solid transparent;
-    border-radius: 8px;
+    border: none;
+    border-radius: 4px;
     overflow: hidden;
-    background: #3A4356;
+    background: #262B34;
     cursor: pointer;
+    outline: 2px solid transparent;
+    outline-offset: -2px;
   }
   .photo-thumb.forward { grid-area: forward; width: 50%; justify-self: center; }
   .photo-thumb.back { grid-area: back; width: 50%; justify-self: center; }
   .photo-thumb.left { grid-area: left; }
   .photo-thumb.right { grid-area: right; }
-  .photo-thumb:hover:not(:disabled) { border-color: #14B8D0; }
-  .photo-thumb:disabled { opacity: 0.25; cursor: default; }
+  .photo-thumb:hover:not(:disabled) { outline-color: #fff; }
+  .photo-thumb:disabled { visibility: hidden; }
   .photo-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
   .photo-thumb img:not([src]) { visibility: hidden; }
   .photo-thumb-label {
     position: absolute;
-    left: 4px;
-    top: 4px;
-    background: rgba(28, 35, 51, 0.78);
+    left: 0;
+    right: 0;
+    bottom: 0;
+    padding: 12px 6px 4px;
+    background: linear-gradient(rgba(0, 0, 0, 0), rgba(0, 0, 0, 0.65));
     color: #fff;
-    font-size: 11px;
-    padding: 1px 7px;
-    border-radius: 999px;
+    font-size: 12px;
+    text-align: left;
   }
   .photo-thumb-empty {
     position: absolute;
@@ -300,12 +383,15 @@ body {
     display: none;
     align-items: center;
     justify-content: center;
-    color: #DDE3EC;
-    font-size: 11px;
+    color: #8A93A3;
+    font-size: 12px;
   }
   .photo-thumb.no-photo .photo-thumb-empty { display: flex; }
 }
 
 @media (max-width: 600px) {
-  .photo-viewer { left: 8px; right: 8px; width: auto; bottom: max(8px, env(safe-area-inset-bottom)); padding: 8px; }
+  /* スマートフォン: パネル（上の横いっぱい）と重ならないよう、ボタンはパネルの下に出す */
+  .map-btn { top: calc(max(10px, env(safe-area-inset-top)) + 52px); right: 10px; z-index: 1; height: 36px; font-size: 13px; }
+  .photo-viewer:not(.expanded) { left: 0; right: 0; bottom: 0; width: auto; border-radius: 10px 10px 0 0; }
+  .photo-viewer:not(.expanded) .photo-bar { padding-bottom: env(safe-area-inset-bottom); }
 }
