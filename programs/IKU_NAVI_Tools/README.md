@@ -47,6 +47,7 @@ Anaconda や別の Qt が残した `QT_PLUGIN_PATH` などの設定は、自動�
 | タブ | 引数名 | 内容 | 旧プログラム |
 |---|---|---|---|
 | マップ編集 | `map_editor` | SVGフロアマップ上でノード・エッジを入力し、経路写真を撮影する（[詳しい使い方](iku_tools/map_editor/README.md)） | `programs/Map_Editor` |
+| ID一覧 | `id_viewer` | 建物・階ごとに、今のノードとエッジを描き、ノードIDとエッジIDをクリックせずにすべて地図の上に表示する。階段・エレベーターなどほかの階へつながる線は、ノードの下に「番号 種類↑行き先の階」で出す。フロアマップ（SVG）は位置を合わせられる階だけ背景に重ね、svg_x・svg_y が無い建物は座標（x・y）と5mの方眼で描く。全体ID（建物番号×100000＋番号）への切り替え、番号での検索（`e12` でエッジ）、表での一覧、PNG での保存ができる。読み取りだけで CSV は変更しない | （新規） |
 | イベント設定 | `events` | イベントモードの検索候補（`data/event.csv`）を編集する（[詳しい使い方](iku_tools/events/README.md)） | `programs/events` |
 | ルート検証 | `route_checker` | 全教室ペア間のルートを経路探索APIから取得し、異常を検出する | `programs/Route_Checker` |
 | 画像チェック | `image_checker` | CDN 上の経路写真がエッジごとに揃っているかを確認する | `programs/Image_Checker` |
@@ -77,6 +78,7 @@ IKU_NAVI_Tools/
 │   ├── app.py           # タブで各ツールを切り替えるメインウィンドウ（タブの並びは TOOLS）
 │   ├── common/          # 各ツールが共有する部品（データの場所・APIアクセス・配色・表示名）
 │   ├── map_editor/      # 各ツール。どれも window.py の MainWindow がタブの中身になる
+│   ├── id_viewer/       # ID一覧（data.py が CSV の読み込みと SVG の位置合わせ、window.py が画面）
 │   ├── events/
 │   ├── route_checker/
 │   ├── image_checker/
@@ -103,4 +105,4 @@ pytest programs/IKU_NAVI_Tools/tests
 ```
 
 全タブが読み込めること、タブの切り替え・前回のタブの復元、読み込めないタブがあっても他が使えること、
-未保存のタブがあるときに閉じないこと、SVG座標取得の基本操作を確認している。
+未保存のタブがあるときに閉じないこと、SVG座標取得・ID一覧の基本操作を確認している。
