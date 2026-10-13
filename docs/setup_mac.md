@@ -5,7 +5,7 @@ Apple シリコン（M1〜）・Intel のどちらの Mac でも同じ手順で�
 
 | プログラム | 場所 | 使う依存ファイル | 用途 |
 |---|---|---|---|
-| IKU NAVI ツール | `programs/IKU_NAVI_Tools` | `requirements.txt` | マップ編集・イベント設定・ルート検証・画像チェック・画像リネーム・人物ぼかし・SVG座標取得（デスクトップアプリ） |
+| IKU NAVI ツール | `programs/IKU_NAVI_Tools` | `requirements.txt` | マップ編集・ID一覧・イベント設定・ルート検証・画像チェック・画像リネーム・人物ぼかし・SVG座標取得（デスクトップアプリ） |
 | 経路探索API | `programs/3D_Graph` | `requirements.txt`（テストもするなら `requirements-dev.txt`） | ナビの経路探索。ルート検証・画像チェックのタブもこれを使う |
 | シラバス取得 | `programs/syllabus_courses` | `requirements.txt` | 時間割共有の科目データを作る |
 | 時間割共有 | `programs/timetables` | `package.json`（Node.js） | Web アプリ（Python ではない。[最後の章](#7-時間割共有nodejs)を参照） |
@@ -83,8 +83,8 @@ API を動かすだけなら `programs/3D_Graph/requirements.txt`、シラバス
 source programs/IKU_NAVI_Tools/.venv/bin/activate
 cd programs/IKU_NAVI_Tools
 python main.py                 # 前回開いていたタブで起動
-python main.py route_checker   # タブを指定して起動（map_editor / events / route_checker / image_checker /
-                               #   image_renamer / human_remover / svg_pointer）
+python main.py route_checker   # タブを指定して起動（map_editor / id_viewer / events / route_checker /
+                               #   image_checker / image_renamer / human_remover / svg_pointer）
 ```
 
 ルート検証・画像チェックのタブは経路探索API（`http://localhost:5001`）を使うので、
