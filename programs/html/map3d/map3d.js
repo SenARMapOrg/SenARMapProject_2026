@@ -791,6 +791,7 @@ function resize() {
   renderer.setSize(w, h, false);
   camera.aspect = w / h;
   camera.updateProjectionMatrix();
+  updateViewOffset();
 }
 
 // 建物名の札をタップしたら、その建物に寄る（ドラッグとは区別する）
@@ -804,7 +805,7 @@ canvas.addEventListener("pointerup", e => {
   const hit = raycaster.intersectObjects(clickTargets)[0];
   if (hit) { focusBuilding(hit.object.userData.building); return; }
   if (photo.on) {
-    const seg = pickEdge(e.clientX, e.clientY);
+    const seg = pickEdge(e.clientX, e.clientY, e.pointerType === "mouse" ? PICK_RADIUS.mouse : PICK_RADIUS.touch);
     if (seg) openEdgeFromTap(seg.e);
   }
 });
@@ -846,7 +847,9 @@ const photo = {
 };
 const STRAIGHT_LIMIT = 60;      // 前へ・後ろへで「まっすぐ」とみなす曲がりの角度（度）
 const TURN_RANGE = [30, 150];   // 左・右とみなす曲がりの角度（度）
-const PICK_RADIUS = 22;         // タップした場所から何ピクセル以内の線を選ぶか
+const PICK_RADIUS = { mouse: 16, touch: 30 };   // タップした場所から何ピクセル以内の線を選ぶか（指はマウスより大きく取る）
+const PICK_NO_PHOTO = 10;       // 写真の無い線は、この分だけ遠いものとして選ぶ（写真のある通路を選びやすくする）
+const SWIPE_MIN = 40;           // 写真の上で何ピクセル以上指を動かしたら、スワイプとして移るか
 // パソコン（広い画面でマウスを使う）では、前後左右の写真も周りに並べる。スマートフォンでは真ん中の1枚だけ
 // （通信量を抑えるため、周りの写真はパソコンのときだけ読む）。map3d.css の同じ条件と合わせる
 const WIDE_PHOTO = window.matchMedia("(min-width: 900px) and (hover: hover) and (pointer: fine)");
@@ -1088,6 +1091,7 @@ function showEdge(from, to, { fly = true } = {}) {
     if (m && m.photo) new Image().src = photo.images[`${m.from}_${m.to}`];
   });
   fillPhotoThumbs();
+  updateViewOffset();
 }
 
 // パソコンで、前後左右の行き先の写真を周りに並べる（行き先が無ければ枠を薄く、写真が無ければ「写真なし」）
@@ -1095,7 +1099,8 @@ function fillPhotoThumbs() {
   document.querySelectorAll("#photo-viewer [data-thumb]").forEach(btn => {
     const m = photo.moves && photo.moves[btn.dataset.thumb];
     const img = btn.querySelector("img");
-    const url = WIDE_PHOTO.matches && m && m.photo ? photo.images[`${m.from}_${m.to}`] : null;
+    const show = WIDE_PHOTO.matches && !$("photo-viewer").classList.contains("expanded");   // 大きく表示中は並べない
+    const url = show && m && m.photo ? photo.images[`${m.from}_${m.to}`] : null;
     if (url) img.src = url; else img.removeAttribute("src");
     btn.classList.toggle("no-photo", !!m && !m.photo);
   });
@@ -1106,16 +1111,35 @@ function movePhoto(name) {
   if (m) showEdge(m.from, m.to);
 }
 
+// スマートフォンでは写真が画面の下半分を覆うので、そのあいだは3Dの中心を写真より上の見えている部分に寄せる
+// （見ている通路の目印が写真の裏に隠れないように）
+function updateViewOffset() {
+  const w = window.innerWidth, h = window.innerHeight, v = $("photo-viewer");
+  const cover = !v.hidden && !v.classList.contains("expanded") && w <= 600 ? v.getBoundingClientRect().height : 0;
+  if (cover) camera.setViewOffset(w, h, 0, cover / 2, w, h); else camera.clearViewOffset();
+}
+
+function setPhotoExpanded(on) {
+  $("photo-viewer").classList.toggle("expanded", on);
+  $("photo-expand").setAttribute("aria-pressed", String(on));
+  $("photo-expand-label").textContent = on ? "小さく" : "大きく";
+  fillPhotoThumbs();
+  updateViewOffset();
+}
+
 function closePhoto() {
   photo.from = photo.to = null;
   photo.moves = null;
+  setPhotoExpanded(false);
   $("photo-viewer").hidden = true;
   $("photo-img").removeAttribute("src");
+  updateViewOffset();
   disposeGroup(photoGroup);
 }
 
-// タップした場所（画面のピクセル）に一番近い線。薄く描いている線（ほかの階など）は、近くに濃い線が無いときだけ選ぶ
-function pickEdge(cx, cy) {
+// タップした場所（画面のピクセル）に一番近い線。薄く描いている線（ほかの階など）は近くに濃い線が無いときだけ、
+// 写真の無い線は近くに写真のある線が無いときだけ選ぶ
+function pickEdge(cx, cy, radius = PICK_RADIUS.mouse) {
   const w = window.innerWidth, h = window.innerHeight;
   let found = null, bestScore = Infinity;
   const toPx = v => { const p = v.clone().project(camera); return { x: (p.x + 1) / 2 * w, y: (1 - p.y) / 2 * h, z: p.z }; };
@@ -1123,8 +1147,8 @@ function pickEdge(cx, cy) {
     const a = toPx(s.pa), b = toPx(s.pb);
     if (a.z > 1 || b.z > 1) continue;   // カメラの後ろ
     const d = distToSegment(cx, cy, a.x, a.y, b.x, b.y);
-    const score = d + (s.dimmed ? PICK_RADIUS : 0) + (a.z + b.z);   // 同じくらい近ければ手前の線
-    if (d <= PICK_RADIUS && score < bestScore) { bestScore = score; found = s; }
+    const score = d + (s.dimmed ? radius : 0) + (hasPhoto(s.e.from, s.e.to) ? 0 : PICK_NO_PHOTO) + (a.z + b.z);   // 同じくらい近ければ手前の線
+    if (d <= radius && score < bestScore) { bestScore = score; found = s; }
   }
   return found;
 }
@@ -1145,6 +1169,7 @@ async function setPhotoMode(on) {
   const btn = $("photo-mode");
   btn.classList.toggle("active", on);
   btn.setAttribute("aria-pressed", String(on));
+  $("photo-mode-label").textContent = on ? "写真モードを終える" : "写真で見る";
   $("legend-photo").hidden = !on;
   if (!on) {
     closePhoto();
@@ -1164,19 +1189,41 @@ async function setPhotoMode(on) {
   if (!photo.adjacency) buildAdjacency();
   buildWorld();
   const count = Object.keys(photo.images).length;
-  setStatus(count ? "通路をタップすると、その場所の写真を表示します（水色の通路に写真があります）" : "写真の一覧を読み込めませんでした", !count, 4000);
+  // 全体を見ているときは、写真のある通路が見えるところまで寄る（細い通路を遠くからタップするのは難しいため）
+  if (count && state.focus === null && !state.route) {
+    const points = edgeSegments.filter(sg => hasPhoto(sg.e.from, sg.e.to)).flatMap(sg => [sg.pa, sg.pb]);
+    if (points.length) fitTo(points, 0.9);
+  }
+  setStatus(count ? "水色の通路をタップすると、その場所の写真が出ます" : "写真の一覧を読み込めませんでした", !count, 4000);
 }
 
 function setupPhotoMode() {
   $("photo-mode").addEventListener("click", () => setPhotoMode(!photo.on));
   $("photo-close").addEventListener("click", closePhoto);
+  $("photo-expand").addEventListener("click", () => setPhotoExpanded(!$("photo-viewer").classList.contains("expanded")));
+  // 写真の上でスワイプしても移れる（指を左へ動かすと右を向く、上へ動かすと前へ進む）
+  const frame = $("photo-frame");
+  let swipe = null;
+  frame.addEventListener("pointerdown", e => { swipe = e.target.closest("button") ? null : { x: e.clientX, y: e.clientY }; });
+  frame.addEventListener("pointercancel", () => { swipe = null; });
+  frame.addEventListener("pointerup", e => {
+    if (!swipe) return;
+    const dx = e.clientX - swipe.x, dy = e.clientY - swipe.y;
+    swipe = null;
+    if (Math.max(Math.abs(dx), Math.abs(dy)) < SWIPE_MIN) return;
+    if (Math.abs(dx) > Math.abs(dy)) movePhoto(dx < 0 ? "right" : "left");
+    else movePhoto(dy < 0 ? "forward" : "back");
+  });
   document.querySelectorAll("#photo-viewer [data-move]").forEach(btn => btn.addEventListener("click", () => movePhoto(btn.dataset.move)));
   WIDE_PHOTO.addEventListener("change", fillPhotoThumbs);   // 窓の大きさを変えたとき
   // パソコンでは矢印キーでも動ける（↑前へ ↓後ろへ ←→左右、PageUp/PageDown で上下の階、Escで閉じる）
   const keys = { ArrowUp: "forward", ArrowDown: "back", ArrowLeft: "left", ArrowRight: "right", PageUp: "up", PageDown: "down" };
   window.addEventListener("keydown", e => {
     if ($("photo-viewer").hidden || (e.target instanceof Element && e.target.closest("select, input, textarea"))) return;
-    if (e.key === "Escape") { closePhoto(); return; }
+    if (e.key === "Escape") {
+      if ($("photo-viewer").classList.contains("expanded")) setPhotoExpanded(false); else closePhoto();
+      return;
+    }
     if (keys[e.key]) { e.preventDefault(); movePhoto(keys[e.key]); }
   });
 }

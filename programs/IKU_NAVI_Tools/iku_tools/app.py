@@ -39,6 +39,7 @@ class ToolSpec:
 # タブの並び。データを作る流れ（地図の入力 → イベント → 検証 → 写真）の順にしている
 TOOLS: tuple[ToolSpec, ...] = (
     ToolSpec("map_editor", "マップ編集", "SVGフロアマップ上でノード・エッジ・経路写真を入力する"),
+    ToolSpec("id_viewer", "ID一覧", "建物・階ごとに、ノードIDとエッジIDをすべて地図の上に表示する（読み取りだけ）"),
     ToolSpec("events", "イベント設定", "イベントモードの検索候補（data/event.csv）を編集する"),
     ToolSpec("route_checker", "ルート検証", "全教室ペア間のルートを取得して異常を検出する"),
     ToolSpec("image_checker", "画像チェック", "CDN 上の経路写真の有無をエッジごとに確認する"),
