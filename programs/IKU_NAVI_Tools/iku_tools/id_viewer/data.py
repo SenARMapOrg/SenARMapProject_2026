@@ -21,7 +21,7 @@ from ..common.paths import DATA_DIR, SVG_DIR, building_dir
 
 ID_OFFSET = 100_000      # 全体ID = 建物番号 × 100000 + 番号（programs/3D_Graph/ikunavi/config.py の ID_OFFSET と同じ）
 SCALE = 20.0             # 画面の座標で 1m を何単位で描くか
-SVG_FIT_LIMIT = 2.0      # 位置合わせのずれ（m、二乗平均）がこれより大きければ、SVG を重ねない
+SVG_FIT_LIMIT = 3.0      # 位置合わせのずれ（m、二乗平均）がこれより大きければ、SVG を重ねない
 
 NODE_TYPE_LABELS = {1: "通常", 2: "出入口"}
 EDGE_TYPE_LABELS = {
