@@ -14,10 +14,10 @@ def _error_text(window, index):
     return err.toPlainText() if err else None
 
 
-def test_タブは7つで決まった順に並ぶ(make_window):
+def test_タブは8つで決まった順に並ぶ(make_window):
     w = make_window()
     assert [w._tabs.tabText(i) for i in range(w._tabs.count())] == [t.label for t in TOOLS]
-    assert TOOL_KEYS == ("map_editor", "events", "route_checker", "image_checker",
+    assert TOOL_KEYS == ("map_editor", "id_viewer", "events", "route_checker", "image_checker",
                          "image_renamer", "human_remover", "svg_pointer")
 
 

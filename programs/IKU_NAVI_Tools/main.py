@@ -7,7 +7,7 @@
     python main.py route_checker   # 指定したタブで起動
     python main.py --doctor        # 起動しないときの環境診断（表示をそのまま相談相手に送る）
 
-タブ: map_editor / events / route_checker / image_checker / image_renamer / human_remover / svg_pointer
+タブ: map_editor / id_viewer / events / route_checker / image_checker / image_renamer / human_remover / svg_pointer
 """
 
 from __future__ import annotations
