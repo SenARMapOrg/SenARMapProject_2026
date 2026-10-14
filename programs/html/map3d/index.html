@@ -72,39 +72,46 @@
     <span id="photo-mode-label">写真で見る</span>
   </button>
 
-  <!-- 通路の写真。スマートフォンは写真1枚と矢印（スワイプでも移れる）、パソコンは前後左右の行き先の写真も周りに並べる -->
-  <section class="photo-viewer" id="photo-viewer" hidden aria-label="通路の写真">
-    <div class="photo-grid">
-      <div class="photo-frame" id="photo-frame">
-        <img id="photo-img" alt="">
-        <p class="photo-empty" id="photo-empty" hidden></p>
-        <div class="photo-caption">
-          <strong id="photo-title"></strong>
-          <span id="photo-rooms"></span>
-        </div>
-        <button type="button" class="photo-icon photo-close" id="photo-close" aria-label="写真を閉じる" title="閉じる（Esc）">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
-        </button>
-        <button type="button" class="photo-arrow forward" data-move="forward" aria-label="前へ" title="前へ（↑）"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 15.5l7-7 7 7"/></svg></button>
-        <button type="button" class="photo-arrow back" data-move="back" aria-label="後ろへ" title="後ろへ（↓）"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 15.5l7-7 7 7"/></svg></button>
-        <button type="button" class="photo-arrow left" data-move="left" aria-label="左へ" title="左へ（←）"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 15.5l7-7 7 7"/></svg></button>
-        <button type="button" class="photo-arrow right" data-move="right" aria-label="右へ" title="右へ（→）"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 15.5l7-7 7 7"/></svg></button>
+  <!-- 写真を見る画面。地図とは別のページのように画面いっぱいに出し、地図は左下に小さく出す。
+       ブラウザの「戻る」・左上のボタン・小さな地図のタップで地図に戻る。URL（#photo=from_to）で場所を共有できる -->
+  <section class="pv" id="photo-viewer" hidden aria-label="通路の写真">
+    <div class="pv-stage" id="photo-frame">
+      <img id="photo-img" alt="">
+      <p class="pv-empty" id="photo-empty" hidden></p>
+      <button type="button" class="photo-arrow forward" data-move="forward" aria-label="前へ" title="前へ（↑）"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 15.5l7-7 7 7"/></svg></button>
+      <button type="button" class="photo-arrow back" data-move="back" aria-label="後ろへ" title="後ろへ（↓）"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 15.5l7-7 7 7"/></svg></button>
+      <button type="button" class="photo-arrow left" data-move="left" aria-label="左へ" title="左へ（←）"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 15.5l7-7 7 7"/></svg></button>
+      <button type="button" class="photo-arrow right" data-move="right" aria-label="右へ" title="右へ（→）"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 15.5l7-7 7 7"/></svg></button>
+    </div>
+
+    <header class="pv-top">
+      <button type="button" class="pv-back" id="photo-close" title="地図に戻る（Esc）">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg><span>地図</span>
+      </button>
+      <div class="pv-place">
+        <strong id="photo-title"></strong>
+        <span id="photo-rooms"></span>
       </div>
-      <button type="button" class="photo-thumb forward" data-move="forward" data-thumb="forward" title="前へ（↑）"><img alt=""><span class="photo-thumb-label">前へ</span><span class="photo-thumb-empty">写真なし</span></button>
-      <button type="button" class="photo-thumb left" data-move="left" data-thumb="left" title="左へ（←）"><img alt=""><span class="photo-thumb-label">左へ</span><span class="photo-thumb-empty">写真なし</span></button>
-      <button type="button" class="photo-thumb right" data-move="right" data-thumb="right" title="右へ（→）"><img alt=""><span class="photo-thumb-label">右へ</span><span class="photo-thumb-empty">写真なし</span></button>
-      <button type="button" class="photo-thumb back" data-move="back" data-thumb="back" title="後ろへ（↓）"><img alt=""><span class="photo-thumb-label">後ろへ</span><span class="photo-thumb-empty">写真なし</span></button>
+    </header>
+
+    <nav class="pv-bar" aria-label="階の移動と向き">
+      <button type="button" class="pv-btn" data-move="up" title="上の階へ（PageUp）">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V6M6.5 11.5L12 6l5.5 5.5"/></svg><span>上の階</span></button>
+      <button type="button" class="pv-btn" data-move="down" title="下の階へ（PageDown）">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v13M6.5 12.5L12 18l5.5-5.5"/></svg><span>下の階</span></button>
+      <button type="button" class="pv-btn" data-move="flip" title="反対向きを見る">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12a7 7 0 1 0 2.05-4.95M5 4v4h4"/></svg><span>振り返る</span></button>
+    </nav>
+
+    <!-- パソコンだけ: 行き先の写真（押すとそこへ移る） -->
+    <div class="pv-thumbs" aria-label="行き先の写真">
+        <button type="button" class="pv-thumb" data-move="forward" data-thumb="forward" title="前へ（↑）"><img alt=""><span class="pv-thumb-label">前へ</span><span class="pv-thumb-empty">写真なし</span></button>
+        <button type="button" class="pv-thumb" data-move="left" data-thumb="left" title="左へ（←）"><img alt=""><span class="pv-thumb-label">左へ</span><span class="pv-thumb-empty">写真なし</span></button>
+        <button type="button" class="pv-thumb" data-move="right" data-thumb="right" title="右へ（→）"><img alt=""><span class="pv-thumb-label">右へ</span><span class="pv-thumb-empty">写真なし</span></button>
+        <button type="button" class="pv-thumb" data-move="back" data-thumb="back" title="後ろへ（↓）"><img alt=""><span class="pv-thumb-label">後ろへ</span><span class="pv-thumb-empty">写真なし</span></button>
     </div>
-    <div class="photo-bar">
-      <button type="button" class="photo-btn" data-move="up" title="上の階へ（PageUp）">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V6M6.5 11.5L12 6l5.5 5.5"/></svg>上の階</button>
-      <button type="button" class="photo-btn" data-move="down" title="下の階へ（PageDown）">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v13M6.5 12.5L12 18l5.5-5.5"/></svg>下の階</button>
-      <button type="button" class="photo-btn" data-move="flip" title="反対向きを見る">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12a7 7 0 1 0 2.05-4.95M5 4v4h4"/></svg>振り返る</button>
-      <button type="button" class="photo-btn photo-expand" id="photo-expand" aria-pressed="false" title="大きく表示">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg><span id="photo-expand-label">大きく</span></button>
-    </div>
+
+    <span class="pv-mini-label" aria-hidden="true">地図に戻る</span>
   </section>
 
   <script src="https://cdn.jsdelivr.net/npm/three@0.137.0/build/three.min.js"></script>
