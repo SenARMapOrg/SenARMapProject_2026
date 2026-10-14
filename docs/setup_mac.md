@@ -10,6 +10,15 @@ Apple シリコン（M1〜）・Intel のどちらの Mac でも同じ手順で�
 | シラバス取得 | `programs/syllabus_courses` | `requirements.txt` | 時間割共有の科目データを作る |
 | 時間割共有 | `programs/timetables` | `package.json`（Node.js） | Web アプリ（Python ではない。[最後の章](#7-時間割共有nodejs)を参照） |
 
+
+> **IKU NAVI ツールだけ使うなら**、ターミナルで次の1行を実行すれば、Python・ライブラリのインストールから起動まで
+> 自動で行う（2回目からも同じ1行で起動。デスクトップの「IKU NAVI ツール.command」のダブルクリックでも起動できる）。
+> 詳しくは programs/IKU_NAVI_Tools/README.md の「かんたんインストール・起動」。
+>
+> ```bash
+> curl -fsSL https://cdn.iku-navi.net/tools/install.sh | bash
+> ```
+
 ## 1. Homebrew と Python を入れる（初回のみ）
 
 「ターミナル」アプリを開いて、以下を1行ずつ実行する。

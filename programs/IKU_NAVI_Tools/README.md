@@ -1,9 +1,34 @@
 # IKU NAVI ツール
 
-IKU NAVI のデータ作成・検証に使うデスクトップアプリ（PyQt6）。以前は別々のプログラムだった7つのツールを、
+IKU NAVI のデータ作成・検証に使うデスクトップアプリ（PyQt6）。以前は別々のプログラムだったツールを、
 1つのアプリにまとめ、画面上部のタブで切り替えて使う。
 
-## 起動方法
+## かんたんインストール・起動（Mac）
+
+ターミナルに次の1行を貼って Enter を押すだけで、リポジトリの取得（無ければ）・Python・ライブラリの
+インストールから起動までを行う。2回目からも同じ1行で起動できる（入っているものは飛ばすので速い）。
+
+```bash
+curl -fsSL https://cdn.iku-navi.net/tools/install.sh | bash
+```
+
+- リポジトリは `~/GitHub/SenARMapProject_2026` を使う（無ければ clone する）。main にいて変更が無ければ最新にし、
+  作業中のブランチや変更には触らない。別の場所なら `… | bash -s -- --repo <場所>`
+- Python 3.13 が無ければ Homebrew で入れる（Homebrew が無ければ Mac に最初からある Python 3.9 を使う）
+- `programs/IKU_NAVI_Tools/.venv` に入れる。ライブラリは `requirements.txt` が変わったときだけ入れ直す
+- デスクトップに「IKU NAVI ツール.command」を作る。次からはこれをダブルクリックしても起動できる
+- 人物ぼかしを使わないなら `… | bash -s -- --lite`（約1GB の ultralytics・PyTorch を入れない）。
+  ほかに `--no-launch`（入れるだけ）・`--no-shortcut`（デスクトップに作らない）
+- 起動できないと分かったときは、環境診断（`--doctor`）の結果を出して止まる
+
+中身は [install.sh](install.sh)。変えたら、R2 の `iku-navi-image` バケット（`cdn.iku-navi.net`）に上げ直す:
+
+```bash
+npx wrangler r2 object put iku-navi-image/tools/install.sh --file programs/IKU_NAVI_Tools/install.sh \
+  --content-type "text/x-shellscript; charset=utf-8" --cache-control "no-cache" --remote
+```
+
+## 起動方法（手動）
 
 ```bash
 cd programs/IKU_NAVI_Tools
@@ -73,6 +98,7 @@ Anaconda や別の Qt が残した `QT_PLUGIN_PATH` などの設定は、自動�
 ```
 IKU_NAVI_Tools/
 ├── main.py              # 起動スクリプト
+├── install.sh           # かんたんインストール・起動（curl … | bash。R2 に置いて配る）
 ├── requirements.txt     # 全タブ分の依存
 ├── iku_tools/
 │   ├── app.py           # タブで各ツールを切り替えるメインウィンドウ（タブの並びは TOOLS）
