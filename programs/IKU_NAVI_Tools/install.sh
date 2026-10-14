@@ -215,24 +215,16 @@ is_repo() {
   [ -f "$1/programs/IKU_NAVI_Tools/main.py" ]
 }
 
-# リポジトリを探して、見つかった場所を出す（無ければ空）。まず決まった場所（$1）、次によく置かれる場所、
-# 最後にホームの下を4階層まで探す（ライブラリ・隠しフォルダ・node_modules は見ない）。
-# Git で取ってきたものを、zip を展開したもの（SenARMapProject_2026-main など）より優先する
+# リポジトリを探して、見つかった場所を出す（無ければ空）。まず決まった場所（$1）、次によく置かれる場所だけを見る
+# （ホームの下を広く探すと時間がかかるので、そこまではしない）
 find_repo() {
-  local d found=""
+  local d
   is_repo "$1" && { echo "$1"; return 0; }
   for d in GitHub Github github Desktop Documents Downloads Developer Projects dev src "" Documents/GitHub Desktop/GitHub; do
     d="$HOME/${d:+$d/}SenARMapProject_2026"
     is_repo "$d" && { echo "$d"; return 0; }
   done
-  while IFS= read -r d; do
-    if is_repo "$d"; then
-      if [ -d "$d/.git" ]; then echo "$d"; return 0; fi
-      [ -z "$found" ] && found="$d"
-    fi
-  done < <(find "$HOME" -maxdepth 4 \( -name Library -o -name node_modules -o -name '.*' \) -prune \
-             -o -type d -name 'SenARMapProject_2026*' -print 2>/dev/null)
-  echo "$found"
+  echo ""
 }
 
 # 指定した版の python3.X を探して、見つかった最初のものを出す。"any" なら python3 でも、3.9 以上ならよい

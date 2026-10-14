@@ -12,8 +12,8 @@ IKU NAVI のデータ作成・検証に使うデスクトップアプリ（PyQt6
 curl -fsSL https://cdn.iku-navi.net/tools/install.sh | bash
 ```
 
-- リポジトリは `~/GitHub/SenARMapProject_2026` のほか、デスクトップ・書類・ダウンロードなどよく置かれる場所と、
-  ホームの下（4階層まで）を探して使う。どこにも無ければ `~/GitHub/SenARMapProject_2026` に clone する
+- リポジトリは `~/GitHub/SenARMapProject_2026` のほか、デスクトップ・書類・ダウンロードなどよく置かれる場所を
+  探して使う。どこにも無ければ `~/GitHub/SenARMapProject_2026` に clone する
   （`~/GitHub` が無ければ作る）。main にいて変更が無ければ最新にし、作業中のブランチや変更には触らない。
   場所を決めるときは `… | bash -s -- --repo <場所>`
 - Python 3.13 が無ければ Homebrew で入れる（Homebrew が無ければ Mac に最初からある Python 3.9 を使う）
