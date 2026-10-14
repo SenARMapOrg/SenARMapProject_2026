@@ -9,7 +9,9 @@
 # 「IKU NAVI ツール.command」をダブルクリックしても起動できる。
 #
 # やること:
-#   1. リポジトリ（~/GitHub/SenARMapProject_2026）が無ければ clone する。main にいて変更が無ければ最新にする
+#   1. リポジトリを探す（~/GitHub のほか、デスクトップ・書類・ダウンロードなど、よく置かれる場所も探す）。
+#      どこにも無ければ ~/GitHub/SenARMapProject_2026 に clone する（~/GitHub が無ければ作る）。
+#      main にいて変更が無ければ最新にする
 #   2. Python 3.13 が無ければ Homebrew で入れる（Homebrew が無ければ、Mac に最初からある Python 3.9 を使う）
 #   3. programs/IKU_NAVI_Tools/.venv を作り、requirements.txt を入れる（requirements.txt が変わったときだけ入れ直す）
 #   4. デスクトップに起動用のファイルを作り、ツールを起動する
@@ -18,7 +20,7 @@
 #   --lite         人物ぼかし（ultralytics・PyTorch、約1GB）を入れない。ほかのタブは使える
 #   --no-launch    入れるだけで起動しない
 #   --no-shortcut  デスクトップに起動用のファイルを作らない
-#   --repo <場所>  リポジトリの場所（既定: ~/GitHub/SenARMapProject_2026。環境変数 IKU_REPO でも指定できる）
+#   --repo <場所>  リポジトリの場所を決める（探さない。環境変数 IKU_REPO でも指定できる）
 #
 # 配布（管理者向け）: このファイルを変えたら、R2 の iku-navi-image バケットに上げ直す（README 参照）
 #   npx wrangler r2 object put iku-navi-image/tools/install.sh --file programs/IKU_NAVI_Tools/install.sh \
@@ -31,7 +33,8 @@ main() {
   set -euo pipefail
 
   local REPO_URL="https://github.com/SenARMapOrg/SenARMapProject_2026.git"
-  local REPO="${IKU_REPO:-$HOME/GitHub/SenARMapProject_2026}"
+  local DEFAULT_REPO="$HOME/GitHub/SenARMapProject_2026"
+  local REPO="${IKU_REPO:-}"
   local LITE=0 LAUNCH=1 SHORTCUT=1
 
   while [ $# -gt 0 ]; do
@@ -58,9 +61,24 @@ main() {
   # ---------------------------------------------------------------- 1. リポジトリ
   step "1/4 リポジトリを確認しています"
   command -v git >/dev/null 2>&1 || die "git がありません。Mac なら「xcode-select --install」を実行してから、もう一度この1行を実行してください。"
-  if [ ! -d "$REPO/.git" ]; then
-    info "$REPO が無いので、GitHub から取ってきます（数分かかります）"
-    mkdir -p "$(dirname "$REPO")"
+  if [ -z "$REPO" ]; then
+    REPO="$(find_repo "$DEFAULT_REPO")"
+    if [ -n "$REPO" ] && [ "$REPO" != "$DEFAULT_REPO" ]; then
+      ok "リポジトリが見つかりました: $REPO"
+    fi
+  fi
+  if [ -z "$REPO" ]; then
+    REPO="$DEFAULT_REPO"
+    if [ -e "$REPO" ]; then
+      die "$REPO はありますが、中身が IKU NAVI のリポジトリではありません。別の場所に置くときは「… | bash -s -- --repo <場所>」で指定してください。"
+    fi
+    info "リポジトリが見つからないので、$REPO に GitHub から取ってきます（数分かかります）"
+    mkdir -p "$(dirname "$REPO")" || die "$(dirname "$REPO") を作れませんでした。"
+    git clone --quiet "$REPO_URL" "$REPO" </dev/null || die "clone できませんでした。ネットにつながっているか確かめてください。"
+    ok "$REPO に取ってきました"
+  elif [ ! -e "$REPO" ]; then
+    info "$REPO に GitHub から取ってきます（数分かかります）"
+    mkdir -p "$(dirname "$REPO")" || die "$(dirname "$REPO") を作れませんでした。"
     git clone --quiet "$REPO_URL" "$REPO" </dev/null || die "clone できませんでした。ネットにつながっているか確かめてください。"
   fi
   local TOOLS="$REPO/programs/IKU_NAVI_Tools"
@@ -69,7 +87,9 @@ main() {
   # main にいて変更が無いときだけ最新にする（作業中のブランチや変更には触らない）
   local BRANCH
   BRANCH="$(git -C "$REPO" rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")"
-  if [ "$BRANCH" = "main" ] && [ -z "$(git -C "$REPO" status --porcelain --untracked-files=no 2>/dev/null)" ]; then
+  if [ ! -d "$REPO/.git" ]; then
+    warn "Git で取ってきたフォルダではない（zip を展開したもの など）ため、最新にはしません"
+  elif [ "$BRANCH" = "main" ] && [ -z "$(git -C "$REPO" status --porcelain --untracked-files=no 2>/dev/null)" ]; then
     if git -C "$REPO" pull --ff-only --quiet </dev/null 2>/dev/null; then
       ok "最新の main にしました"
     else
@@ -188,6 +208,31 @@ load_brew() {
     fi
   done
   return 0
+}
+
+# IKU NAVI のリポジトリ（programs/IKU_NAVI_Tools/main.py がある）か
+is_repo() {
+  [ -f "$1/programs/IKU_NAVI_Tools/main.py" ]
+}
+
+# リポジトリを探して、見つかった場所を出す（無ければ空）。まず決まった場所（$1）、次によく置かれる場所、
+# 最後にホームの下を4階層まで探す（ライブラリ・隠しフォルダ・node_modules は見ない）。
+# Git で取ってきたものを、zip を展開したもの（SenARMapProject_2026-main など）より優先する
+find_repo() {
+  local d found=""
+  is_repo "$1" && { echo "$1"; return 0; }
+  for d in GitHub Github github Desktop Documents Downloads Developer Projects dev src "" Documents/GitHub Desktop/GitHub; do
+    d="$HOME/${d:+$d/}SenARMapProject_2026"
+    is_repo "$d" && { echo "$d"; return 0; }
+  done
+  while IFS= read -r d; do
+    if is_repo "$d"; then
+      if [ -d "$d/.git" ]; then echo "$d"; return 0; fi
+      [ -z "$found" ] && found="$d"
+    fi
+  done < <(find "$HOME" -maxdepth 4 \( -name Library -o -name node_modules -o -name '.*' \) -prune \
+             -o -type d -name 'SenARMapProject_2026*' -print 2>/dev/null)
+  echo "$found"
 }
 
 # 指定した版の python3.X を探して、見つかった最初のものを出す。"any" なら python3 でも、3.9 以上ならよい
