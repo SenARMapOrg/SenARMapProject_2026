@@ -787,11 +787,11 @@ function fillBuildingChips() {
 }
 
 function resize() {
-  const w = window.innerWidth, h = window.innerHeight;
+  // 写真を見ている間はキャンバスが左下の小さな地図になるので、窓ではなくキャンバス自身の大きさに合わせる
+  const w = canvas.clientWidth || window.innerWidth, h = canvas.clientHeight || window.innerHeight;
   renderer.setSize(w, h, false);
   camera.aspect = w / h;
   camera.updateProjectionMatrix();
-  updateViewOffset();
 }
 
 // 建物名の札をタップしたら、その建物に寄る（ドラッグとは区別する）
@@ -800,7 +800,9 @@ let pointerDown = null;
 canvas.addEventListener("pointerdown", e => { pointerDown = { x: e.clientX, y: e.clientY }; });
 canvas.addEventListener("pointerup", e => {
   if (!pointerDown || Math.hypot(e.clientX - pointerDown.x, e.clientY - pointerDown.y) > 6) return;
-  const ndc = new THREE.Vector2((e.clientX / window.innerWidth) * 2 - 1, -(e.clientY / window.innerHeight) * 2 + 1);
+  if (photoViewerOpen()) { closePhoto(); return; }   // 写真を見ている間の小さな地図は、タップで地図に戻る
+  const r = canvas.getBoundingClientRect();
+  const ndc = new THREE.Vector2(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
   raycaster.setFromCamera(ndc, camera);
   const hit = raycaster.intersectObjects(clickTargets)[0];
   if (hit) { focusBuilding(hit.object.userData.building); return; }
@@ -1039,19 +1041,45 @@ function flyToPhoto() {
   flyTo(target, pos, 650);
 }
 
+// 写真を見ている間の小さな地図: 立っている場所を真ん中に、向いている方が上になるよう、後ろの高い所から見下ろす
+function flyToMini() {
+  const pa = toScene(nodeById(photo.from));
+  const h = photo.heading || { x: 0, z: -1 };
+  flyTo(pa.clone(), pa.clone().add(new THREE.Vector3(-h.x * 16, 48, -h.z * 16)), 500);
+}
+
+function photoViewerOpen() {
+  return !$("photo-viewer").hidden;
+}
+
+// 写真の画面を開く。地図とは別のページのように扱い、ブラウザの「戻る」で地図に戻れるよう履歴に積む
+// （開いたあとの移動は履歴を積まずに URL だけ書き換える。URL を開けば同じ場所の写真から始められる）
+function openPhotoViewer(push) {
+  const hash = `#photo=${photo.from}_${photo.to}`;
+  if (!photoViewerOpen()) {
+    $("photo-viewer").hidden = false;
+    document.body.classList.add("photo-open");
+    resize();
+    if (push) history.pushState({ photo: true }, "", hash);
+    else history.replaceState({ photo: true }, "", hash);
+  } else {
+    history.replaceState({ photo: true }, "", hash);
+  }
+}
+
 let photoToken = 0;
-function showEdge(from, to, { fly = true } = {}) {
+function showEdge(from, to, { push = true } = {}) {
   const a = nodeById(from), b = nodeById(to);
   if (!a || !b) return;
   photo.from = from; photo.to = to;
   photo.heading = flatDir(a, b) || photo.heading;
   if (followPlace(a.building !== 0 ? a : b)) buildWorld(); else drawPhotoMarker();
-  if (fly) flyToPhoto();
+  openPhotoViewer(push);
+  flyToMini();
 
   const e = edgeBetween(from, to);
   const url = photo.images[`${from}_${to}`];
   const reverse = photo.images[`${to}_${from}`];
-  $("photo-viewer").hidden = false;
   $("photo-title").textContent = placeName(a, b);
   const rooms = e ? sideRooms(e, from) : { left: [], right: [], name: [] };
   const parts = [];
@@ -1091,7 +1119,6 @@ function showEdge(from, to, { fly = true } = {}) {
     if (m && m.photo) new Image().src = photo.images[`${m.from}_${m.to}`];
   });
   fillPhotoThumbs();
-  updateViewOffset();
 }
 
 // パソコンで、前後左右の行き先の写真を周りに並べる（行き先が無ければ枠を薄く、写真が無ければ「写真なし」）
@@ -1099,8 +1126,7 @@ function fillPhotoThumbs() {
   document.querySelectorAll("#photo-viewer [data-thumb]").forEach(btn => {
     const m = photo.moves && photo.moves[btn.dataset.thumb];
     const img = btn.querySelector("img");
-    const show = WIDE_PHOTO.matches && !$("photo-viewer").classList.contains("expanded");   // 大きく表示中は並べない
-    const url = show && m && m.photo ? photo.images[`${m.from}_${m.to}`] : null;
+    const url = WIDE_PHOTO.matches && m && m.photo ? photo.images[`${m.from}_${m.to}`] : null;
     if (url) img.src = url; else img.removeAttribute("src");
     btn.classList.toggle("no-photo", !!m && !m.photo);
   });
@@ -1111,38 +1137,42 @@ function movePhoto(name) {
   if (m) showEdge(m.from, m.to);
 }
 
-// スマートフォンでは写真が画面の下半分を覆うので、そのあいだは3Dの中心を写真より上の見えている部分に寄せる
-// （見ている通路の目印が写真の裏に隠れないように）
-function updateViewOffset() {
-  const w = window.innerWidth, h = window.innerHeight, v = $("photo-viewer");
-  const cover = !v.hidden && !v.classList.contains("expanded") && w <= 600 ? v.getBoundingClientRect().height : 0;
-  if (cover) camera.setViewOffset(w, h, 0, cover / 2, w, h); else camera.clearViewOffset();
-}
-
-function setPhotoExpanded(on) {
-  $("photo-viewer").classList.toggle("expanded", on);
-  $("photo-expand").setAttribute("aria-pressed", String(on));
-  $("photo-expand-label").textContent = on ? "小さく" : "大きく";
-  fillPhotoThumbs();
-  updateViewOffset();
-}
-
+// 地図に戻る。履歴に積んで開いた場合は「戻る」と同じにする（ブラウザの「進む」でまた写真に戻れる）
 function closePhoto() {
+  if (!photoViewerOpen()) return;
+  if (history.state && history.state.photo) history.back();   // popstate で hidePhotoViewer が呼ばれる
+  else hidePhotoViewer();
+}
+
+// 写真の画面を閉じて、見ていた場所が分かるよう地図をそこに寄せる（目印は残す）
+function hidePhotoViewer() {
+  if (!photoViewerOpen()) return;
+  $("photo-viewer").hidden = true;
+  document.body.classList.remove("photo-open");
+  $("photo-img").removeAttribute("src");
+  resize();
+  if (photoFromHash()) history.replaceState(null, "", location.pathname + location.search);
+  if (photo.from !== null) flyToPhoto();
+}
+
+function clearPhotoMarker() {
   photo.from = photo.to = null;
   photo.moves = null;
-  setPhotoExpanded(false);
-  $("photo-viewer").hidden = true;
-  $("photo-img").removeAttribute("src");
-  updateViewOffset();
   disposeGroup(photoGroup);
+}
+
+// URL の #photo=from_to（無ければ null）
+function photoFromHash() {
+  const m = /^#photo=(\d+)_(\d+)$/.exec(location.hash);
+  return m ? [Number(m[1]), Number(m[2])] : null;
 }
 
 // タップした場所（画面のピクセル）に一番近い線。薄く描いている線（ほかの階など）は近くに濃い線が無いときだけ、
 // 写真の無い線は近くに写真のある線が無いときだけ選ぶ
 function pickEdge(cx, cy, radius = PICK_RADIUS.mouse) {
-  const w = window.innerWidth, h = window.innerHeight;
+  const r = canvas.getBoundingClientRect();
   let found = null, bestScore = Infinity;
-  const toPx = v => { const p = v.clone().project(camera); return { x: (p.x + 1) / 2 * w, y: (1 - p.y) / 2 * h, z: p.z }; };
+  const toPx = v => { const p = v.clone().project(camera); return { x: r.left + (p.x + 1) / 2 * r.width, y: r.top + (1 - p.y) / 2 * r.height, z: p.z }; };
   for (const s of edgeSegments) {
     const a = toPx(s.pa), b = toPx(s.pb);
     if (a.z > 1 || b.z > 1) continue;   // カメラの後ろ
@@ -1173,6 +1203,7 @@ async function setPhotoMode(on) {
   $("legend-photo").hidden = !on;
   if (!on) {
     closePhoto();
+    clearPhotoMarker();
     buildWorld();
     return;
   }
@@ -1200,7 +1231,12 @@ async function setPhotoMode(on) {
 function setupPhotoMode() {
   $("photo-mode").addEventListener("click", () => setPhotoMode(!photo.on));
   $("photo-close").addEventListener("click", closePhoto);
-  $("photo-expand").addEventListener("click", () => setPhotoExpanded(!$("photo-viewer").classList.contains("expanded")));
+  // ブラウザの「戻る」「進む」: 写真の URL でなくなったら地図に戻り、写真の URL に進んだらその写真を開く
+  window.addEventListener("popstate", () => {
+    const hit = photoFromHash();
+    if (!hit) hidePhotoViewer();
+    else if (!photoViewerOpen() && photo.on) showEdge(hit[0], hit[1], { push: false });
+  });
   // 写真の上でスワイプしても移れる（指を左へ動かすと右を向く、上へ動かすと前へ進む）
   const frame = $("photo-frame");
   let swipe = null;
@@ -1219,11 +1255,8 @@ function setupPhotoMode() {
   // パソコンでは矢印キーでも動ける（↑前へ ↓後ろへ ←→左右、PageUp/PageDown で上下の階、Escで閉じる）
   const keys = { ArrowUp: "forward", ArrowDown: "back", ArrowLeft: "left", ArrowRight: "right", PageUp: "up", PageDown: "down" };
   window.addEventListener("keydown", e => {
-    if ($("photo-viewer").hidden || (e.target instanceof Element && e.target.closest("select, input, textarea"))) return;
-    if (e.key === "Escape") {
-      if ($("photo-viewer").classList.contains("expanded")) setPhotoExpanded(false); else closePhoto();
-      return;
-    }
+    if (!photoViewerOpen() || (e.target instanceof Element && e.target.closest("select, input, textarea"))) return;
+    if (e.key === "Escape") { closePhoto(); return; }
     if (keys[e.key]) { e.preventDefault(); movePhoto(keys[e.key]); }
   });
 }
@@ -1307,6 +1340,14 @@ async function init() {
       $("to-room").value = to;
       searchRoute(from, to, q.get("elevator") !== "0");
     }
+  }
+
+  // 写真の URL（#photo=from_to）で開いたら、その写真から始める。「戻る」で地図に戻れるよう、地図の URL を下に積む
+  const start = photoFromHash();
+  if (start) {
+    history.replaceState(null, "", location.pathname + location.search);
+    await setPhotoMode(true);
+    if (nodeById(start[0]) && nodeById(start[1])) showEdge(start[0], start[1]);
   }
 }
 
