@@ -217,30 +217,6 @@ body.photo-open #scene {
   pointer-events: none;
 }
 
-.pv-stage {
-  position: absolute;
-  inset: 0;
-  touch-action: none;   /* スワイプで移るため、ブラウザのスクロールに取られないようにする */
-  user-select: none;
-  -webkit-user-select: none;
-}
-.pv-stage img { width: 100%; height: 100%; object-fit: contain; display: block; transition: opacity 0.18s; -webkit-user-drag: none; }
-.pv-stage img:not([src]) { visibility: hidden; }
-.pv-stage img.loading { opacity: 0.45; }
-.pv-empty {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0 72px;
-  text-align: center;
-  color: #C9CFD9;
-  font-size: 14px;
-  line-height: 1.8;
-}
-.pv-empty[hidden] { display: none; }
-
 /* 上の帯: 戻るボタン・場所の名前・左右の教室 */
 .pv-top {
   position: absolute;
@@ -278,11 +254,113 @@ body.photo-open #scene {
 .pv-place span { font-size: 13px; color: #E3E7EE; }
 .pv-place span:empty { display: none; }
 
-/* 行ける方向の矢印（写真の上）。写真のある行き先ははっきり、写真の無い行き先は控えめに */
-.photo-arrow {
+.pv-stage {
   position: absolute;
-  width: 64px;
-  height: 64px;
+  inset: 0;
+  touch-action: none;   /* ドラッグで移るため、ブラウザのスクロールに取られないようにする */
+  user-select: none;
+  -webkit-user-select: none;
+  overflow: hidden;
+}
+.pv-stage.can-go { cursor: pointer; }
+.pv-stage.moving { cursor: grabbing; }
+/* 写真1枚分の層。移るときは2枚を重ねて、map3d.js が transform と opacity で動かす */
+.pv-layers { position: absolute; inset: 0; }
+.pv-layer {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  transform-origin: 50% 55%;   /* 前へ寄るときは、通路の奥（写真の真ん中より少し下）に向かって寄る */
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+}
+.pv-layer img { position: absolute; inset: 0; width: 100%; height: 100%; display: block; -webkit-user-drag: none; pointer-events: none; }
+.pv-img { object-fit: contain; }
+/* 写真の外の余白は、同じ写真をぼかして埋める（黒い帯にしない） */
+.pv-bg { object-fit: cover; filter: blur(28px) brightness(0.55) saturate(1.1); transform: scale(1.15); }
+.pv-empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 72px;
+  text-align: center;
+  color: #C9CFD9;
+  font-size: 14px;
+  line-height: 1.8;
+  background: #0B0D11;
+}
+
+/* 次の写真の読み込みに時間がかかっているときの印 */
+.pv-spinner {
+  position: absolute;
+  left: calc(50% - 22px);
+  top: calc(50% - 22px);
+  width: 44px;
+  height: 44px;
+  border: 3px solid rgba(255, 255, 255, 0.25);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: pv-spin 0.8s linear infinite;
+  pointer-events: none;
+}
+.pv-spinner[hidden] { display: none; }
+@keyframes pv-spin { to { transform: rotate(360deg); } }
+
+/* 使い方の説明（開いたときに少しだけ出す） */
+.pv-hint {
+  position: absolute;
+  left: 50%;
+  top: 38%;
+  transform: translateX(-50%);
+  max-width: calc(100% - 32px);
+  padding: 8px 14px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.6);
+  font-size: 13px;
+  line-height: 1.6;
+  text-align: center;
+  pointer-events: none;
+  animation: pv-fade 0.3s ease-out;
+}
+.pv-hint[hidden] { display: none; }
+@keyframes pv-fade { from { opacity: 0; } }
+
+/* 床に寝かせた矢印（ストリートビューのように、行き先の実際の向きに置く）。
+   .pv-ground を奥へ倒し、その上で矢印を --a（いま向いている方から右回りの角度）だけ回して、円の外側に置く */
+.pv-ground {
+  --r: 104px;
+  position: absolute;
+  left: 50%;
+  bottom: 150px;
+  width: 0;
+  height: 0;
+  transform: perspective(700px) rotateX(52deg);
+  transform-style: preserve-3d;
+  transition: opacity 0.15s;
+}
+.pv-stage.moving .pv-ground { opacity: 0; pointer-events: none; transition: none; }
+.pv-ring {
+  position: absolute;
+  left: calc(-1 * var(--r));
+  top: calc(-1 * var(--r));
+  width: calc(2 * var(--r));
+  height: calc(2 * var(--r));
+  border: 2px solid rgba(255, 255, 255, 0.5);
+  border-radius: 50%;
+  background: radial-gradient(rgba(0, 0, 0, 0.18), rgba(0, 0, 0, 0) 70%);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.15), inset 0 0 0 1px rgba(0, 0, 0, 0.15);
+  pointer-events: none;
+}
+.photo-arrow {
+  --a: 0deg;
+  position: absolute;
+  left: -40px;
+  top: -40px;
+  width: 80px;
+  height: 80px;
+  padding: 0;
   border: none;
   background: none;
   color: #fff;
@@ -290,22 +368,23 @@ body.photo-open #scene {
   display: flex;
   align-items: center;
   justify-content: center;
-  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.8)) drop-shadow(0 0 8px rgba(0, 0, 0, 0.4));
+  transform: rotate(var(--a)) translateY(calc(-1 * var(--r)));
+  transition: transform 0.25s ease-out;
 }
-.photo-arrow svg { width: 46px; height: 46px; fill: none; stroke: currentColor; stroke-width: 2.8; stroke-linecap: round; stroke-linejoin: round; transition: transform 0.12s; }
+.photo-arrow svg {
+  width: 66px;
+  height: 66px;
+  fill: currentColor;
+  stroke: rgba(0, 0, 0, 0.35);
+  stroke-width: 1.5;
+  stroke-linejoin: round;
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.6));
+  transition: transform 0.12s, color 0.12s;
+}
 .photo-arrow:disabled { display: none; }
-.photo-arrow:not(.has-photo) { opacity: 0.5; }
-.photo-arrow.forward { left: calc(50% - 32px); bottom: 104px; }
-.photo-arrow.back { left: calc(50% - 32px); bottom: 32px; }
-.photo-arrow.left { left: 12px; top: calc(50% - 32px); }
-.photo-arrow.right { right: 12px; top: calc(50% - 32px); }
-.photo-arrow.forward:hover svg { transform: scale(1.15); }
-.photo-arrow.back svg { transform: rotate(180deg); }
-.photo-arrow.back:hover svg { transform: rotate(180deg) scale(1.15); }
-.photo-arrow.left svg { transform: rotate(-90deg); }
-.photo-arrow.left:hover svg { transform: rotate(-90deg) scale(1.15); }
-.photo-arrow.right svg { transform: rotate(90deg); }
-.photo-arrow.right:hover svg { transform: rotate(90deg) scale(1.15); }
+.photo-arrow:not(.has-photo) { opacity: 0.55; }
+.photo-arrow:hover svg,
+.photo-arrow.hot svg { transform: scale(1.18); color: #FFE27A; }
 
 /* 上の階・下の階・振り返る（パソコンは右上、スマートフォンは画面の下） */
 .pv-bar {
@@ -377,7 +456,6 @@ body.photo-open #scene {
   }
   .pv-thumb-empty { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; color: #8A93A3; font-size: 12px; }
   .pv-thumb.no-photo .pv-thumb-empty { display: flex; }
-  .photo-arrow.right { right: 196px; }   /* 行き先の写真と重ならないように */
 }
 
 @media (max-width: 600px) {
@@ -397,8 +475,9 @@ body.photo-open #scene {
     background: linear-gradient(rgba(0, 0, 0, 0), rgba(0, 0, 0, 0.7));
   }
   .pv-btn { flex: 1; max-width: 140px; justify-content: center; }
-  .photo-arrow.forward { bottom: 150px; }
-  .photo-arrow.back { bottom: 84px; }
+  .pv-ground { --r: 76px; bottom: 150px; }
+  .photo-arrow { left: -32px; top: -32px; width: 64px; height: 64px; }
+  .photo-arrow svg { width: 52px; height: 52px; }
   body.photo-open #scene {
     left: auto;
     right: 10px;
