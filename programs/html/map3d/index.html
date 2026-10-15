@@ -75,13 +75,20 @@
   <!-- 写真を見る画面。地図とは別のページのように画面いっぱいに出し、地図は左下に小さく出す。
        ブラウザの「戻る」・左上のボタン・小さな地図のタップで地図に戻る。URL（#photo=from_to）で場所を共有できる -->
   <section class="pv" id="photo-viewer" hidden aria-label="通路の写真">
+    <!-- 写真は2枚を重ねて、移るときに寄る・横に流れるなどのアニメーションでつなぐ（中身は map3d.js が作る）。
+         写真をタップ・クリックするとその方向へ進み、ドラッグすると指について動く -->
     <div class="pv-stage" id="photo-frame">
-      <img id="photo-img" alt="">
-      <p class="pv-empty" id="photo-empty" hidden></p>
-      <button type="button" class="photo-arrow forward" data-move="forward" aria-label="前へ" title="前へ（↑）"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 15.5l7-7 7 7"/></svg></button>
-      <button type="button" class="photo-arrow back" data-move="back" aria-label="後ろへ" title="後ろへ（↓）"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 15.5l7-7 7 7"/></svg></button>
-      <button type="button" class="photo-arrow left" data-move="left" aria-label="左へ" title="左へ（←）"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 15.5l7-7 7 7"/></svg></button>
-      <button type="button" class="photo-arrow right" data-move="right" aria-label="右へ" title="右へ（→）"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 15.5l7-7 7 7"/></svg></button>
+      <div class="pv-layers" id="photo-layers"></div>
+      <div class="pv-spinner" id="photo-spinner" hidden></div>
+      <!-- 床に寝かせた矢印。行き先の実際の向き（--a）に置く -->
+      <div class="pv-ground" id="photo-ground">
+        <span class="pv-ring" aria-hidden="true"></span>
+        <button type="button" class="photo-arrow" data-move="forward" aria-label="前へ" title="前へ（↑）"><svg viewBox="0 0 48 48" aria-hidden="true"><path d="M8 34L24 14l16 20-16-8z"/></svg></button>
+        <button type="button" class="photo-arrow" data-move="left" aria-label="左へ" title="左へ（←）"><svg viewBox="0 0 48 48" aria-hidden="true"><path d="M8 34L24 14l16 20-16-8z"/></svg></button>
+        <button type="button" class="photo-arrow" data-move="right" aria-label="右へ" title="右へ（→）"><svg viewBox="0 0 48 48" aria-hidden="true"><path d="M8 34L24 14l16 20-16-8z"/></svg></button>
+        <button type="button" class="photo-arrow" data-move="back" aria-label="後ろへ" title="後ろへ（↓）"><svg viewBox="0 0 48 48" aria-hidden="true"><path d="M8 34L24 14l16 20-16-8z"/></svg></button>
+      </div>
+      <p class="pv-hint" id="photo-hint" hidden></p>
     </div>
 
     <header class="pv-top">
