@@ -195,17 +195,17 @@ body {
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.10);
 }
 
-/* — timetable card (dark) — 2列表示のときは下段いっぱいに広げる */
-.card-timetable {
+/* — 3D map card (dark) — 2列表示のときは下段いっぱいに広げる */
+.card-map3d {
   background: var(--dark);
   color: var(--white);
   box-shadow: 0 4px 24px rgba(15, 23, 42, 0.25);
 }
-.card-timetable:hover {
+.card-map3d:hover {
   box-shadow: 0 16px 40px rgba(15, 23, 42, 0.35);
 }
 @media (min-width: 520px) {
-  .card-timetable { grid-column: 1 / -1; }
+  .card-map3d { grid-column: 1 / -1; }
 }
 
 /* — card internals — */
