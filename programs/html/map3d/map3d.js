@@ -851,7 +851,6 @@ const STRAIGHT_LIMIT = 60;      // 前へ・後ろへで「まっすぐ」とみ
 const TURN_RANGE = [30, 150];   // 左・右とみなす曲がりの角度（度）
 const PICK_RADIUS = { mouse: 16, touch: 30 };   // タップした場所から何ピクセル以内の線を選ぶか（指はマウスより大きく取る）
 const PICK_NO_PHOTO = 10;       // 写真の無い線は、この分だけ遠いものとして選ぶ（写真のある通路を選びやすくする）
-const SWIPE_MIN = 40;           // 写真の上で何ピクセル以上指を動かしたら、スワイプとして移るか
 // パソコン（広い画面でマウスを使う）では、前後左右の写真も周りに並べる。スマートフォンでは真ん中の1枚だけ
 // （通信量を抑えるため、周りの写真はパソコンのときだけ読む）。map3d.css の同じ条件と合わせる
 const WIDE_PHOTO = window.matchMedia("(min-width: 900px) and (hover: hover) and (pointer: fine)");
@@ -1067,10 +1066,217 @@ function openPhotoViewer(push) {
   }
 }
 
-let photoToken = 0;
-function showEdge(from, to, { push = true } = {}) {
+// ---- 写真の切り替え（ストリートビューのように、移り方に合わせて写真を動かしてつなぐ）
+// 写真は1枚ずつの平面の写真なので、2枚を重ねて「前へは寄っていく・後ろへは引いていく・曲がるときは横に流れる・
+// 階の移動は上下に流れる」ように動かし、途中で入れ替える。ドラッグ中は指の位置に合わせて同じ動きを途中まで見せる
+const MOVE_MS = 560;         // 1歩のアニメーションの長さ（ミリ秒）
+const MOVE_MS_FAST = 300;    // キーを押し続けたり、続けて押したりしたとき
+const SPINNER_DELAY = 180;   // 次の写真の読み込みがこれより長くかかったら、読み込み中の印を出す
+const LOAD_WAIT = 6000;      // 次の写真をこれ以上は待たない（写真が出る前に移り、読めしだい表示する）
+const CLICK_SPAN = 100;      // 写真の左端〜右端を -100°〜100° の向きとみなし、タップした所に一番近い行き先へ進む
+const CLICK_LIMIT = 70;      // タップした向きとこれ以上ずれた行き先には進まない（度）
+const DRAG_START = 10;       // 何ピクセル動かしたらドラッグとみなすか（それより小さければタップ）
+const DRAG_COMMIT = 0.3;     // ドラッグをこの割合まで進めて離したら移る（それより手前なら元に戻る）
+const FLICK_SPEED = 0.6;     // 速く払ったとき（ピクセル/ミリ秒）は、短くても移る
+const WHEEL_STEP = 80;       // ホイールをこれだけ回したら1歩進む・下がる
+const REDUCED_MOTION = window.matchMedia("(prefers-reduced-motion: reduce)");
+
+const view = {
+  layer: null,      // いま見ている写真の層
+  anim: null,       // 進行中の移動
+  pending: null,    // 移動中に押された次の行き先（最後の1つだけ覚えておく）
+  drag: null,
+  fastUntil: 0,     // この時刻までは速く動く（キーの押しっぱなし・ホイール）
+  cache: new Map(), // 写真の URL -> 読み込みとデコードが終わったら解決する Promise（失敗したら false）
+  moved: false,     // このページで一度でも移ったか（使い方の説明を出すかどうか）
+};
+
+function clamp01(v) {
+  return Math.max(0, Math.min(1, v));
+}
+
+function easeInOut(t) {
+  return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+}
+
+// 写真を先に読んでデコードしておく（切り替えた瞬間にすぐ出せるように）
+function loadImage(url) {
+  if (!view.cache.has(url)) {
+    const img = new Image();
+    // 読み込めたら、デコードも済ませる（裏のタブなどでデコードが進まないこともあるので、待つのは少しだけ）
+    const loaded = new Promise(resolve => { img.onload = () => resolve(true); img.onerror = () => resolve(false); });
+    img.src = url;
+    view.cache.set(url, loaded.then(ok => ok && Promise.race([img.decode().catch(() => {}), new Promise(r => setTimeout(r, 150))]).then(() => ok)));
+  }
+  return view.cache.get(url);
+}
+
+function emptyText(from, to) {
+  return photo.images[`${to}_${from}`] ? "この向きの写真はまだありません（「振り返る」で反対向きの写真を見られます）" : "この通路の写真はまだありません";
+}
+
+// 写真1枚分の層（ぼかした同じ写真で余白を埋め、その上に写真全体を出す）。写真が無ければ説明の文
+function makeLayer(from, to) {
+  const layer = document.createElement("div");
+  layer.className = "pv-layer";
+  const url = photo.images[`${from}_${to}`];
+  const showEmpty = text => {
+    layer.replaceChildren();
+    const p = document.createElement("p");
+    p.className = "pv-empty";
+    p.textContent = text;
+    layer.append(p);
+  };
+  if (url) {
+    const bg = document.createElement("img");
+    bg.className = "pv-bg";
+    bg.alt = "";
+    bg.src = url;
+    const img = document.createElement("img");
+    img.className = "pv-img";
+    img.alt = `${placeName(nodeById(from), nodeById(to))}の通路の写真`;
+    img.onerror = () => showEmpty("写真を読み込めませんでした");
+    img.src = url;
+    layer.append(bg, img);
+  } else {
+    showEmpty(emptyText(from, to));
+  }
+  $("photo-layers").append(layer);
+  return layer;
+}
+
+function clearLayers() {
+  view.anim = view.drag = null;
+  view.pending = null;
+  view.layer = null;
+  $("photo-layers").replaceChildren();
+  $("photo-frame").classList.remove("moving");
+  $("photo-spinner").hidden = true;
+}
+
+// 行き先の、いま向いている方から見た角度（度。右が正、真後ろは ±180）。矢印を床に置く向きと、タップ先の判定に使う
+function moveAngle(name, m) {
+  const fallback = { forward: 0, left: -90, right: 90, back: 180 }[name] ?? 0;
+  const h = photo.heading;
+  if (!h || !m) return fallback;
+  // 後ろへは「手前の点 → 立っている場所」の線を同じ向きのまま下がるので、向きは逆にして測る
+  const d = name === "back" ? flatDir(nodeById(m.to), nodeById(m.from)) : flatDir(nodeById(m.from), nodeById(m.to));
+  if (!d) return fallback;
+  const a = turnAngle(h, d);
+  return name === "back" && Math.abs(a) < 90 ? fallback : a;
+}
+
+// 移り方: zoom（1 前へ寄る・-1 後ろへ引く・0 その場）、shift（横に流れる量。1 で90°）、lift（1 上の階・-1 下の階）
+function motionOf(name, m) {
+  if (name === "up" || name === "down") return { zoom: 1, shift: 0, lift: name === "up" ? 0.7 : -0.7 };   // 階段などへ進みながら上・下へ
+  if (name === "flip") return { zoom: 0, shift: 2, lift: 0 };
+  if (name === "back") return { zoom: -1, shift: 0, lift: 0 };
+  const shift = Math.max(-1.5, Math.min(1.5, moveAngle(name, m) / 90));
+  // 立っている場所で曲がるときはその場で向きを変え、この先の分かれ道へ行くときは寄りながら曲がる
+  return { zoom: m && m.from === photo.from ? 0 : 1, shift: Math.abs(shift) < 0.15 ? 0 : shift, lift: 0 };
+}
+
+// 動きの途中（t: 0〜1）の見た目。old は今の写真、next は行き先の写真
+function applyFrame(oldL, next, mo, t) {
+  const SX = 42, SY = 34;   // 横・縦に流れる量（%）
+  if (oldL) {
+    const s = mo.zoom > 0 ? 1 + 0.6 * t : mo.zoom < 0 ? 1 - 0.2 * t : 1;
+    oldL.style.transform = `perspective(1200px) translate(${-mo.shift * SX * t}%, ${mo.lift * SY * t}%) rotateY(${-mo.shift * 10 * t}deg) scale(${s})`;
+    oldL.style.opacity = String(1 - clamp01((t - 0.2) / 0.65));
+  }
+  if (next) {
+    const u = 1 - t;
+    const s = mo.zoom > 0 ? 0.84 + 0.16 * t : mo.zoom < 0 ? 1.45 - 0.45 * t : 1;
+    next.style.transform = `perspective(1200px) translate(${mo.shift * SX * u}%, ${-mo.lift * SY * u}%) rotateY(${mo.shift * 10 * u}deg) scale(${s})`;
+    next.style.opacity = String(clamp01((t - 0.1) / 0.6));
+  }
+}
+
+function resetLayer(layer) {
+  layer.style.transform = "";
+  layer.style.opacity = "";
+}
+
+// 行けない方向へ動こうとしたら、少しだけ揺らして知らせる
+function nudge(name) {
+  if (!view.layer || REDUCED_MOTION.matches) return;
+  const d = { forward: [0, -1], back: [0, 1], left: [1, 0], right: [-1, 0], up: [0, 1], down: [0, -1] }[name] || [0, 0];
+  const off = `translate(${d[0] * 3}%, ${d[1] * 2}%)`;
+  view.layer.animate([{ transform: "none" }, { transform: off }, { transform: "none" }], { duration: 260, easing: "ease-out" });
+}
+
+// 矢印・キー・ホイールなどからの移動。移動中なら、終わったあとに続けて動く
+function movePhoto(name) {
+  name = resolveMove(name);
+  const m = photo.moves && photo.moves[name];
+  if (!m) { if (!view.anim && !view.drag) nudge(name); return; }
+  if (view.anim || view.drag) { view.pending = name; return; }
+  startMove(name, m, { t: 0 });
+}
+
+// 前へ進めない場所（階段・エスカレーターの前など）で、上か下の階へ行けるなら、前へはそちらへ進む
+function resolveMove(name) {
+  const moves = photo.moves;
+  if (name !== "forward" || !moves || moves.forward) return name;
+  if (moves.up && !moves.down) return "up";
+  if (moves.down && !moves.up) return "down";
+  return name;
+}
+
+// 移動を始める。drag から引き継ぐ場合は、その途中（t）から最後まで動かす
+async function startMove(name, m, { t = 0, next = null } = {}) {
+  const mo = motionOf(name, m);
+  const anim = view.anim = { name };
+  hideHint();
+  view.moved = true;
+  const url = photo.images[`${m.from}_${m.to}`];
+  if (url) {
+    const spin = setTimeout(() => { if (view.anim === anim) $("photo-spinner").hidden = false; }, SPINNER_DELAY);
+    await Promise.race([loadImage(url), new Promise(r => setTimeout(r, LOAD_WAIT))]);   // 遅すぎるときは待たずに移る
+    clearTimeout(spin);
+    $("photo-spinner").hidden = true;
+    if (view.anim !== anim) { if (next) next.remove(); return; }   // 待っている間に閉じられた
+  }
+  const oldL = view.layer;
+  next = next || makeLayer(m.from, m.to);
+  $("photo-frame").classList.add("moving");
+  setPlace(m.from, m.to);
+
+  const fast = view.pending || performance.now() < view.fastUntil;
+  const duration = REDUCED_MOTION.matches ? 160 : (fast ? MOVE_MS_FAST : MOVE_MS) * (1 - t * 0.6);
+  const t0 = t, start = performance.now();
+  // 途中から引き継ぐときは減速だけにする（指を離したところから、そのまま流れて止まる）
+  const ease = t0 > 0 ? (k => 1 - Math.pow(1 - k, 3)) : easeInOut;
+  // 裏のタブではアニメーションが進まないので、すぐ移る
+  if (!document.hidden) await new Promise(resolve => {
+    const step = now => {
+      if (view.anim !== anim) { resolve(); return; }
+      const k = clamp01((now - start) / duration);
+      const tt = t0 + (1 - t0) * ease(k);
+      if (REDUCED_MOTION.matches) {
+        if (oldL) oldL.style.opacity = String(1 - k);
+        next.style.opacity = String(k);
+      } else {
+        applyFrame(oldL, next, mo, tt);
+      }
+      if (k < 1) requestAnimationFrame(step); else resolve();
+    };
+    requestAnimationFrame(step);
+  });
+  if (view.anim !== anim) return;
+  for (const l of [...$("photo-layers").children]) if (l !== next) l.remove();   // 前の写真（と、取り残された層）を片付ける
+  resetLayer(next);
+  view.layer = next;
+  view.anim = null;
+  $("photo-frame").classList.remove("moving");
+  const queued = view.pending;
+  view.pending = null;
+  if (queued) movePhoto(queued);
+}
+
+// 立っている場所・向きを変えて、場所の名前・左右の教室・矢印・小さな地図を合わせる（写真の入れ替えは呼び出し側）
+function setPlace(from, to, push = false) {
   const a = nodeById(from), b = nodeById(to);
-  if (!a || !b) return;
   photo.from = from; photo.to = to;
   photo.heading = flatDir(a, b) || photo.heading;
   if (followPlace(a.building !== 0 ? a : b)) buildWorld(); else drawPhotoMarker();
@@ -1078,8 +1284,6 @@ function showEdge(from, to, { push = true } = {}) {
   flyToMini();
 
   const e = edgeBetween(from, to);
-  const url = photo.images[`${from}_${to}`];
-  const reverse = photo.images[`${to}_${from}`];
   $("photo-title").textContent = placeName(a, b);
   const rooms = e ? sideRooms(e, from) : { left: [], right: [], name: [] };
   const parts = [];
@@ -1088,43 +1292,23 @@ function showEdge(from, to, { push = true } = {}) {
   if (!parts.length && rooms.name.length) parts.push(rooms.name.join("・"));
   $("photo-rooms").textContent = parts.join("　");
 
-  const img = $("photo-img"), empty = $("photo-empty");
-  const token = ++photoToken;
-  if (url) {
-    empty.hidden = true;
-    img.classList.add("loading");
-    img.onload = () => { if (token === photoToken) img.classList.remove("loading"); };
-    img.onerror = () => {
-      if (token !== photoToken) return;
-      img.removeAttribute("src");
-      empty.textContent = "写真を読み込めませんでした";
-      empty.hidden = false;
-    };
-    img.src = url;
-    img.alt = `${placeName(a, b)}の通路の写真`;
-  } else {
-    img.removeAttribute("src");
-    img.alt = "";
-    empty.textContent = reverse ? "この向きの写真はまだありません（「振り返る」で反対向きの写真を見られます）" : "この通路の写真はまだありません";
-    empty.hidden = false;
-  }
-
-  // 矢印: 行ける方向だけ押せるようにし、写真のある行き先には印を付ける。行き先の写真は先に読んでおく
+  // 行ける方向だけ押せるようにし、写真のある行き先には印を付ける。行き先の写真は先に読んでおく
   const moves = photoMoves();
   photo.moves = moves;
   document.querySelectorAll("#photo-viewer [data-move]").forEach(btn => {
-    const m = moves[btn.dataset.move];
+    const m = moves[resolveMove(btn.dataset.move)];
     btn.disabled = !m;
     btn.classList.toggle("has-photo", !!(m && m.photo));
-    if (m && m.photo) new Image().src = photo.images[`${m.from}_${m.to}`];
+    if (m && m.photo) loadImage(photo.images[`${m.from}_${m.to}`]);
   });
+  placeArrows();
   fillPhotoThumbs();
 }
 
 // パソコンで、前後左右の行き先の写真を周りに並べる（行き先が無ければ枠を薄く、写真が無ければ「写真なし」）
 function fillPhotoThumbs() {
   document.querySelectorAll("#photo-viewer [data-thumb]").forEach(btn => {
-    const m = photo.moves && photo.moves[btn.dataset.thumb];
+    const m = photo.moves && photo.moves[resolveMove(btn.dataset.thumb)];
     const img = btn.querySelector("img");
     const url = WIDE_PHOTO.matches && m && m.photo ? photo.images[`${m.from}_${m.to}`] : null;
     if (url) img.src = url; else img.removeAttribute("src");
@@ -1132,9 +1316,166 @@ function fillPhotoThumbs() {
   });
 }
 
-function movePhoto(name) {
-  const m = photo.moves && photo.moves[name];
-  if (m) showEdge(m.from, m.to);
+// 床の矢印を、行き先の実際の向きに置く（近すぎて重なるときは少し離す）
+function placeArrows() {
+  const items = [];
+  document.querySelectorAll("#photo-ground [data-move]").forEach(btn => {
+    const name = resolveMove(btn.dataset.move);
+    const m = photo.moves && photo.moves[name];
+    if (m) items.push({ btn, a: name === btn.dataset.move ? moveAngle(name, m) : 0 });
+  });
+  items.sort((p, q) => p.a - q.a);
+  const GAP = 34;
+  for (let i = 1; i < items.length; i++) {
+    if (items[i].a - items[i - 1].a < GAP) items[i].a = items[i - 1].a + GAP;
+  }
+  for (const it of items) it.btn.style.setProperty("--a", `${it.a}deg`);
+}
+
+// 写真の上のタップ・クリックした横の位置から、進む先（前・左・右のうち、向きが一番近いもの）を選ぶ
+function pickByPoint(clientX) {
+  if (!photo.moves) return null;
+  const r = $("photo-frame").getBoundingClientRect();
+  const aim = ((clientX - r.left) / r.width * 2 - 1) * CLICK_SPAN;
+  let found = null, bestDiff = CLICK_LIMIT;
+  for (const name of ["forward", "left", "right"]) {
+    const real = resolveMove(name);
+    const m = photo.moves[real];
+    if (!m) continue;
+    const diff = Math.abs((real === name ? moveAngle(name, m) : 0) - aim);
+    if (diff < bestDiff) { bestDiff = diff; found = real; }
+  }
+  return found;
+}
+
+// マウスを写真の上で動かしたら、クリックで進む先の矢印を光らせる
+function hoverArrow(name) {
+  document.querySelectorAll("#photo-ground [data-move]").forEach(btn => btn.classList.toggle("hot", !!name && resolveMove(btn.dataset.move) === name));
+  $("photo-frame").classList.toggle("can-go", !!name);
+}
+
+// 地図の通路をタップしたときなど、アニメーションなしでその写真を出す
+function showEdge(from, to, { push = true } = {}) {
+  const a = nodeById(from), b = nodeById(to);
+  if (!a || !b) return;
+  const wasOpen = photoViewerOpen();
+  clearLayers();
+  setPlace(from, to, push);
+  const layer = makeLayer(from, to);
+  view.layer = layer;
+  if (!REDUCED_MOTION.matches) layer.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 220 });
+  if (!wasOpen) showHint();
+}
+
+let hintTimer = 0;
+function showHint() {
+  if (view.moved) return;
+  const hint = $("photo-hint");
+  hint.textContent = WIDE_PHOTO.matches
+    ? "行きたい方をクリックすると進みます（ドラッグ・矢印キー・ホイールでも移れます）"
+    : "行きたい方をタップすると進みます（上下左右にドラッグしても移れます）";
+  hint.hidden = false;
+  clearTimeout(hintTimer);
+  hintTimer = setTimeout(hideHint, 5000);
+}
+
+function hideHint() {
+  $("photo-hint").hidden = true;
+}
+
+// 写真の上のドラッグ: 指を動かした向きの行き先へ、指の位置に合わせて途中まで動かす（左へ動かすと右を向く、上へ動かすと前へ進む）
+function dragName(axis, dx, dy) {
+  return axis === "x" ? (dx < 0 ? "right" : "left") : (dy < 0 ? "forward" : "back");
+}
+
+function setupPhotoGestures() {
+  const frame = $("photo-frame");
+  frame.addEventListener("pointerdown", e => {
+    if (e.button !== 0 || e.target.closest("button") || view.anim) return;
+    view.drag = { id: e.pointerId, x: e.clientX, y: e.clientY, time: performance.now(), axis: null, name: null, next: null, t: 0 };
+    try { frame.setPointerCapture(e.pointerId); } catch { /* 取れなくても、写真の上で離せば動く */ }
+  });
+  frame.addEventListener("pointermove", e => {
+    const d = view.drag;
+    if (!d) {
+      if (e.pointerType === "mouse" && !view.anim && !e.target.closest("button")) hoverArrow(pickByPoint(e.clientX));
+      return;
+    }
+    if (e.pointerId !== d.id) return;
+    const dx = e.clientX - d.x, dy = e.clientY - d.y;
+    if (!d.axis) {
+      if (Math.hypot(dx, dy) < DRAG_START) return;
+      d.axis = Math.abs(dx) > Math.abs(dy) ? "x" : "y";
+      hoverArrow(null);
+      hideHint();
+      frame.classList.add("moving");
+    }
+    const name = resolveMove(dragName(d.axis, dx, dy));
+    if (name !== d.name) {   // 向きを逆にしたら、行き先の写真を入れ替える
+      if (d.next) d.next.remove();
+      d.name = name;
+      d.m = photo.moves && photo.moves[name];
+      d.next = d.m ? makeLayer(d.m.from, d.m.to) : null;
+      d.mo = motionOf(name, d.m);
+      if (d.next) applyFrame(null, d.next, d.mo, 0);
+    }
+    const r = frame.getBoundingClientRect();
+    const raw = d.axis === "x" ? Math.abs(dx) / (r.width * 0.6) : Math.abs(dy) / (r.height * 0.5);
+    // 行けない方向は、引っ張っても少ししか動かない
+    d.t = d.m ? clamp01(raw) : 0.08 * (1 - 1 / (1 + raw * 3));
+    if (!REDUCED_MOTION.matches) applyFrame(view.layer, d.next, d.mo, d.t);
+  });
+  const end = e => {
+    const d = view.drag;
+    if (!d || e.pointerId !== d.id) return;
+    view.drag = null;
+    if (!d.axis) {   // 動かさずに離した: タップした方へ進む
+      frame.classList.remove("moving");
+      if (e.type === "pointerup") {
+        const name = pickByPoint(e.clientX);
+        if (name) movePhoto(name);
+      }
+      return;
+    }
+    const dist = d.axis === "x" ? Math.abs(e.clientX - d.x) : Math.abs(e.clientY - d.y);
+    const speed = dist / Math.max(1, performance.now() - d.time);
+    if (e.type === "pointerup" && d.m && (d.t >= DRAG_COMMIT || (speed > FLICK_SPEED && d.t > 0.05))) {
+      startMove(d.name, d.m, { t: d.t, next: d.next });
+      return;
+    }
+    // 元に戻す
+    const from = d.t, start = performance.now(), oldL = view.layer;
+    const back = now => {
+      if (view.drag || view.anim) { if (d.next) d.next.remove(); return; }
+      const k = document.hidden ? 1 : clamp01((now - start) / 220);
+      applyFrame(oldL, d.next, d.mo, from * (1 - (1 - Math.pow(1 - k, 3))));
+      if (k < 1) { requestAnimationFrame(back); return; }
+      if (d.next) d.next.remove();
+      if (oldL) resetLayer(oldL);
+      frame.classList.remove("moving");
+      if (view.pending) { const q = view.pending; view.pending = null; movePhoto(q); }
+    };
+    if (document.hidden) back(performance.now()); else requestAnimationFrame(back);
+  };
+  frame.addEventListener("pointerup", end);
+  frame.addEventListener("pointercancel", end);
+  frame.addEventListener("pointerleave", e => { if (e.pointerType === "mouse" && !view.drag) hoverArrow(null); });
+
+  // ホイール: 奥へ回すと前へ、手前へ回すと後ろへ。回し続けると歩き続ける
+  let wheel = 0, wheelAt = 0;
+  frame.addEventListener("wheel", e => {
+    e.preventDefault();
+    const now = performance.now();
+    if (now - wheelAt > 400) wheel = 0;
+    wheelAt = now;
+    wheel += e.deltaMode === 1 ? e.deltaY * 30 : e.deltaY;
+    if (Math.abs(wheel) < WHEEL_STEP) return;
+    const name = wheel < 0 ? "forward" : "back";
+    wheel = 0;
+    view.fastUntil = now + 500;
+    if (view.anim && view.pending) return;   // 1歩先まで覚えれば十分
+    movePhoto(name);
+  }, { passive: false });
 }
 
 // 地図に戻る。履歴に積んで開いた場合は「戻る」と同じにする（ブラウザの「進む」でまた写真に戻れる）
@@ -1149,7 +1490,8 @@ function hidePhotoViewer() {
   if (!photoViewerOpen()) return;
   $("photo-viewer").hidden = true;
   document.body.classList.remove("photo-open");
-  $("photo-img").removeAttribute("src");
+  clearLayers();
+  hideHint();
   resize();
   if (photoFromHash()) history.replaceState(null, "", location.pathname + location.search);
   if (photo.from !== null) flyToPhoto();
@@ -1237,19 +1579,7 @@ function setupPhotoMode() {
     if (!hit) hidePhotoViewer();
     else if (!photoViewerOpen() && photo.on) showEdge(hit[0], hit[1], { push: false });
   });
-  // 写真の上でスワイプしても移れる（指を左へ動かすと右を向く、上へ動かすと前へ進む）
-  const frame = $("photo-frame");
-  let swipe = null;
-  frame.addEventListener("pointerdown", e => { swipe = e.target.closest("button") ? null : { x: e.clientX, y: e.clientY }; });
-  frame.addEventListener("pointercancel", () => { swipe = null; });
-  frame.addEventListener("pointerup", e => {
-    if (!swipe) return;
-    const dx = e.clientX - swipe.x, dy = e.clientY - swipe.y;
-    swipe = null;
-    if (Math.max(Math.abs(dx), Math.abs(dy)) < SWIPE_MIN) return;
-    if (Math.abs(dx) > Math.abs(dy)) movePhoto(dx < 0 ? "right" : "left");
-    else movePhoto(dy < 0 ? "forward" : "back");
-  });
+  setupPhotoGestures();
   document.querySelectorAll("#photo-viewer [data-move]").forEach(btn => btn.addEventListener("click", () => movePhoto(btn.dataset.move)));
   WIDE_PHOTO.addEventListener("change", fillPhotoThumbs);   // 窓の大きさを変えたとき
   // パソコンでは矢印キーでも動ける（↑前へ ↓後ろへ ←→左右、PageUp/PageDown で上下の階、Escで閉じる）
@@ -1257,7 +1587,11 @@ function setupPhotoMode() {
   window.addEventListener("keydown", e => {
     if (!photoViewerOpen() || (e.target instanceof Element && e.target.closest("select, input, textarea"))) return;
     if (e.key === "Escape") { closePhoto(); return; }
-    if (keys[e.key]) { e.preventDefault(); movePhoto(keys[e.key]); }
+    if (!keys[e.key]) return;
+    e.preventDefault();
+    // 押し続けると歩き続ける（1歩先まで覚えておき、速めに動く）
+    if (e.repeat) { view.fastUntil = performance.now() + 400; if (view.anim && view.pending) return; }
+    movePhoto(keys[e.key]);
   });
 }
 
