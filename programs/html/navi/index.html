@@ -14,6 +14,10 @@
   <meta property="og:image" content="https://iku-navi.net/images/logo.png">
   <meta property="og:locale" content="ja_JP">
   <link rel="icon" href="../images/favicon.ico">
+  <!-- 文字は読みやすさを重視した UD フォント、教室番号・階・手順の数字だけ細身の数字書体（案内板の数字） -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=BIZ+UDPGothic:wght@400;700&family=Barlow+Semi+Condensed:wght@500;600&display=swap">
   <link rel="stylesheet" href="style.css">
   <script src="script/config.js"></script>
 </head>
@@ -28,19 +32,21 @@
 
   <div id="app-header">
     <a href="../index.html" class="hdr-title">IKU NAVI</a>
+    <span class="hdr-sub">教室検索ナビ</span>
+    <a class="hdr-link" href="../map3d/">3Dマップ</a>
   </div>
 
   <!-- Search Panel -->
   <div id="search-panel">
     <div id="search-header">
-      <a id="btn-home" href="../index.html" aria-label="トップページに戻る">⌂</a>
+      <a id="btn-home" href="../index.html" aria-label="トップページに戻る"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11.5L12 5l8 6.5M6.5 9.8V19h11V9.8"/></svg></a>
       <div class="category-tabs">
         <button class="category-tab active" id="cat-room"     onclick="setCategory('room')">教室</button>
-        <button class="category-tab"        id="cat-facility" onclick="setCategory('facility')">設備検索</button>
+        <button class="category-tab"        id="cat-facility" onclick="setCategory('facility')">トイレ・食堂</button>
       </div>
       <span id="event-badge">&#127914; イベント</span>
       <button id="search-toggle" onclick="toggleSearchPanel()" aria-label="検索パネルを開閉">
-        <span id="search-chevron" class="open">▾</span>
+        <span id="search-chevron" class="open"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9.5l6 6 6-6"/></svg></span>
       </button>
     </div>
 
@@ -49,50 +55,55 @@
 
         <!-- 教室カテゴリ -->
         <div id="cat-content-room">
-        <div class="search-tabs" style="margin-bottom:8px;">
-          <button class="search-tab active" id="tab-room" onclick="setMode('room')">教室 → 教室</button>
-          <button class="search-tab"        id="tab-gps"  onclick="setMode('gps')">現在地(屋外) → 教室</button>
+        <div class="search-tabs">
+          <button class="search-tab active" id="tab-room" onclick="setMode('room')">教室から</button>
+          <button class="search-tab"        id="tab-gps"  onclick="setMode('gps')">現在地（屋外）から</button>
         </div>
 
+        <!-- 出発と目的地を縦に並べ、入れ替えボタンは右に（乗換案内と同じ並び） -->
         <div id="panel-room">
-          <div class="route-row">
-            <span class="route-label">出発</span>
-            <select class="building-select" id="from-bldg">
-              <option value="">全</option>
-            </select>
-            <div class="ac-wrap">
-              <input id="from-input" placeholder="教室名" autocomplete="off">
-              <div class="suggestions" id="from-sugg"></div>
+          <div class="route-pair">
+            <div class="route-pair-rows">
+              <div class="route-row">
+                <span class="route-label from">出発</span>
+                <select class="building-select" id="from-bldg" aria-label="出発の建物">
+                  <option value="">全建物</option>
+                </select>
+                <div class="ac-wrap">
+                  <input id="from-input" placeholder="教室名（例: 10301）" autocomplete="off" aria-label="出発の教室">
+                  <div class="suggestions" id="from-sugg"></div>
+                </div>
+              </div>
+              <div class="route-row">
+                <span class="route-label to">目的地</span>
+                <select class="building-select" id="to-bldg" aria-label="目的地の建物">
+                  <option value="">全建物</option>
+                </select>
+                <div class="ac-wrap">
+                  <input id="to-input" placeholder="教室名" autocomplete="off" aria-label="目的地の教室">
+                  <div class="suggestions" id="to-sugg"></div>
+                </div>
+              </div>
             </div>
-          </div>
-          <button class="btn-swap" onclick="swapFromTo()" title="出発地と目的地を入れ替え">⇅</button>
-          <div class="route-row">
-            <span class="route-label">目的</span>
-            <select class="building-select" id="to-bldg">
-              <option value="">全</option>
-            </select>
-            <div class="ac-wrap">
-              <input id="to-input" placeholder="教室名" autocomplete="off">
-              <div class="suggestions" id="to-sugg"></div>
-            </div>
+            <button class="btn-swap" onclick="swapFromTo()" title="出発と目的地を入れ替える" aria-label="出発と目的地を入れ替える"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4v15M4.5 15.5L8 19l3.5-3.5M16 20V5M12.5 8.5L16 5l3.5 3.5"/></svg></button>
           </div>
         </div>
 
         <div id="panel-gps" style="display:none">
           <div class="gps-wrapper">
             <div class="gps-row">
-              <span id="gps-text">GPS未取得 — 右のボタンで現在地を取得</span>
-              <button class="btn-gps" onclick="captureGPS()">取得</button>
+              <span id="gps-text">現在地はまだ取得していません</span>
+              <button class="btn-gps" onclick="captureGPS()">現在地を取得</button>
             </div>
             <div id="accuracy-warn"></div>
           </div>
           <div class="route-row">
-            <span class="route-label">目的</span>
-            <select class="building-select" id="gps-to-bldg">
-              <option value="">全</option>
+            <span class="route-label to">目的地</span>
+            <select class="building-select" id="gps-to-bldg" aria-label="目的地の建物">
+              <option value="">全建物</option>
             </select>
             <div class="ac-wrap">
-              <input id="to-input-gps" placeholder="教室名" autocomplete="off">
+              <input id="to-input-gps" placeholder="教室名" autocomplete="off" aria-label="目的地の教室">
               <div class="suggestions" id="gps-to-sugg"></div>
             </div>
           </div>
@@ -101,7 +112,7 @@
         <div class="bottom-row">
           <label class="ev-label">
             <input type="checkbox" id="use-elevator" checked>
-            エレベーター使用
+            エレベーターを使う
           </label>
           <button id="btn-search" onclick="doSearch()">ルート検索</button>
         </div>
@@ -111,18 +122,18 @@
         <div id="cat-content-facility" style="display:none">
 
           <!-- モードタブ -->
-          <div class="search-tabs" style="margin-bottom:8px;">
-            <button class="search-tab active" id="fac-tab-room" onclick="setFacMode('room')">教室 → 設備</button>
-            <button class="search-tab"        id="fac-tab-gps"  onclick="setFacMode('gps')">現在地(屋外) → 設備</button>
+          <div class="search-tabs">
+            <button class="search-tab active" id="fac-tab-room" onclick="setFacMode('room')">教室から</button>
+            <button class="search-tab"        id="fac-tab-gps"  onclick="setFacMode('gps')">現在地（屋外）から</button>
           </div>
 
           <!-- 教室モード: 出発(教室) -->
           <div id="panel-fac-room">
             <div class="route-row">
-              <span class="route-label">出発</span>
-              <select class="building-select" id="fac-from-bldg"><option value="">全</option></select>
+              <span class="route-label from">出発</span>
+              <select class="building-select" id="fac-from-bldg" aria-label="出発の建物"><option value="">全建物</option></select>
               <div class="ac-wrap">
-                <input id="fac-from-input" placeholder="教室名" autocomplete="off">
+                <input id="fac-from-input" placeholder="教室名（例: 10301）" autocomplete="off" aria-label="出発の教室">
                 <div class="suggestions" id="fac-from-sugg"></div>
               </div>
             </div>
@@ -132,8 +143,8 @@
           <div id="panel-fac-gps" style="display:none">
             <div class="gps-wrapper">
               <div class="gps-row">
-                <span id="fac-gps-text">GPS未取得 — 右のボタンで現在地を取得</span>
-                <button class="btn-gps" onclick="captureFacGPS()">取得</button>
+                <span id="fac-gps-text">現在地はまだ取得していません</span>
+                <button class="btn-gps" onclick="captureFacGPS()">現在地を取得</button>
               </div>
               <div id="fac-accuracy-warn"></div>
             </div>
@@ -141,27 +152,27 @@
 
           <!-- 目的: 常に表示 -->
           <div class="route-row">
-            <span class="route-label">目的</span>
-            <select class="building-select" id="fac-category" onchange="onFacCategoryChange()">
+            <span class="route-label to">探す</span>
+            <select class="building-select" id="fac-category" onchange="onFacCategoryChange()" aria-label="探す設備">
               <option value="toilet">トイレ</option>
               <option value="cafeteria">食堂</option>
             </select>
-            <select id="fac-toilet-type" style="flex:1;height:38px;border:1.5px solid #E2E8F0;border-radius:8px;font-size:13px;color:#1E293B;background:white;padding:0 6px;cursor:pointer;">
+            <select class="fac-select" id="fac-toilet-type" aria-label="トイレの種類">
               <option value="all">全て</option>
               <option value="M">男子トイレ</option>
               <option value="F">女子トイレ</option>
               <option value="C">多目的トイレ</option>
             </select>
-            <select id="fac-cafeteria-name" style="flex:1;height:38px;border:1.5px solid #E2E8F0;border-radius:8px;font-size:13px;color:#1E293B;background:white;padding:0 6px;cursor:pointer;display:none;">
+            <select class="fac-select" id="fac-cafeteria-name" aria-label="食堂" style="display:none">
               <option value="all">全て</option>
             </select>
           </div>
 
           <div class="bottom-row">
             <label class="ev-label">
-              <input type="checkbox" id="fac-use-elevator" checked>エレベーター使用
+              <input type="checkbox" id="fac-use-elevator" checked>エレベーターを使う
             </label>
-            <button id="btn-fac-search" onclick="doFacSearch()">設備検索</button>
+            <button id="btn-fac-search" onclick="doFacSearch()">いちばん近くを探す</button>
           </div>
         </div><!-- /#cat-content-facility -->
 
@@ -175,10 +186,10 @@
     <canvas id="ar-gl-canvas"></canvas>
     <div id="ar-cache"></div><!-- prefetch済み <img> がここに積まれる -->
     <div id="ar-placeholder">
-      <div class="ph-text">AR / Camera</div>
-      <div class="arrival-icon" style="display:none"></div>
-      <div class="arrival-title" style="display:none">目的地周辺に到達しました！</div>
-      <div class="arrival-desc" style="display:none">案内はここで終了です。<br>ご利用いただきありがとうございました。</div>
+      <div class="ph-text">道順の写真がここに出ます</div>
+      <div class="arrival-icon" style="display:none"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div>
+      <div class="arrival-title" style="display:none">目的地に着きました</div>
+      <div class="arrival-desc" style="display:none">案内はここまでです。</div>
     </div>
     <div id="ar-label">進行方向</div>
     <img id="direction-arrow" src="" alt="方向矢印">
@@ -188,9 +199,9 @@
       <div id="step-label">ルートを検索してください</div>
       <div id="step-count"></div>
     </div>
-    <button class="nav-arrow" id="prev-btn" onclick="prevStep()" disabled>&#9664;</button>
-    <button class="nav-arrow" id="next-btn" onclick="nextStep()" disabled>&#9654;</button>
-    <button id="voice-toggle-btn" onclick="toggleVoiceGuide()" title="音声案内のON/OFF" aria-pressed="false">&#128264;</button>
+    <button class="nav-arrow" id="prev-btn" onclick="prevStep()" disabled aria-label="前の手順"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 5.5L8 12l6.5 6.5"/></svg></button>
+    <button class="nav-arrow" id="next-btn" onclick="nextStep()" disabled aria-label="次の手順"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 5.5L16 12l-6.5 6.5"/></svg></button>
+    <button id="voice-toggle-btn" onclick="toggleVoiceGuide()" title="音声案内" aria-label="音声案内" aria-pressed="false"></button>
   </div>
 
 </div><!-- /#sidebar -->
@@ -209,18 +220,18 @@
 ================================================================ -->
 <div id="completion-modal">
   <div id="completion-box">
-    <div class="modal-icon">✓</div>
-    <div class="modal-title">目的地に到着！</div>
-    <p class="modal-desc">案内はここで終了です。<br>ご利用いただきありがとうございました。</p>
+    <div class="modal-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div>
+    <div class="modal-title">目的地に着きました</div>
+    <p class="modal-desc">案内はここまでです。使ってみた感想を聞かせてください。</p>
     <!-- ↓ アンケートURLをここに設定してください -->
     <a class="modal-btn-survey" href="https://docs.google.com/forms/d/e/1FAIpQLScPw9uoXzk2AiQamOm-zchGnQrmi9lcSFvonsVjFDnMIhU7Dg/viewform?usp=sharing&ouid=117616783174955140351" target="_blank" rel="noopener">
-      アンケートに答える ↗
+      アンケートに答える
     </a>
-    <button class="modal-btn-continue" onclick="closeCompletionModal()">引き続きナビを使う</button>
+    <button class="modal-btn-continue" onclick="closeCompletionModal()">ナビに戻る</button>
   </div>
 </div>
 
-<div id="loading"><div id="loading-box">検索中...</div></div>
+<div id="loading"><div id="loading-box"><span class="spinner" aria-hidden="true"></span>道順を探しています</div></div>
 
 <script src="script/state.js"></script>
 <script src="script/track.js"></script>

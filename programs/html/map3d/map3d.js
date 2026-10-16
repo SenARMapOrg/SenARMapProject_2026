@@ -734,7 +734,7 @@ let statusTimer = null;
 function setStatus(text, isError = false, hideAfter = 0) {
   const el = $("status");
   el.textContent = text;
-  el.style.background = isError ? "rgba(200, 50, 50, 0.9)" : "";
+  el.classList.toggle("error", isError);
   el.classList.remove("hidden");
   clearTimeout(statusTimer);
   if (hideAfter) statusTimer = setTimeout(() => el.classList.add("hidden"), hideAfter);
@@ -1064,7 +1064,7 @@ function fillFloorButtons() {
       btn.type = "button";
       if (g.kind === "elevator") {
         btn.className = "pv-floor" + (c.floor === here ? " current" : "");
-        btn.textContent = floorName(c.floor).replace("階", "");
+        btn.textContent = c.floor <= 0 ? `B${1 - c.floor}` : String(c.floor);   // エレベーターの階ボタンと同じ書き方
         btn.title = c.floor === here ? "いまの階" : `エレベーターで${floorName(c.floor)}へ`;
         btn.disabled = !c.move;
       } else {
