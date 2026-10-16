@@ -101,13 +101,11 @@
       </div>
     </header>
 
-    <nav class="pv-bar" aria-label="階の移動と向き">
-      <button type="button" class="pv-btn" data-move="up" title="上の階へ（PageUp）">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V6M6.5 11.5L12 6l5.5 5.5"/></svg><span>上の階</span></button>
-      <button type="button" class="pv-btn" data-move="down" title="下の階へ（PageDown）">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v13M6.5 12.5L12 18l5.5-5.5"/></svg><span>下の階</span></button>
+    <!-- 画面の下（床の矢印のすぐ下）: 振り返ると、近くの階段・エスカレーター・エレベーターで階を移るボタン（map3d.js が作る） -->
+    <nav class="pv-dock" aria-label="向きと階の移動">
       <button type="button" class="pv-btn" data-move="flip" title="反対向きを見る">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12a7 7 0 1 0 2.05-4.95M5 4v4h4"/></svg><span>振り返る</span></button>
+      <div class="pv-floors" id="photo-floors"></div>
     </nav>
 
     <!-- パソコンだけ: 行き先の写真（押すとそこへ移る） -->
