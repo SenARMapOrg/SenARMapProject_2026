@@ -945,22 +945,148 @@ function photoMoves() {
     moves[name] = best(atV.length ? atV : turns(u, nu, v, sign));
   }
 
-  // 上・下: from と to にある、階をまたぐ線。from にあるものを優先する
-  for (const [name, sign] of [["up", 1], ["down", -1]]) {
-    const cands = [];
-    [u, v].forEach((p, k) => {
-      const np = nodeById(p);
-      for (const x of neighbors(p)) {
-        if (x.to === u || x.to === v) continue;
-        const nq = nodeById(x.to);
-        if (isVertical(np, nq) && (nq.floor - np.floor) * sign > 0) cands.push(candidate(p, x.to, k));
-      }
-    });
-    moves[name] = best(cands);
+  // 上・下の階: 近くの階段・エスカレーター・エレベーター（photo.floors）のうち、一番近いもの（PageUp/PageDown 用）。
+  // エレベーターは1つ上・下の階。階段・エスカレーターがあればそちらを優先する
+  photo.floors = floorOptions(u, v);
+  for (const [name, dir] of [["up", 1], ["down", -1]]) {
+    const all = photo.floors.flatMap(g => g.choices.filter(c => c.dir === dir).map(c => ({ g, c })));
+    all.sort((p, q) => (p.g.kind === "elevator") - (q.g.kind === "elevator") || p.g.dist - q.g.dist || Math.abs(p.c.floor - nu.floor) - Math.abs(q.c.floor - nu.floor));
+    moves[name] = all.length ? all[0].c.move : null;
   }
 
   moves.flip = candidate(v, u, 0);
   return moves;
+}
+
+// ---- 階の移動（階段・エスカレーター・エレベーター）
+// 階段などは、通路の点そのものか、通路から1本だけ横に延びた枝の先（階段の踊り場・エレベーターの前）にある。
+// 見ている線の両端と、そこから SPUR_LIMIT m 以内の枝の先にあるものを、種類ごとに集めてボタンにする
+// （階段とエレベーターが隣り合っていても、両方選べる）。エレベーターは行ける階を全部並べ、直接その階へ行く
+const SPUR_LIMIT = 15;
+const VERTICAL_KIND = { 2: "stairs", 3: "escalator", 4: "elevator", 5: "escalator", 6: "escalator" };
+const KIND_LABEL = { stairs: "階段", escalator: "エスカレーター", elevator: "エレベーター" };
+
+// 線 e（p → q）で階を移れるなら、その種類。一方通行のエスカレーター（5: 上りだけ、6: 下りだけ）は、通れない向きなら null
+function verticalKind(e, np, nq) {
+  const type = Number(e.type);
+  const kind = VERTICAL_KIND[type];
+  if (!kind || !isVertical(np, nq)) return null;
+  if ((type === 5 && nq.floor < np.floor) || (type === 6 && nq.floor > np.floor)) return null;
+  return kind;
+}
+
+// 階を移ったあと、q で何を見るか。写真のある向きを優先し、同じくらいなら今の向きに近い通路（来た所 came へは戻らない）
+function exitMove(q, came) {
+  const nq = nodeById(q);
+  const h = photo.heading;
+  const cands = neighbors(q).filter(x => x.to !== came && !isVertical(nq, nodeById(x.to)) && flatDir(nq, nodeById(x.to)))
+    .map(x => candidate(q, x.to, h ? Math.abs(turnAngle(h, flatDir(nq, nodeById(x.to)))) : 0));
+  return best(cands) || candidate(came, q, 0);
+}
+
+// 見ている線（u → v）の近くで使える階の移動。[{ kind, label, dist, choices: [{ floor, dir, move }] }]
+function floorOptions(u, v) {
+  const here = nodeById(u).floor;
+  // 階を移れる点と、そこまでの距離（両端は 0。前の端 v を少しだけ優先）
+  const spots = new Map([[u, 0.1], [v, 0]]);
+  for (const p of [v, u]) {
+    for (const x of neighbors(p)) {
+      if (spots.has(x.to) || isVertical(nodeById(p), nodeById(x.to))) continue;
+      const len = Number(x.e.length) || Math.hypot(nodeById(p).x - nodeById(x.to).x, nodeById(p).y - nodeById(x.to).y);
+      if (len <= SPUR_LIMIT) spots.set(x.to, len);
+    }
+  }
+  const groups = new Map();   // 種類 -> その種類で一番近い場所の選択肢
+  for (const [p, dist] of spots) {
+    const np = nodeById(p);
+    for (const x of neighbors(p)) {
+      if ((p === u && x.to === v) || (p === v && x.to === u)) continue;   // いま見ている線そのもの
+      const nq = nodeById(x.to);
+      const kind = verticalKind(x.e, np, nq);
+      if (!kind) continue;
+      let g = groups.get(kind);
+      if (!g) groups.set(kind, g = { kind, label: KIND_LABEL[kind], dist, choices: [] });
+      if (kind === "elevator") {
+        if (dist < g.dist || !g.choices.length) { g.dist = dist; g.choices = elevatorChoices(p); }
+        continue;
+      }
+      // 階段・エスカレーター: 上り・下りそれぞれ、一番近いもの。写真があれば階段の写真、無ければ着いた階の通路を見る
+      const dir = Math.sign(nq.floor - np.floor);
+      const old = g.choices.find(c => c.dir === dir);
+      if (old && old.dist <= dist) continue;
+      const move = photo.images[`${p}_${x.to}`] ? candidate(p, x.to, 0) : exitMove(x.to, p);
+      const choice = { floor: nq.floor, dir, dist, move };
+      g.choices = g.choices.filter(c => c !== old).concat(choice);
+      g.dist = Math.min(g.dist, dist);
+    }
+  }
+  for (const g of groups.values()) g.choices.sort((a, b) => b.floor - a.floor);
+  const order = { stairs: 0, escalator: 1, elevator: 2 };
+  return [...groups.values()].filter(g => g.choices.some(c => c.floor !== here) || g.kind === "elevator")
+    .sort((a, b) => order[a.kind] - order[b.kind]);
+}
+
+// エレベーター（p）から行ける階を全部たどる。着いた階では、エレベーターを降りた先の通路を見る
+function elevatorChoices(p) {
+  const here = nodeById(p).floor;
+  const seen = new Map([[p, null]]);
+  const queue = [p];
+  while (queue.length) {
+    const a = queue.shift();
+    for (const x of neighbors(a)) {
+      if (seen.has(x.to) || verticalKind(x.e, nodeById(a), nodeById(x.to)) !== "elevator") continue;
+      seen.set(x.to, a);
+      queue.push(x.to);
+    }
+  }
+  const byFloor = new Map();
+  for (const [q, prev] of seen) {
+    const f = nodeById(q).floor;
+    if (!byFloor.has(f)) byFloor.set(f, { floor: f, dir: Math.sign(f - here), move: f === here ? null : exitMove(q, prev) });
+  }
+  return [...byFloor.values()];
+}
+
+// 階の移動のボタン（画面の下、床の矢印のすぐ下に並べる）
+function fillFloorButtons() {
+  const box = $("photo-floors");
+  box.replaceChildren();
+  const here = nodeById(photo.from).floor;
+  for (const g of photo.floors || []) {
+    const group = document.createElement("div");
+    group.className = `pv-group ${g.kind}`;
+    const label = document.createElement("span");
+    label.className = "pv-group-label";
+    label.textContent = g.label;
+    group.append(label);
+    for (const c of g.choices) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      if (g.kind === "elevator") {
+        btn.className = "pv-floor" + (c.floor === here ? " current" : "");
+        btn.textContent = floorName(c.floor).replace("階", "");
+        btn.title = c.floor === here ? "いまの階" : `エレベーターで${floorName(c.floor)}へ`;
+        btn.disabled = !c.move;
+      } else {
+        btn.className = "pv-floor step";
+        btn.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${c.dir > 0 ? "M12 19V6M6.5 11.5L12 6l5.5 5.5" : "M12 5v13M6.5 12.5L12 18l5.5-5.5"}"/></svg>`;
+        btn.append(floorName(c.floor));
+        btn.title = `${g.label}で${floorName(c.floor)}へ${c.dir > 0 ? "（PageUp）" : "（PageDown）"}`;
+      }
+      btn.setAttribute("aria-label", btn.title);
+      if (c.move) {
+        btn.addEventListener("click", () => goFloor(c));
+        if (c.move.photo) loadImage(photo.images[`${c.move.from}_${c.move.to}`]);
+      }
+      group.append(btn);
+    }
+    box.append(group);
+  }
+}
+
+function goFloor(c) {
+  if (view.anim || view.drag) return;
+  startMove(c.dir > 0 ? "up" : "down", c.move);
 }
 
 // 線の両端に建物の点があれば、その建物の名前と階
@@ -1218,8 +1344,9 @@ function movePhoto(name) {
 function resolveMove(name) {
   const moves = photo.moves;
   if (name !== "forward" || !moves || moves.forward) return name;
-  if (moves.up && !moves.down) return "up";
-  if (moves.down && !moves.up) return "down";
+  // 目の前（v）にある階段・エスカレーターで、上りか下りの一方だけなら
+  const ahead = (photo.floors || []).filter(g => g.kind !== "elevator" && g.dist === 0).flatMap(g => g.choices);
+  if (ahead.length === 1) return ahead[0].dir > 0 ? "up" : "down";
   return name;
 }
 
@@ -1303,6 +1430,7 @@ function setPlace(from, to, push = false) {
   });
   placeArrows();
   fillPhotoThumbs();
+  fillFloorButtons();
 }
 
 // パソコンで、前後左右の行き先の写真を周りに並べる（行き先が無ければ枠を薄く、写真が無ければ「写真なし」）
@@ -1390,6 +1518,9 @@ function dragName(axis, dx, dy) {
 
 function setupPhotoGestures() {
   const frame = $("photo-frame");
+  // 下のボタンが何段になっても床の矢印と重ならないよう、その高さを CSS に渡す
+  const dock = document.querySelector(".pv-dock");
+  new ResizeObserver(() => $("photo-viewer").style.setProperty("--dock-h", `${dock.offsetHeight}px`)).observe(dock);
   frame.addEventListener("pointerdown", e => {
     if (e.button !== 0 || e.target.closest("button") || view.anim) return;
     view.drag = { id: e.pointerId, x: e.clientX, y: e.clientY, time: performance.now(), axis: null, name: null, next: null, t: 0 };
