@@ -436,6 +436,7 @@ body.photo-open #scene {
 }
 .photo-arrow:disabled { display: none; }
 .photo-arrow:not(.has-photo) { opacity: 0.55; }
+.photo-arrow.ahead svg { color: #fff; filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.55)) drop-shadow(0 2px 3px rgba(0, 0, 0, 0.6)); }   /* いま向いている道 */
 .photo-arrow:hover svg,
 .photo-arrow.hot svg { transform: scale(1.18); color: #FFE27A; }
 
