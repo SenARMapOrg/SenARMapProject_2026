@@ -223,3 +223,6 @@ deploy_env/k8s/secrets.yaml
 
 # Map_Editor で撮影したAR経路写真（CDNへは手動アップロード。リポジトリには含めない）
 captured_photos/
+
+# 建物・教室一覧はビルド時に deploy_env/pages/generate_campus_pages.py が作る
+programs/html/campus/
