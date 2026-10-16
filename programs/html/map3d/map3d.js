@@ -734,7 +734,7 @@ let statusTimer = null;
 function setStatus(text, isError = false, hideAfter = 0) {
   const el = $("status");
   el.textContent = text;
-  el.style.background = isError ? "rgba(200, 50, 50, 0.9)" : "";
+  el.classList.toggle("error", isError);
   el.classList.remove("hidden");
   clearTimeout(statusTimer);
   if (hideAfter) statusTimer = setTimeout(() => el.classList.add("hidden"), hideAfter);
@@ -833,22 +833,20 @@ function animate(now) {
 
 // ---------------------------------------------------------------- 写真モード（ストリートビューのように通路の写真を見る）
 // 写真は線の向きごとにある（edge_image.csv。from → to の写真は from に立って to の方を向いて撮ったもの）。
-// いま見ている向きの線（from → to）を基準に、矢印で隣の線へ移る:
-//   前へ   … to から先へ、いちばんまっすぐ続く線（先が曲がり角で1本しか無ければ、曲がってその線へ）
-//   後ろへ … from より手前の、まっすぐ後ろにある線（向きはそのまま、後ずさりする）
-//   左・右 … この先の分かれ道（to）で左・右に曲がる線。to に無ければ、立っている from で曲がる線
-//   上・下 … from か to にある階段・エレベーター・エスカレーターで、上・下の階へ
-//   振り返る … 同じ線の反対向き
+// Googleマップのストリートビューのように、点（通路の分かれ目などの地点）に立って、ある向きを見る。
+// 写真は線の向きごとにある（edge_image.csv。from → to の写真は from に立って to の方を向いて撮ったもの）ので、
+// 「立っている点（photo.from）から、向いている方へ延びる線（→ photo.to）」の写真を出す。
 // 左右は、鏡写しを直したあとの実際の東西南北で決める（教室名の左右と同じ）。データも API も変えず、読むだけ
 const photo = {
   on: false,
   images: null,       // /api/edge_images（{"from_to": 写真のURL}）。写真モードを初めて使うときに読む
   adjacency: null,    // 点の番号 -> [{ to: 点の番号, e: 線 }]
-  from: null, to: null,
+  from: null, to: null,   // 立っている点と、向いている線の先の点
   heading: null,      // いま向いている水平の向き（階段・エレベーターのように水平の長さが無い線では、直前の向きを引き継ぐ）
 };
-const STRAIGHT_LIMIT = 60;      // 前へ・後ろへで「まっすぐ」とみなす曲がりの角度（度）
-const TURN_RANGE = [30, 150];   // 左・右とみなす曲がりの角度（度）
+const TURN_MIN = 20;            // これより小さい角度の通路は、左右ではなく正面とみなす（度）
+const BACK_MIN = 120;           // これより大きい角度の通路を、後ろとみなす（度）
+const ARRIVE_NO_PHOTO = 25;     // 点に着いて向く線を選ぶとき、写真の無い線はこの角度ぶん不利にする（度）
 const PICK_RADIUS = { mouse: 16, touch: 30 };   // タップした場所から何ピクセル以内の線を選ぶか（指はマウスより大きく取る）
 const PICK_NO_PHOTO = 10;       // 写真の無い線は、この分だけ遠いものとして選ぶ（写真のある通路を選びやすくする）
 // パソコン（広い画面でマウスを使う）では、前後左右の写真も周りに並べる。スマートフォンでは真ん中の1枚だけ
@@ -910,57 +908,184 @@ function candidate(from, to, score) {
   return { from, to, score, photo: !!photo.images[`${from}_${to}`] };
 }
 
-// 矢印ごとの行き先（{from, to}）。行けなければ null
+// 点 q に着いたときに向く線。いまの向き（heading）に一番近い先の通路を向く（写真のある線を少し優先）。
+// 来た点（prev）へは戻らない。先に通路が無ければ階段などの写真、それも無ければ来た方を向く（行き止まり）
+function arriveAt(q, prev, heading = photo.heading) {
+  const nq = nodeById(q);
+  const flat = neighbors(q).filter(x => x.to !== prev && !isVertical(nq, nodeById(x.to)) && flatDir(nq, nodeById(x.to)));
+  const scored = flat.map(x => ({
+    to: x.to,
+    score: (heading ? Math.abs(turnAngle(heading, flatDir(nq, nodeById(x.to)))) : 0) + (photo.images[`${q}_${x.to}`] ? 0 : ARRIVE_NO_PHOTO),
+  })).sort((a, b) => a.score - b.score);
+  if (scored.length) return candidate(q, scored[0].to, scored[0].score);
+  const up = neighbors(q).find(x => x.to !== prev && photo.images[`${q}_${x.to}`]);
+  if (up) return candidate(q, up.to, 0);
+  if (prev !== undefined && prev !== null && edgeBetween(q, prev)) return candidate(q, prev, 0);
+  const any = neighbors(q)[0];
+  return any ? candidate(q, any.to, 0) : null;
+}
+
+// 立っている点から出ている、歩いて行ける通路（階段などは除く）と、いまの向きから見た角度（右が正）
+function walkways() {
+  const p = photo.from, np = nodeById(p), h = photo.heading;
+  return neighbors(p).filter(x => !isVertical(np, nodeById(x.to)) && flatDir(np, nodeById(x.to)))
+    .map(x => ({ to: x.to, a: h ? turnAngle(h, flatDir(np, nodeById(x.to))) : 0 }));
+}
+
+// 矢印・キーごとの行き先（{from, to} = 立つ点と向く線）。行けなければ null
+//   前へ     … 向いている線の先の点へ進む（線があれば必ず進める）。着いたら今の向きに一番近い先の線を向く
+//   後ろへ   … 向きはそのままで、真後ろ側の点へ下がる
+//   左・右   … その場で、左・右の隣の通路の方を向く（立つ点は変わらない）
+//   振り返る … その場で、後ろの通路の方を向く
+//   上・下   … 近くの階段・エスカレーター・エレベーターで、上・下の階へ（photo.floors）
 function photoMoves() {
-  const u = photo.from, v = photo.to;
-  const nu = nodeById(u), nv = nodeById(v);
-  const h = photo.heading;
-  const flat = (p, q) => !isVertical(nodeById(p), nodeById(q)) && flatDir(nodeById(p), nodeById(q));
+  const p = photo.from, f = photo.to;
+  const np = nodeById(p);
   const moves = {};
+  const ways = walkways();
 
-  // 前へ: to から先へ。いま階段などの上なら向きの決まりが無いので、また先が曲がり角（続く線が1本だけ）なら、
-  // どの向きでも一番まっすぐなものへ
-  const onVertical = isVertical(nu, nv) || !flatDir(nu, nv);
-  const ahead = neighbors(v).filter(x => x.to !== u && flat(v, x.to));
-  moves.forward = best(ahead.map(x => {
-    const a = h ? Math.abs(turnAngle(h, flatDir(nv, nodeById(x.to)))) : 0;
-    return (onVertical || ahead.length === 1 || a <= STRAIGHT_LIMIT) ? candidate(v, x.to, a) : null;
-  }).filter(Boolean));
+  moves.forward = arriveAt(f, p, photo.heading);
 
-  // 後ろへ: from から真後ろへ延びる線を、同じ向きのまま（手前の点 → from）たどる
-  moves.back = h ? best(neighbors(u).filter(x => x.to !== v && flat(u, x.to)).map(x => {
-    const a = 180 - Math.abs(turnAngle(h, flatDir(nu, nodeById(x.to))));
-    return a <= STRAIGHT_LIMIT ? candidate(x.to, u, a) : null;
-  }).filter(Boolean)) : null;
+  const behind = ways.filter(w => w.to !== f && Math.abs(w.a) >= BACK_MIN).sort((a, b) => Math.abs(b.a) - Math.abs(a.a))[0];
+  moves.back = behind ? arriveAt(behind.to, null, photo.heading) : null;
 
-  // 左・右: この先の分かれ道（to）で曲がる。to に無ければ、立っている場所（from）で向きを変える。
-  // 前へで曲がり角を曲がる場合（続く線が1本だけ）は、同じ線を左右にも出さない
-  const turns = (p, np, skip, sign) => neighbors(p).filter(x => x.to !== skip && flat(p, x.to)).map(x => {
-    const a = turnAngle(h, flatDir(np, nodeById(x.to))) * sign;
-    return a > TURN_RANGE[0] && a < TURN_RANGE[1] ? candidate(p, x.to, Math.abs(a - 90)) : null;
-  }).filter(Boolean);
+  // 左右は、いまの向きから一番近い（でも真後ろではない）隣の通路
   for (const [name, sign] of [["left", -1], ["right", 1]]) {
-    if (!h) { moves[name] = null; continue; }
-    const atV = onVertical ? [] : turns(v, nv, u, sign).filter(c => !(moves.forward && c.to === moves.forward.to && c.from === moves.forward.from));
-    moves[name] = best(atV.length ? atV : turns(u, nu, v, sign));
+    const side = ways.filter(w => w.to !== f && w.a * sign > TURN_MIN && w.a * sign < 180 - TURN_MIN).sort((a, b) => Math.abs(a.a) - Math.abs(b.a))[0];
+    moves[name] = side ? candidate(p, side.to, Math.abs(side.a)) : null;
   }
+  const around = ways.filter(w => w.to !== f).sort((a, b) => Math.abs(b.a) - Math.abs(a.a))[0];
+  moves.flip = around && Math.abs(around.a) >= BACK_MIN ? candidate(p, around.to, 0) : null;
 
-  // 上・下: from と to にある、階をまたぐ線。from にあるものを優先する
-  for (const [name, sign] of [["up", 1], ["down", -1]]) {
-    const cands = [];
-    [u, v].forEach((p, k) => {
-      const np = nodeById(p);
-      for (const x of neighbors(p)) {
-        if (x.to === u || x.to === v) continue;
-        const nq = nodeById(x.to);
-        if (isVertical(np, nq) && (nq.floor - np.floor) * sign > 0) cands.push(candidate(p, x.to, k));
-      }
-    });
-    moves[name] = best(cands);
+  photo.floors = floorOptions(p, f);
+  for (const [name, dir] of [["up", 1], ["down", -1]]) {
+    const all = photo.floors.flatMap(g => g.choices.filter(c => c.dir === dir).map(c => ({ g, c })));
+    all.sort((a, b) => (a.g.kind === "elevator") - (b.g.kind === "elevator") || a.g.dist - b.g.dist || Math.abs(a.c.floor - np.floor) - Math.abs(b.c.floor - np.floor));
+    moves[name] = all.length ? all[0].c.move : null;
   }
-
-  moves.flip = candidate(v, u, 0);
   return moves;
+}
+
+// ---- 階の移動（階段・エスカレーター・エレベーター）
+// 階段などは、通路の点そのものか、通路から1本だけ横に延びた枝の先（階段の踊り場・エレベーターの前）にある。
+// 見ている線の両端と、そこから SPUR_LIMIT m 以内の枝の先にあるものを、種類ごとに集めてボタンにする
+// （階段とエレベーターが隣り合っていても、両方選べる）。エレベーターは行ける階を全部並べ、直接その階へ行く
+const SPUR_LIMIT = 15;
+const VERTICAL_KIND = { 2: "stairs", 3: "escalator", 4: "elevator", 5: "escalator", 6: "escalator" };
+const KIND_LABEL = { stairs: "階段", escalator: "エスカレーター", elevator: "エレベーター" };
+
+// 線 e（p → q）で階を移れるなら、その種類。一方通行のエスカレーター（5: 上りだけ、6: 下りだけ）は、通れない向きなら null
+function verticalKind(e, np, nq) {
+  const type = Number(e.type);
+  const kind = VERTICAL_KIND[type];
+  if (!kind || !isVertical(np, nq)) return null;
+  if ((type === 5 && nq.floor < np.floor) || (type === 6 && nq.floor > np.floor)) return null;
+  return kind;
+}
+
+// 見ている線（u → v）の近くで使える階の移動。[{ kind, label, dist, choices: [{ floor, dir, move }] }]
+function floorOptions(u, v) {
+  const here = nodeById(u).floor;
+  // 階を移れる点と、そこまでの距離（両端は 0。前の端 v を少しだけ優先）
+  const spots = new Map([[u, 0.1], [v, 0]]);
+  for (const p of [v, u]) {
+    for (const x of neighbors(p)) {
+      if (spots.has(x.to) || isVertical(nodeById(p), nodeById(x.to))) continue;
+      const len = Number(x.e.length) || Math.hypot(nodeById(p).x - nodeById(x.to).x, nodeById(p).y - nodeById(x.to).y);
+      if (len <= SPUR_LIMIT) spots.set(x.to, len);
+    }
+  }
+  const groups = new Map();   // 種類 -> その種類で一番近い場所の選択肢
+  for (const [p, dist] of spots) {
+    const np = nodeById(p);
+    for (const x of neighbors(p)) {
+      if ((p === u && x.to === v) || (p === v && x.to === u)) continue;   // いま見ている線そのもの
+      const nq = nodeById(x.to);
+      const kind = verticalKind(x.e, np, nq);
+      if (!kind) continue;
+      let g = groups.get(kind);
+      if (!g) groups.set(kind, g = { kind, label: KIND_LABEL[kind], dist, choices: [] });
+      if (kind === "elevator") {
+        if (dist < g.dist || !g.choices.length) { g.dist = dist; g.choices = elevatorChoices(p); }
+        continue;
+      }
+      // 階段・エスカレーター: 上り・下りそれぞれ、一番近いもの。写真があれば階段の写真、無ければ着いた階の通路を見る
+      const dir = Math.sign(nq.floor - np.floor);
+      const old = g.choices.find(c => c.dir === dir);
+      if (old && old.dist <= dist) continue;
+      const move = arriveAt(x.to, p);
+      const choice = { floor: nq.floor, dir, dist, move };
+      g.choices = g.choices.filter(c => c !== old).concat(choice);
+      g.dist = Math.min(g.dist, dist);
+    }
+  }
+  for (const g of groups.values()) g.choices.sort((a, b) => b.floor - a.floor);
+  const order = { stairs: 0, escalator: 1, elevator: 2 };
+  return [...groups.values()].filter(g => g.choices.some(c => c.floor !== here) || g.kind === "elevator")
+    .sort((a, b) => order[a.kind] - order[b.kind]);
+}
+
+// エレベーター（p）から行ける階を全部たどる。着いた階では、エレベーターを降りた先の通路を見る
+function elevatorChoices(p) {
+  const here = nodeById(p).floor;
+  const seen = new Map([[p, null]]);
+  const queue = [p];
+  while (queue.length) {
+    const a = queue.shift();
+    for (const x of neighbors(a)) {
+      if (seen.has(x.to) || verticalKind(x.e, nodeById(a), nodeById(x.to)) !== "elevator") continue;
+      seen.set(x.to, a);
+      queue.push(x.to);
+    }
+  }
+  const byFloor = new Map();
+  for (const [q, prev] of seen) {
+    const f = nodeById(q).floor;
+    if (!byFloor.has(f)) byFloor.set(f, { floor: f, dir: Math.sign(f - here), move: f === here ? null : arriveAt(q, prev) });
+  }
+  return [...byFloor.values()];
+}
+
+// 階の移動のボタン（画面の下、床の矢印のすぐ下に並べる）
+function fillFloorButtons() {
+  const box = $("photo-floors");
+  box.replaceChildren();
+  const here = nodeById(photo.from).floor;
+  for (const g of photo.floors || []) {
+    const group = document.createElement("div");
+    group.className = `pv-group ${g.kind}`;
+    const label = document.createElement("span");
+    label.className = "pv-group-label";
+    label.textContent = g.label;
+    group.append(label);
+    for (const c of g.choices) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      if (g.kind === "elevator") {
+        btn.className = "pv-floor" + (c.floor === here ? " current" : "");
+        btn.textContent = c.floor <= 0 ? `B${1 - c.floor}` : String(c.floor);   // エレベーターの階ボタンと同じ書き方
+        btn.title = c.floor === here ? "いまの階" : `エレベーターで${floorName(c.floor)}へ`;
+        btn.disabled = !c.move;
+      } else {
+        btn.className = "pv-floor step";
+        btn.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${c.dir > 0 ? "M12 19V6M6.5 11.5L12 6l5.5 5.5" : "M12 5v13M6.5 12.5L12 18l5.5-5.5"}"/></svg>`;
+        btn.append(floorName(c.floor));
+        btn.title = `${g.label}で${floorName(c.floor)}へ${c.dir > 0 ? "（PageUp）" : "（PageDown）"}`;
+      }
+      btn.setAttribute("aria-label", btn.title);
+      if (c.move) {
+        btn.addEventListener("click", () => goFloor(c));
+        if (c.move.photo) loadImage(photo.images[`${c.move.from}_${c.move.to}`]);
+      }
+      group.append(btn);
+    }
+    box.append(group);
+  }
+}
+
+function goFloor(c) {
+  if (view.anim || view.drag) return;
+  startMove(c.dir > 0 ? "up" : "down", c.move);
 }
 
 // 線の両端に建物の点があれば、その建物の名前と階
@@ -1012,22 +1137,23 @@ function drawPhotoMarker() {
   const lift = new THREE.Vector3(0, 0.6, 0);
   const pa = toScene(a).add(lift), pb = toScene(b).add(lift);
   const mat = new THREE.MeshBasicMaterial({ color: COLOR.viewing, depthTest: false, transparent: true, opacity: 0.95 });
-  const tube = tubeBetween(pa, pb, 0.9, mat);
+  // 向いている線は細く薄く、立っている点（丸）と向き（丸から出る矢印）をはっきり
+  const lineMat = new THREE.MeshBasicMaterial({ color: COLOR.viewing, depthTest: false, transparent: true, opacity: 0.55 });
+  const tube = tubeBetween(pa, pb, 0.4, lineMat);
   if (tube) { tube.renderOrder = 5; photoGroup.add(tube); }
-  // 立っている場所（from）の丸と、向いている方（to）を指す矢印
-  const dot = new THREE.Mesh(new THREE.SphereGeometry(1.6, 20, 14), mat);
+  const dot = new THREE.Mesh(new THREE.SphereGeometry(2, 20, 14), mat);
   dot.position.copy(pa);
   dot.renderOrder = 6;
-  const dir = new THREE.Vector3().subVectors(pb, pa);
-  const len = dir.length();
-  if (len > 0.01) {
-    const cone = new THREE.Mesh(new THREE.ConeGeometry(1.5, 3.6, 20), mat);
-    cone.position.copy(pa).addScaledVector(dir, Math.max(0.5, 1 - 2.5 / len));
-    cone.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.clone().normalize());
+  photoGroup.add(dot);
+  const h = photo.heading;
+  if (h) {
+    const dir = new THREE.Vector3(h.x, 0, h.z);
+    const cone = new THREE.Mesh(new THREE.ConeGeometry(1.7, 4, 20), mat);
+    cone.position.copy(pa).addScaledVector(dir, 3.6);
+    cone.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
     cone.renderOrder = 6;
     photoGroup.add(cone);
   }
-  photoGroup.add(dot);
 }
 
 // 立っている場所の少し後ろ・上から、向いている方を見下ろす
@@ -1154,26 +1280,27 @@ function clearLayers() {
   $("photo-spinner").hidden = true;
 }
 
-// 行き先の、いま向いている方から見た角度（度。右が正、真後ろは ±180）。矢印を床に置く向きと、タップ先の判定に使う
+// 行き先の線の、いま向いている方から見た角度（度。右が正、真後ろは ±180）
 function moveAngle(name, m) {
   const fallback = { forward: 0, left: -90, right: 90, back: 180 }[name] ?? 0;
   const h = photo.heading;
-  if (!h || !m) return fallback;
-  // 後ろへは「手前の点 → 立っている場所」の線を同じ向きのまま下がるので、向きは逆にして測る
-  const d = name === "back" ? flatDir(nodeById(m.to), nodeById(m.from)) : flatDir(nodeById(m.from), nodeById(m.to));
-  if (!d) return fallback;
-  const a = turnAngle(h, d);
-  return name === "back" && Math.abs(a) < 90 ? fallback : a;
+  const d = h && m && flatDir(nodeById(m.from), nodeById(m.to));
+  return d ? turnAngle(h, d) : fallback;
 }
 
 // 移り方: zoom（1 前へ寄る・-1 後ろへ引く・0 その場）、shift（横に流れる量。1 で90°）、lift（1 上の階・-1 下の階）
 function motionOf(name, m) {
   if (name === "up" || name === "down") return { zoom: 1, shift: 0, lift: name === "up" ? 0.7 : -0.7 };   // 階段などへ進みながら上・下へ
-  if (name === "flip") return { zoom: 0, shift: 2, lift: 0 };
   if (name === "back") return { zoom: -1, shift: 0, lift: 0 };
-  const shift = Math.max(-1.5, Math.min(1.5, moveAngle(name, m) / 90));
-  // 立っている場所で曲がるときはその場で向きを変え、この先の分かれ道へ行くときは寄りながら曲がる
-  return { zoom: m && m.from === photo.from ? 0 : 1, shift: Math.abs(shift) < 0.15 ? 0 : shift, lift: 0 };
+  const clampShift = a => { const v = Math.max(-1.5, Math.min(1.5, a / 90)); return Math.abs(v) < 0.15 ? 0 : v; };
+  if (name === "flip") return { zoom: 0, shift: moveAngle(name, m) < 0 ? -2 : 2, lift: 0 };
+  if (name === "forward") {
+    // 階段などの線を向いているときは、上・下の階へ進む
+    const p = nodeById(photo.from), f = nodeById(photo.to);
+    if (isVertical(p, f)) return { zoom: 1, shift: 0, lift: f.floor > p.floor ? 0.7 : -0.7 };
+    return { zoom: 1, shift: clampShift(moveAngle(name, m)), lift: 0 };   // 着いた点で向く線が曲がっていれば、寄りながら曲がる
+  }
+  return { zoom: 0, shift: clampShift(moveAngle(name, m)), lift: 0 };    // 左・右: その場で向きを変える
 }
 
 // 動きの途中（t: 0〜1）の見た目。old は今の写真、next は行き先の写真
@@ -1207,25 +1334,26 @@ function nudge(name) {
 
 // 矢印・キー・ホイールなどからの移動。移動中なら、終わったあとに続けて動く
 function movePhoto(name) {
-  name = resolveMove(name);
   const m = photo.moves && photo.moves[name];
   if (!m) { if (!view.anim && !view.drag) nudge(name); return; }
   if (view.anim || view.drag) { view.pending = name; return; }
   startMove(name, m, { t: 0 });
 }
 
-// 前へ進めない場所（階段・エスカレーターの前など）で、上か下の階へ行けるなら、前へはそちらへ進む
-function resolveMove(name) {
-  const moves = photo.moves;
-  if (name !== "forward" || !moves || moves.forward) return name;
-  if (moves.up && !moves.down) return "up";
-  if (moves.down && !moves.up) return "down";
-  return name;
+// 床の矢印: その通路の先の点へ歩いて行き、歩いた向きのまま先の線を向く
+function walkTo(q) {
+  if (view.anim || view.drag) return;
+  const p = photo.from;
+  const d = flatDir(nodeById(p), nodeById(q));
+  if (q === photo.to) { movePhoto("forward"); return; }
+  const a = photo.heading && d ? turnAngle(photo.heading, d) : 0;
+  startMove("walk", arriveAt(q, p, d), { mo: { zoom: 1, shift: Math.max(-2, Math.min(2, a / 90)), lift: 0 } });
 }
 
+
 // 移動を始める。drag から引き継ぐ場合は、その途中（t）から最後まで動かす
-async function startMove(name, m, { t = 0, next = null } = {}) {
-  const mo = motionOf(name, m);
+async function startMove(name, m, { t = 0, next = null, mo = null } = {}) {
+  mo = mo || motionOf(name, m);
   const anim = view.anim = { name };
   hideHint();
   view.moved = true;
@@ -1296,19 +1424,20 @@ function setPlace(from, to, push = false) {
   const moves = photoMoves();
   photo.moves = moves;
   document.querySelectorAll("#photo-viewer [data-move]").forEach(btn => {
-    const m = moves[resolveMove(btn.dataset.move)];
+    const m = moves[btn.dataset.move];
     btn.disabled = !m;
     btn.classList.toggle("has-photo", !!(m && m.photo));
     if (m && m.photo) loadImage(photo.images[`${m.from}_${m.to}`]);
   });
   placeArrows();
   fillPhotoThumbs();
+  fillFloorButtons();
 }
 
 // パソコンで、前後左右の行き先の写真を周りに並べる（行き先が無ければ枠を薄く、写真が無ければ「写真なし」）
 function fillPhotoThumbs() {
   document.querySelectorAll("#photo-viewer [data-thumb]").forEach(btn => {
-    const m = photo.moves && photo.moves[resolveMove(btn.dataset.thumb)];
+    const m = photo.moves && photo.moves[btn.dataset.thumb];
     const img = btn.querySelector("img");
     const url = WIDE_PHOTO.matches && m && m.photo ? photo.images[`${m.from}_${m.to}`] : null;
     if (url) img.src = url; else img.removeAttribute("src");
@@ -1318,11 +1447,24 @@ function fillPhotoThumbs() {
 
 // 床の矢印を、行き先の実際の向きに置く（近すぎて重なるときは少し離す）
 function placeArrows() {
-  const items = [];
-  document.querySelectorAll("#photo-ground [data-move]").forEach(btn => {
-    const name = resolveMove(btn.dataset.move);
-    const m = photo.moves && photo.moves[name];
-    if (m) items.push({ btn, a: name === btn.dataset.move ? moveAngle(name, m) : 0 });
+  const ground = $("photo-ground");
+  ground.querySelectorAll(".photo-arrow").forEach(b => b.remove());
+  const f = photo.to;
+  const items = walkways().map(w => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "photo-arrow";
+    btn.dataset.to = String(w.to);
+    btn.innerHTML = '<svg viewBox="0 0 48 48" aria-hidden="true"><path d="M8 34L24 14l16 20-16-8z"/></svg>';
+    const ahead = w.to === f;
+    btn.title = ahead ? "前へ（↑）" : "この道へ進む";
+    btn.setAttribute("aria-label", ahead ? "前へ進む" : `${Math.abs(Math.round(w.a))}度${w.a < 0 ? "左" : "右"}の道へ進む`);
+    const arrive = arriveAt(w.to, photo.from, flatDir(nodeById(photo.from), nodeById(w.to)));
+    btn.classList.toggle("has-photo", !!(arrive && arrive.photo));
+    btn.classList.toggle("ahead", ahead);
+    btn.addEventListener("click", () => walkTo(w.to));
+    ground.append(btn);
+    return { btn, a: w.a };
   });
   items.sort((p, q) => p.a - q.a);
   const GAP = 34;
@@ -1332,25 +1474,26 @@ function placeArrows() {
   for (const it of items) it.btn.style.setProperty("--a", `${it.a}deg`);
 }
 
-// 写真の上のタップ・クリックした横の位置から、進む先（前・左・右のうち、向きが一番近いもの）を選ぶ
+// 写真の上のタップ・クリックした横の位置から、何をするかを選ぶ: 真ん中なら前へ進み、左右寄りならそちらを向く
 function pickByPoint(clientX) {
   if (!photo.moves) return null;
   const r = $("photo-frame").getBoundingClientRect();
   const aim = ((clientX - r.left) / r.width * 2 - 1) * CLICK_SPAN;
   let found = null, bestDiff = CLICK_LIMIT;
   for (const name of ["forward", "left", "right"]) {
-    const real = resolveMove(name);
-    const m = photo.moves[real];
+    const m = photo.moves[name];
     if (!m) continue;
-    const diff = Math.abs((real === name ? moveAngle(name, m) : 0) - aim);
-    if (diff < bestDiff) { bestDiff = diff; found = real; }
+    const diff = Math.abs((name === "forward" ? 0 : moveAngle(name, m)) - aim);
+    if (diff < bestDiff) { bestDiff = diff; found = name; }
   }
   return found;
 }
 
-// マウスを写真の上で動かしたら、クリックで進む先の矢印を光らせる
+// マウスを写真の上で動かしたら、クリックで進む先・向く先の通路の矢印を光らせる
 function hoverArrow(name) {
-  document.querySelectorAll("#photo-ground [data-move]").forEach(btn => btn.classList.toggle("hot", !!name && resolveMove(btn.dataset.move) === name));
+  const m = name && photo.moves && photo.moves[name];
+  const target = m ? String(name === "forward" ? photo.to : m.to) : null;
+  document.querySelectorAll("#photo-ground .photo-arrow").forEach(btn => btn.classList.toggle("hot", btn.dataset.to === target));
   $("photo-frame").classList.toggle("can-go", !!name);
 }
 
@@ -1372,8 +1515,8 @@ function showHint() {
   if (view.moved) return;
   const hint = $("photo-hint");
   hint.textContent = WIDE_PHOTO.matches
-    ? "行きたい方をクリックすると進みます（ドラッグ・矢印キー・ホイールでも移れます）"
-    : "行きたい方をタップすると進みます（上下左右にドラッグしても移れます）";
+    ? "真ん中をクリックで前へ、左右をクリックでそちらを向きます。床の矢印でその道へ進みます（矢印キー・ホイールでも）"
+    : "真ん中をタップで前へ、左右をタップでそちらを向きます。床の矢印でその道へ進みます";
   hint.hidden = false;
   clearTimeout(hintTimer);
   hintTimer = setTimeout(hideHint, 5000);
@@ -1390,6 +1533,9 @@ function dragName(axis, dx, dy) {
 
 function setupPhotoGestures() {
   const frame = $("photo-frame");
+  // 下のボタンが何段になっても床の矢印と重ならないよう、その高さを CSS に渡す
+  const dock = document.querySelector(".pv-dock");
+  new ResizeObserver(() => $("photo-viewer").style.setProperty("--dock-h", `${dock.offsetHeight}px`)).observe(dock);
   frame.addEventListener("pointerdown", e => {
     if (e.button !== 0 || e.target.closest("button") || view.anim) return;
     view.drag = { id: e.pointerId, x: e.clientX, y: e.clientY, time: performance.now(), axis: null, name: null, next: null, t: 0 };
@@ -1410,7 +1556,7 @@ function setupPhotoGestures() {
       hideHint();
       frame.classList.add("moving");
     }
-    const name = resolveMove(dragName(d.axis, dx, dy));
+    const name = dragName(d.axis, dx, dy);
     if (name !== d.name) {   // 向きを逆にしたら、行き先の写真を入れ替える
       if (d.next) d.next.remove();
       d.name = name;

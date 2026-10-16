@@ -1,15 +1,26 @@
-/* 3Dキャンパスマップ（/map3d/）。画面いっぱいの3D表示の上に、左上の操作パネルを重ねる */
+/* 3Dキャンパスマップ（/map3d/）。画面いっぱいの3D表示の上に、左上の操作パネルを重ねる。
+   配色と書体は教室検索ナビ（/navi/）と同じ「構内の案内サイン」: 紙と墨と罫線で組み、朱は主な操作と道順だけ、
+   紺は選んでいる状態とフォーカス。数字（階・教室番号）は細身の数字書体 */
 
 :root {
-  --ink: #1C2333;
-  --muted: #5B6476;
-  --panel: #FFFFFF;
-  --line: #DDE2EA;
-  --shadow: 0 1px 2px rgba(20, 30, 50, 0.12), 0 3px 10px rgba(20, 30, 50, 0.1);
+  --ink: #14181F;
+  --muted: #4B5563;
+  --faint: #8A919C;
+  --paper: #F6F6F2;
+  --paper-deep: #ECECE5;
+  --panel: var(--paper);
+  --line: #DBDCD4;
+  --line-strong: #C3C5BB;
+  --shadow: 0 1px 2px rgba(20, 24, 31, 0.14), 0 4px 14px rgba(20, 24, 31, 0.1);
   --photo: #3DA2DB;
-  --accent: #FF7A1A;
-  --accent-dark: #D95F00;
-  --green: #3bab64;
+  --accent: #E8501E;
+  --accent-dark: #B93C14;
+  --accent-light: #FCEEE7;
+  --transit-blue: #1B3A6B;
+  --go: #1E7145;
+  --plate: rgba(20, 24, 31, 0.86);
+  --font: 'BIZ UDPGothic', 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', sans-serif;
+  --font-num: 'Barlow Semi Condensed', 'BIZ UDPGothic', sans-serif;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -17,11 +28,14 @@
 html, body { height: 100%; overflow: hidden; }
 
 body {
-  font-family: -apple-system, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', 'Noto Sans JP', sans-serif;
+  font-family: var(--font);
   color: var(--ink);
   background: #DCE7F2;
   -webkit-font-smoothing: antialiased;
 }
+button, select, input { font-family: inherit; }
+[hidden] { display: none !important; }   /* display を指定した要素でも、hidden なら出さない */
+:focus-visible { outline: 2px solid var(--transit-blue); outline-offset: 2px; }
 
 #scene {
   position: fixed;
@@ -40,88 +54,113 @@ body {
   max-height: calc(100vh - 24px);
   overflow-y: auto;
   background: var(--panel);
-  border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: 10px;
   box-shadow: var(--shadow);
-  padding: 12px 14px;
   z-index: 2;
 }
 
-.panel-head { display: flex; align-items: center; gap: 8px; }
-.brand { font-weight: 800; color: var(--green); text-decoration: none; letter-spacing: 0.02em; }
-.brand-sub { font-size: 13px; color: var(--muted); }
+/* 見出しは墨の帯（ナビ画面の見出しと同じ） */
+.panel-head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 10px 10px 14px;
+  background: var(--ink);
+  color: #fff;
+}
+.brand { font-family: var(--font-num); font-size: 18px; font-weight: 600; color: #fff; text-decoration: none; letter-spacing: 0.02em; }
+.brand-sub { font-size: 13px; color: rgba(255, 255, 255, 0.72); }
 .panel-toggle {
   margin-left: auto;
-  border: 1px solid var(--line);
-  background: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  background: none;
   border-radius: 6px;
-  padding: 3px 10px;
+  height: 30px;
+  padding: 0 10px;
   font-size: 12px;
-  color: var(--muted);
+  color: #fff;
   cursor: pointer;
 }
+.panel-toggle:hover { background: rgba(255, 255, 255, 0.1); }
 
 .panel.collapsed .panel-body { display: none; }
 
-.panel-body { margin-top: 10px; display: flex; flex-direction: column; gap: 12px; }
+.panel-body { padding: 14px; display: flex; flex-direction: column; gap: 14px; }
 
 .route-form { display: flex; flex-direction: column; gap: 8px; }
-.route-form label { display: flex; flex-direction: column; gap: 3px; font-size: 12px; color: var(--muted); }
+.route-form > label:not(.check) { display: grid; grid-template-columns: 64px 1fr; align-items: center; font-size: 12px; font-weight: 700; color: var(--muted); }
+/* 出発は白丸、目的地は朱の丸（地図の道順の両端と同じ印） */
+.route-form .pin { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.route-form .pin::before { content: ""; width: 9px; height: 9px; border-radius: 50%; background: #fff; border: 2px solid var(--ink); }
+.route-form .pin.to::before { background: var(--accent); border-color: var(--accent); }
 .route-form select {
-  font-size: 14px;
-  padding: 7px 8px;
-  border: 1px solid var(--line);
+  font-size: 15px;
+  height: 42px;
+  padding: 0 8px;
+  border: 1px solid var(--line-strong);
   border-radius: 8px;
   background: #fff;
   color: var(--ink);
+  min-width: 0;
 }
-.route-actions { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.route-form label.check { flex-direction: row; font-size: 13px; color: var(--ink); }
+.route-form select:focus { outline: none; border-color: var(--transit-blue); box-shadow: 0 0 0 1px var(--transit-blue); }
+.route-actions { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 2px; }
 
 .btn-primary {
+  flex: 1;
   border: none;
   background: var(--accent);
   color: #fff;
   font-weight: 700;
-  font-size: 14px;
-  padding: 8px 14px;
-  border-radius: 6px;
+  font-size: 15px;
+  height: 44px;
+  padding: 0 14px;
+  border-radius: 8px;
   cursor: pointer;
 }
 .btn-primary:hover { background: var(--accent-dark); }
 
-.check { display: inline-flex; align-items: center; gap: 5px; font-size: 13px; color: var(--ink); cursor: pointer; }
+.check { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); cursor: pointer; white-space: nowrap; }
+.check input { width: 17px; height: 17px; accent-color: var(--accent); }
 
 .route-summary {
   font-size: 13px;
   line-height: 1.6;
-  background: #FFF4EA;
-  border-left: 3px solid var(--accent);
+  background: var(--accent-light);
+  border-left: 4px solid var(--accent);
   padding: 8px 10px;
   border-radius: 6px;
 }
 
-.controls { display: flex; flex-direction: column; gap: 8px; }
+.controls { display: flex; flex-direction: column; gap: 10px; padding-top: 12px; border-top: 1px solid var(--line); }
 .control-row { display: flex; align-items: center; gap: 8px; font-size: 13px; }
-.control-label { flex: 0 0 auto; width: 5.5em; color: var(--muted); font-size: 12px; }
-.control-row input[type="range"] { flex: 1; accent-color: var(--accent); }
+.control-row:has(.chips) { align-items: flex-start; }
+.control-row:has(.chips) .control-label { padding-top: 7px; }
+.control-label { flex: 0 0 auto; width: 5.5em; color: var(--muted); font-size: 12px; font-weight: 700; }
+.control-row input[type="range"] { flex: 1; accent-color: var(--transit-blue); }
 .toggles { gap: 14px; padding-left: calc(5.5em + 8px); }
 
 .chips { display: flex; flex-wrap: wrap; gap: 5px; }
 .chip {
-  border: 1px solid var(--line);
+  border: 1px solid var(--line-strong);
   background: #fff;
   border-radius: 6px;
-  padding: 3px 9px;
-  font-size: 12px;
+  height: 30px;
+  padding: 0 9px;
+  font-size: 13px;
   cursor: pointer;
   color: var(--ink);
+  font-variant-numeric: tabular-nums;
 }
-.chip .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 4px; vertical-align: 0; }
+.chip:hover { border-color: var(--ink); }
+.chip .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px; vertical-align: 0; }
 .chip.active { background: var(--ink); color: #fff; border-color: var(--ink); }
 
-.legend { list-style: none; display: grid; grid-template-columns: repeat(3, auto); gap: 4px 10px; font-size: 12px; color: var(--muted); }
-.legend li { display: flex; align-items: center; gap: 5px; }
+.legend { list-style: none; display: grid; grid-template-columns: repeat(3, auto); gap: 5px 10px; font-size: 12px; color: var(--muted); padding-top: 12px; border-top: 1px solid var(--line); }
+.legend li { display: flex; align-items: center; gap: 6px; }
 .swatch { width: 16px; height: 5px; border-radius: 3px; display: inline-block; }
 .swatch.corridor { background: #F2F5FA; box-shadow: 0 0 0 1px #AEB8C8 inset; }
 .swatch.stairs { background: #2FB36D; }
@@ -130,25 +169,29 @@ body {
 .swatch.outdoor { background: #9AA4B2; }
 .swatch.route { background: var(--accent); }
 
-.hint { font-size: 11px; color: var(--muted); line-height: 1.6; }
+.hint { font-size: 12px; color: var(--muted); line-height: 1.7; }
 
 .status {
   position: fixed;
-  right: 12px;
-  bottom: max(12px, env(safe-area-inset-bottom));
-  background: rgba(28, 35, 51, 0.88);
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: max(16px, env(safe-area-inset-bottom));
+  width: max-content;
+  max-width: calc(100vw - 32px);
+  background: var(--plate);
   color: #fff;
-  font-size: 12px;
-  padding: 6px 12px;
-  border-radius: 6px;
+  font-size: 13px;
+  padding: 8px 14px;
+  border-radius: 8px;
+  border-left: 4px solid var(--transit-blue);
   z-index: 2;
   pointer-events: none;
   transition: opacity 0.4s;
 }
+.status.error { border-left-color: var(--accent); background: rgba(122, 42, 13, 0.92); }
 .status.hidden { opacity: 0; }
 
 @media (max-width: 600px) {
-  .panel { padding: 10px 12px; }
   .legend { grid-template-columns: repeat(2, auto); }
 }
 
@@ -163,22 +206,22 @@ body {
   z-index: 2;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  height: 38px;
-  padding: 0 14px 0 11px;
-  background: #fff;
-  color: var(--ink);
-  border: 1px solid var(--line);
+  gap: 7px;
+  height: 42px;
+  padding: 0 14px 0 12px;
+  background: var(--ink);
+  color: #fff;
+  border: none;
   border-radius: 8px;
   box-shadow: var(--shadow);
   font: inherit;
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 700;
   cursor: pointer;
 }
 .map-btn svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linejoin: round; }
-.map-btn:hover { background: #F4F6F9; }
-.map-btn.active { background: var(--ink); border-color: var(--ink); color: #fff; }
+.map-btn:hover { background: #2A303B; }
+.map-btn.active { background: var(--paper); color: var(--ink); box-shadow: inset 0 0 0 2px var(--ink), var(--shadow); }
 
 /* 写真を見る画面（画面いっぱい）。開いている間、3Dの地図は左下の小さな地図になる */
 .pv {
@@ -227,7 +270,7 @@ body.photo-open #scene {
   align-items: flex-start;
   gap: 12px;
   padding: max(12px, env(safe-area-inset-top)) 16px 28px;
-  background: linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0));
+  background: linear-gradient(rgba(0, 0, 0, 0.45), rgba(0, 0, 0, 0));
   pointer-events: none;
 }
 .pv-top > * { pointer-events: auto; }
@@ -236,22 +279,32 @@ body.photo-open #scene {
   display: inline-flex;
   align-items: center;
   gap: 2px;
-  height: 38px;
+  height: 42px;
   padding: 0 12px 0 6px;
-  border: 1px solid rgba(255, 255, 255, 0.35);
+  border: none;
   border-radius: 8px;
-  background: rgba(0, 0, 0, 0.35);
+  background: var(--plate);
   color: #fff;
   font: inherit;
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
 }
-.pv-back:hover { background: rgba(0, 0, 0, 0.6); }
+.pv-back:hover { background: rgba(20, 24, 31, 0.97); }
 .pv-back svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
-.pv-place { display: flex; flex-direction: column; gap: 2px; min-width: 0; padding-top: 2px; text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6); }
-.pv-place strong { font-size: 17px; font-weight: 700; }
-.pv-place span { font-size: 13px; color: #E3E7EE; }
+/* いまの場所の案内板: 墨の板に建物・階を大きく、その下に左右の教室 */
+.pv-place {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  padding: 6px 12px 7px 10px;
+  border-radius: 8px;
+  border-left: 4px solid var(--accent);
+  background: var(--plate);
+}
+.pv-place strong { font-family: var(--font-num), var(--font); font-size: 20px; font-weight: 600; line-height: 1.2; letter-spacing: 0.01em; }
+.pv-place span { font-size: 13px; color: rgba(255, 255, 255, 0.78); font-variant-numeric: tabular-nums; }
 .pv-place span:empty { display: none; }
 
 .pv-stage {
@@ -332,8 +385,8 @@ body.photo-open #scene {
 .pv-ground {
   --r: 104px;
   position: absolute;
-  left: 50%;
-  bottom: 150px;
+  left: calc((var(--pv-left) + 100% - var(--pv-right)) / 2);
+  bottom: calc(var(--dock-h, 58px) + 100px);   /* 下のボタン（.pv-dock）の高さぶん上げる。--dock-h は map3d.js が入れる */
   width: 0;
   height: 0;
   transform: perspective(700px) rotateX(52deg);
@@ -383,38 +436,105 @@ body.photo-open #scene {
 }
 .photo-arrow:disabled { display: none; }
 .photo-arrow:not(.has-photo) { opacity: 0.55; }
+.photo-arrow.ahead svg { color: #fff; filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.55)) drop-shadow(0 2px 3px rgba(0, 0, 0, 0.6)); }   /* いま向いている道 */
 .photo-arrow:hover svg,
 .photo-arrow.hot svg { transform: scale(1.18); color: #FFE27A; }
 
-/* 上の階・下の階・振り返る（パソコンは右上、スマートフォンは画面の下） */
-.pv-bar {
+/* 画面の下の、振り返る・階の移動（床の矢印のすぐ下）。小さな地図（左下）と行き先の写真（右）を避けた
+   残りの幅の真ん中に置き、床の矢印も同じ真ん中にそろえる（--pv-left・--pv-right） */
+.pv { --pv-left: 332px; --pv-right: 16px; }
+.pv-dock {
   position: absolute;
-  top: max(12px, env(safe-area-inset-top));
-  right: 16px;
+  left: var(--pv-left);
+  right: var(--pv-right);
+  bottom: max(16px, env(safe-area-inset-bottom));
   display: flex;
-  gap: 6px;
+  flex-wrap: wrap-reverse;   /* 入り切らないときは、上の段に送る */
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  pointer-events: none;
 }
+.pv-dock > * { pointer-events: auto; }
+.pv-floors { display: contents; }
+.pv-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 46px;
+  padding: 4px;
+  border-radius: 10px;
+  background: var(--plate);
+  pointer-events: auto;
+}
+.pv-group-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 6px 0 8px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #fff;
+  white-space: nowrap;
+}
+.pv-group-label::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+.pv-group.stairs .pv-group-label::before { background: #2FB36D; }
+.pv-group.escalator .pv-group-label::before { background: #9B51E0; }
+.pv-group.elevator .pv-group-label::before { background: #2F7FE0; }
+.pv-floor {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  min-width: 38px;
+  height: 38px;
+  padding: 0 10px 0 7px;
+  border: none;
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  font-family: var(--font-num), var(--font);
+  font-size: 17px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.pv-floor:hover:not(:disabled) { background: rgba(255, 255, 255, 0.26); }
+/* エレベーターの階は、エレベーターの中の丸い階ボタンのように。いまの階は点灯している */
+.pv-group.elevator .pv-floor {
+  width: 38px;
+  padding: 0;
+  border-radius: 50%;
+  background: none;
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.55);
+}
+.pv-group.elevator .pv-floor:hover:not(:disabled) { background: rgba(255, 255, 255, 0.16); box-shadow: inset 0 0 0 2px #fff; }
+.pv-group.elevator .pv-floor.current { color: #FFB37F; box-shadow: inset 0 0 0 2px #FFB37F, 0 0 10px rgba(255, 140, 70, 0.55); }
+.pv-floor:disabled { cursor: default; }
+.pv-floor:disabled:not(.current) { opacity: 0.4; }
+.pv-floor svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
 .pv-btn {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  height: 38px;
+  gap: 6px;
+  height: 46px;
   padding: 0 12px;
-  border: 1px solid rgba(255, 255, 255, 0.35);
-  border-radius: 8px;
-  background: rgba(0, 0, 0, 0.35);
+  border: none;
+  border-radius: 10px;
+  background: var(--plate);
   color: #fff;
   font: inherit;
-  font-size: 13px;
+  font-size: 14px;
+  font-weight: 700;
   cursor: pointer;
 }
-.pv-btn:hover:not(:disabled) { background: rgba(0, 0, 0, 0.6); }
+.pv-btn:hover:not(:disabled) { background: rgba(20, 24, 31, 0.97); }
 .pv-btn:disabled { display: none; }
 .pv-btn svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 
 /* 行き先の写真（パソコンだけ。右側に縦に並べる） */
 .pv-thumbs { display: none; }
 @media (min-width: 900px) and (hover: hover) and (pointer: fine) {
+  .pv { --pv-right: 200px; }
   .pv-thumbs {
     position: absolute;
     right: 16px;
@@ -465,17 +585,16 @@ body.photo-open #scene {
   .pv-top { padding: max(10px, env(safe-area-inset-top)) 10px 24px; gap: 10px; }
   .pv-place strong { font-size: 15px; }
   .pv-place span { font-size: 12px; }
-  .pv-bar {
-    top: auto;
-    left: 0;
-    right: 0;
+  .pv { --pv-left: 0px; --pv-right: 0px; }
+  .pv-dock {
+    gap: 6px;
+    padding: 18px 8px max(8px, env(safe-area-inset-bottom));
     bottom: 0;
-    justify-content: center;
-    padding: 8px 10px max(8px, env(safe-area-inset-bottom));
     background: linear-gradient(rgba(0, 0, 0, 0), rgba(0, 0, 0, 0.7));
   }
-  .pv-btn { flex: 1; max-width: 140px; justify-content: center; }
-  .pv-ground { --r: 76px; bottom: 150px; }
+  .pv-group-label { font-size: 11px; padding: 0 4px 0 6px; }
+  .pv-floor { min-width: 34px; padding: 0 6px; }
+  .pv-ground { --r: 76px; bottom: calc(var(--dock-h, 68px) + 64px); }
   .photo-arrow { left: -32px; top: -32px; width: 64px; height: 64px; }
   .photo-arrow svg { width: 52px; height: 52px; }
   body.photo-open #scene {
