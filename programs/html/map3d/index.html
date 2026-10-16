@@ -84,13 +84,9 @@
     <div class="pv-stage" id="photo-frame">
       <div class="pv-layers" id="photo-layers"></div>
       <div class="pv-spinner" id="photo-spinner" hidden></div>
-      <!-- 床に寝かせた矢印。行き先の実際の向き（--a）に置く -->
+      <!-- 床に寝かせた矢印。立っている点から出ている通路ごとに、実際の向き（--a）に置く（map3d.js が作る） -->
       <div class="pv-ground" id="photo-ground">
         <span class="pv-ring" aria-hidden="true"></span>
-        <button type="button" class="photo-arrow" data-move="forward" aria-label="前へ" title="前へ（↑）"><svg viewBox="0 0 48 48" aria-hidden="true"><path d="M8 34L24 14l16 20-16-8z"/></svg></button>
-        <button type="button" class="photo-arrow" data-move="left" aria-label="左へ" title="左へ（←）"><svg viewBox="0 0 48 48" aria-hidden="true"><path d="M8 34L24 14l16 20-16-8z"/></svg></button>
-        <button type="button" class="photo-arrow" data-move="right" aria-label="右へ" title="右へ（→）"><svg viewBox="0 0 48 48" aria-hidden="true"><path d="M8 34L24 14l16 20-16-8z"/></svg></button>
-        <button type="button" class="photo-arrow" data-move="back" aria-label="後ろへ" title="後ろへ（↓）"><svg viewBox="0 0 48 48" aria-hidden="true"><path d="M8 34L24 14l16 20-16-8z"/></svg></button>
       </div>
       <p class="pv-hint" id="photo-hint" hidden></p>
     </div>
@@ -112,12 +108,12 @@
       <div class="pv-floors" id="photo-floors"></div>
     </nav>
 
-    <!-- パソコンだけ: 行き先の写真（押すとそこへ移る） -->
+    <!-- パソコンだけ: 前へ進んだ先・左右を向いた先・下がった先の写真（押すとそこへ移る） -->
     <div class="pv-thumbs" aria-label="行き先の写真">
         <button type="button" class="pv-thumb" data-move="forward" data-thumb="forward" title="前へ（↑）"><img alt=""><span class="pv-thumb-label">前へ</span><span class="pv-thumb-empty">写真なし</span></button>
-        <button type="button" class="pv-thumb" data-move="left" data-thumb="left" title="左へ（←）"><img alt=""><span class="pv-thumb-label">左へ</span><span class="pv-thumb-empty">写真なし</span></button>
-        <button type="button" class="pv-thumb" data-move="right" data-thumb="right" title="右へ（→）"><img alt=""><span class="pv-thumb-label">右へ</span><span class="pv-thumb-empty">写真なし</span></button>
-        <button type="button" class="pv-thumb" data-move="back" data-thumb="back" title="後ろへ（↓）"><img alt=""><span class="pv-thumb-label">後ろへ</span><span class="pv-thumb-empty">写真なし</span></button>
+        <button type="button" class="pv-thumb" data-move="left" data-thumb="left" title="左を向く（←）"><img alt=""><span class="pv-thumb-label">左を向く</span><span class="pv-thumb-empty">写真なし</span></button>
+        <button type="button" class="pv-thumb" data-move="right" data-thumb="right" title="右を向く（→）"><img alt=""><span class="pv-thumb-label">右を向く</span><span class="pv-thumb-empty">写真なし</span></button>
+        <button type="button" class="pv-thumb" data-move="back" data-thumb="back" title="後ろへ下がる（↓）"><img alt=""><span class="pv-thumb-label">後ろへ下がる</span><span class="pv-thumb-empty">写真なし</span></button>
     </div>
 
     <span class="pv-mini-label" aria-hidden="true">地図に戻る</span>
