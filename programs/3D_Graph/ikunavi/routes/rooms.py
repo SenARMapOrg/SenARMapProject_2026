@@ -38,7 +38,7 @@ def api_all():
     返却形式:
       {
         "rooms":     [ { "room", "building", "floor", "edge_id", "from", "to" }, ... ],
-        "nodes":     [ { "id", "building", "floor", "type" }, ... ],
+        "nodes":     [ { "id", "building", "floor", "type", ("lat", "lng" | "svg_x", "svg_y") }, ... ],
         "buildings": [ { "id": 1, "display_name": "1号館" }, ... ]
       }
     display_name は data/building_name.csv で設定した表示名（未設定なら "{id}号館" / building=0 は "屋外"）。

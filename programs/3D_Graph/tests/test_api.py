@@ -43,6 +43,15 @@ def test_一括取得(client):
     assert outdoor["lat"] == 35.61
 
 
+def test_一括取得のノードにはフロアマップ上の座標が入る(client):
+    # 埋め込みフロアマップが教室の位置に印を付けるのに使う。svg_x の無い建物のノードには付けない
+    _, data = get(client, "/api/all")
+    nodes = {n["id"]: n for n in data["nodes"]}
+    assert (nodes[B1[1]]["svg_x"], nodes[B1[1]]["svg_y"]) == (100.0, 100.0)
+    assert "svg_x" not in nodes[B2[1]]
+    assert "svg_x" not in nodes[OUT[1]]
+
+
 # ------------------------------------------------------------------ 経路探索
 
 def test_教室から教室への経路(client):

@@ -60,7 +60,9 @@ def get_node_xyz():
 
 
 def get_nodes_list():
-    """/api/all 用の、座標を持たない軽量なノード一覧"""
+    """/api/all 用の軽量なノード一覧（実座標 x/y/z は持たない）。
+    屋外ノードは緯度経度、屋内ノードはフロアマップSVG上の座標（svg_x/svg_y。あるものだけ）を持つ。
+    svg_x/svg_y は埋め込みフロアマップ（programs/html/embed/）が教室の位置に印を付けるのに使う"""
     global _nodes_list
     if _nodes_list is None:
         nodes_df, _ = get_data()
@@ -78,6 +80,9 @@ def get_nodes_list():
                 nd["lat"] = float(row["lat"])
             if "lng" in row and pd.notna(row["lng"]):
                 nd["lng"] = float(row["lng"])
+            if "svg_x" in row and pd.notna(row["svg_x"]) and pd.notna(row.get("svg_y")):
+                nd["svg_x"] = float(row["svg_x"])
+                nd["svg_y"] = float(row["svg_y"])
             nodes.append(nd)
         nodes.sort(key=lambda n: n["id"])
         _nodes_list = nodes

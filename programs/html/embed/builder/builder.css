@@ -1,0 +1,64 @@
+/* 埋め込みコードを作るページ（/embed/builder/）。地・罫線・ボタンは campus.css を使う */
+.builder h2 { font-size: 20px; margin: 32px 0 10px; }
+.builder p, .builder li { max-width: 44em; }
+.builder ul { padding-left: 1.4em; }
+.builder code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.9em; background: var(--paper-deep); padding: 0 4px; border-radius: 4px; }
+
+.builder-grid { display: grid; grid-template-columns: minmax(0, 300px) minmax(0, 1fr); gap: 16px; align-items: start; }
+@media (max-width: 760px) { .builder-grid { grid-template-columns: minmax(0, 1fr); } }
+
+.panel { background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 16px; }
+fieldset { border: 0; }
+fieldset + .fields, .fields + .fields, fieldset.looks { margin-top: 16px; }
+.fields[hidden] { display: none; }
+legend { font-weight: 700; margin-bottom: 8px; }
+
+/* 載せるもの: 3つから選ぶ切り替え */
+.kinds { display: flex; flex-wrap: wrap; gap: 6px; }
+.kinds legend { width: 100%; }
+.kinds label { position: relative; flex: 1 1 auto; }
+.kinds input { position: absolute; opacity: 0; }
+.kinds label {
+  display: flex; align-items: center; justify-content: center; min-height: 40px; padding: 0 10px;
+  border: 1px solid var(--line-strong); border-radius: 8px; font-weight: 700; font-size: 14px; cursor: pointer; background: #fff;
+}
+.kinds label:has(input:checked) { background: var(--ink); border-color: var(--ink); color: #fff; }
+.kinds label:has(input:focus-visible) { outline: 2px solid var(--transit-blue); outline-offset: 2px; }
+
+.field { display: flex; flex-direction: column; gap: 4px; font-size: 13px; font-weight: 700; color: var(--ink-soft); }
+.field + .field, .field-row + .field, .field + .check, .check + .check { margin-top: 12px; }
+.field-row { display: flex; gap: 10px; }
+.field-row .field { flex: 1; }
+.field input, .field select {
+  height: 42px; padding: 0 10px; border: 1px solid var(--line-strong); border-radius: 8px;
+  font: inherit; font-weight: 400; font-size: 16px; color: var(--ink); background: #fff;
+}
+.field input:focus, .field select:focus { outline: none; border-color: var(--transit-blue); box-shadow: 0 0 0 2px rgba(27, 58, 107, 0.2); }
+.check { display: flex; gap: 8px; align-items: flex-start; font-size: 14px; line-height: 1.5; }
+.check input { margin-top: 3px; accent-color: var(--accent); }
+.check[hidden] { display: none; }
+.form-error { min-height: 1.5em; margin-top: 8px; font-size: 13px; font-weight: 700; color: var(--accent-dark); }
+
+.preview-box { background: var(--paper-deep); border-radius: 8px; padding: 12px; overflow: auto; }
+.preview-box iframe { display: block; margin: 0 auto; background: #fff; }
+.code-label { margin-top: 14px; }
+.code {
+  width: 100%; margin-top: 4px; padding: 10px; border: 1px solid var(--line-strong); border-radius: 8px; resize: vertical;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; line-height: 1.5; color: var(--ink); background: var(--paper);
+}
+.code-actions { display: flex; align-items: center; gap: 12px; margin-top: 10px; }
+.btn { cursor: pointer; font: inherit; font-weight: 700; }
+.copied { font-size: 13px; color: var(--ink-soft); }
+
+.howto { margin-top: 8px; }
+.howto table { border-collapse: collapse; font-size: 14px; margin: 8px 0; width: 100%; max-width: 820px; }
+.howto th, .howto td { text-align: left; vertical-align: top; padding: 8px 10px; border-bottom: 1px solid var(--line); }
+.howto th { font-size: 13px; color: var(--ink-soft); }
+@media (max-width: 600px) {
+  .howto table, .howto tbody, .howto tr, .howto td { display: block; }
+  .howto thead { display: none; }
+  .howto td { border: 0; padding: 2px 0; }
+  .howto tr { padding: 8px 0; border-bottom: 1px solid var(--line); }
+}
+.code-block { background: var(--ink); color: #E8EAED; border-radius: 8px; padding: 14px; overflow-x: auto; font-size: 13px; line-height: 1.6; max-width: 820px; }
+.code-block code { background: none; padding: 0; color: inherit; }

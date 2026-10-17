@@ -48,7 +48,7 @@ push / Pull Request のたびに GitHub Actions（`.github/workflows/test.yml`�
 SenARMapProject_2026/
 ├── programs/
 │   ├── 3D_Graph/          # Flask バックエンド (app.py + ikunavi/) + 3D 経路ビューア（経路探索APIの実体）
-│   ├── html/               # Cloudflare Pages 公開ルート（ナビ UI・AR画面・blog・SVG 等。本番で実際に配信されるのはこちら）
+│   ├── html/               # Cloudflare Pages 公開ルート（ナビ UI・AR画面・他サイト向けの埋め込みマップ embed/（docs/API_Embed.md）・blog・SVG 等。本番で実際に配信されるのはこちら）
 │   ├── Website/             # プロジェクト紹介 LP（学内発表用、Pages では非公開）
 │   ├── IKU_NAVI_Tools/      # データ作成・検証用デスクトップアプリ（PyQt6）。マップ編集・イベント設定・ルート検証・画像チェック・画像リネーム・人物ぼかし・SVG座標取得をタブで切り替えて使う
 │   ├── image_uploader/      # Cloudflare Pages + R2 を使った画像一括アップローダー

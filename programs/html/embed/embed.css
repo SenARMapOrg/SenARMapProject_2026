@@ -1,0 +1,121 @@
+/* 埋め込みフロアマップ（/embed/）。教室検索ナビと同じ「構内の案内サイン」の配色・書体:
+   紙と墨と罫線を地にして、朱（--accent）は歩く道と目的地、紺（--transit-blue）は区間の出発点と終点だけに使う */
+:root {
+  --ink: #14181F;
+  --ink-soft: #4B5563;
+  --ink-faint: #8A919C;
+  --paper: #F6F6F2;
+  --paper-deep: #ECECE5;
+  --line: #DBDCD4;
+  --line-strong: #C3C5BB;
+  --accent: #E8501E;
+  --accent-dark: #B93C14;
+  --transit-blue: #1B3A6B;
+  --font: 'BIZ UDPGothic', 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', 'Yu Gothic', sans-serif;
+  --font-num: 'Barlow Semi Condensed', 'BIZ UDPGothic', sans-serif;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body {
+  display: flex; flex-direction: column; overflow: hidden;
+  background: var(--paper); color: var(--ink); font-family: var(--font);
+  font-size: 14px; line-height: 1.5; -webkit-font-smoothing: antialiased;
+}
+button { font: inherit; color: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+:focus-visible { outline: 2px solid var(--transit-blue); outline-offset: 2px; }
+
+/* 上の帯: 号館の表示板と、いま見ているもの */
+.bar {
+  display: flex; align-items: center; gap: 8px; min-height: 40px; padding: 6px 8px 6px 10px;
+  background: var(--ink); color: #fff;
+}
+body.no-header .bar { display: none; }
+.plate {
+  flex: none; font-family: var(--font-num), var(--font); font-weight: 600; font-size: 15px;
+  background: #fff; color: var(--ink); padding: 0 8px 1px 7px; border-left: 4px solid var(--accent); border-radius: 4px;
+}
+.bar-title { flex: 1; min-width: 0; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.open-full {
+  flex: none; font-size: 12px; color: #fff; text-decoration: none; padding: 5px 9px;
+  border: 1px solid rgba(255, 255, 255, 0.35); border-radius: 6px;
+}
+.open-full:hover { background: rgba(255, 255, 255, 0.12); }
+
+/* 地図 */
+.stage { position: relative; flex: 1; min-height: 0; overflow: hidden; background: #fff; }
+.map { position: absolute; inset: 0; cursor: grab; touch-action: pan-x pan-y; user-select: none; -webkit-user-select: none; }
+body.standalone .map { touch-action: none; }
+.map.dragging { cursor: grabbing; }
+.map > svg { display: block; width: 100%; height: 100%; }
+.map svg.outdoor {
+  background-color: var(--paper);
+  background-image: linear-gradient(var(--line) 1px, transparent 1px), linear-gradient(90deg, var(--line) 1px, transparent 1px);
+  background-size: 32px 32px;
+}
+.pin-label, .north {
+  font-family: var(--font); font-weight: 700; fill: var(--ink);
+  paint-order: stroke; stroke: #fff; stroke-width: 0.28em; stroke-linejoin: round;
+}
+.north { fill: var(--ink-soft); }
+
+/* 地図が出せないときの案内 */
+.notice {
+  position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: center; gap: 6px;
+  padding: 20px; background: var(--paper); text-align: center;
+}
+.notice[hidden] { display: none; }
+.notice-title { font-weight: 700; font-size: 15px; }
+.notice-desc { color: var(--ink-soft); font-size: 13px; max-width: 32em; margin: 0 auto; }
+
+/* 地図は出せるが、道順や教室の印を描けないとき（その建物のノードにフロアマップ上の座標がまだ無い） */
+.banner {
+  position: absolute; left: 52px; right: 52px; top: 8px; margin: 0 auto; max-width: 30em; width: fit-content;
+  padding: 5px 10px; border-radius: 6px; background: rgba(255, 255, 255, 0.94); border: 1px solid var(--line-strong);
+  font-size: 12px; color: var(--ink-soft); pointer-events: none;
+}
+.banner[hidden] { display: none; }
+
+/* 「2本の指で地図を動かせます」など、操作のこつを一瞬だけ */
+.hint {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; padding: 16px;
+  background: rgba(20, 24, 31, 0.55); color: #fff; font-weight: 700; text-align: center;
+  opacity: 0; pointer-events: none; transition: opacity 0.2s;
+}
+.hint.show { opacity: 1; }
+
+.zoom { position: absolute; right: 8px; bottom: 28px; display: flex; flex-direction: column; border-radius: 8px; overflow: hidden; border: 1px solid var(--line-strong); background: #fff; }
+.zoom[hidden], .floors[hidden], .steps[hidden] { display: none; }
+.zoom button { width: 36px; height: 36px; border: 0; background: #fff; font-size: 18px; display: grid; place-items: center; }
+.zoom button + button { border-top: 1px solid var(--line); }
+.zoom button:hover { background: var(--paper-deep); }
+
+/* 階の切り替え: エレベーターの階数ボタンのように */
+.floors { position: absolute; left: 8px; top: 8px; display: flex; flex-direction: column; gap: 4px; max-height: calc(100% - 16px); overflow-y: auto; }
+.floors button {
+  width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--line-strong); background: #fff;
+  font-family: var(--font-num); font-weight: 600; font-size: 16px;
+}
+.floors button:hover { border-color: var(--ink); }
+.floors button[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: #fff; }
+
+.credit {
+  position: absolute; right: 8px; bottom: 6px; font-family: var(--font-num); font-weight: 600; font-size: 11px;
+  color: var(--ink-soft); text-decoration: none; background: rgba(255, 255, 255, 0.8); padding: 0 4px; border-radius: 3px;
+}
+.credit:hover { color: var(--ink); text-decoration: underline; }
+
+/* 道案内の区間: ◀ 1/4 10号館 3階 約40m ▶ と、その区間を歩き終えたらすること */
+.steps { display: flex; align-items: stretch; border-top: 1px solid var(--line-strong); background: var(--paper); }
+.seg-btn { flex: none; width: 48px; border: 0; background: transparent; font-size: 16px; color: var(--ink); }
+.seg-btn:hover:not(:disabled) { background: var(--paper-deep); }
+.seg-btn:disabled { color: var(--line-strong); cursor: default; }
+.seg-body { flex: 1; min-width: 0; padding: 7px 2px 8px; }
+.seg-head { display: flex; align-items: baseline; gap: 8px; white-space: nowrap; }
+.seg-count { font-family: var(--font-num); font-weight: 600; color: var(--ink-soft); }
+.seg-title { font-weight: 700; overflow: hidden; text-overflow: ellipsis; }
+.seg-dist { font-family: var(--font-num), var(--font); color: var(--ink-soft); }
+.seg-next { color: var(--accent-dark); font-weight: 700; font-size: 13px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .hint { transition: none; }
+}
