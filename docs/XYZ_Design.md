@@ -82,7 +82,7 @@ id,x,y,z,building,floor,type,svg_x,svg_y
 
 `right`/`left` は2026年9月時点でどの建物の `edge.csv` にも実データは入っていない（列自体が無くても空文字として動作する）。将来、音声案内（naviの右左折案内）などで「左手に◯◯教室があります」のような案内を出す際に使う想定の列。
 
-CSVには `from`→`to` 片方向の値しか記述しないが、経路探索でその区間を逆向き（`to`→`from`）に通る場合、`programs/3D_Graph/ikunavi/graph.py` の `build_graph` がグラフに逆方向のエッジを追加する際に `right`/`left` を自動的に入れ替える。そのため CSV編集者は常に「CSVの `from`→`to` 方向を向いたときの右左」だけを意識すればよく、API（`path_edges`）から返る値は経路の実際の進行方向を基準にした値になる。
+CSVには `from`→`to` 片方向の値しか記述しないが、経路探索でその区間を逆向き（`to`→`from`）に通る場合、`programs/3D_Graph/ikunavi/graph.py` の `build_graph` がグラフに逆方向のエッジを追加する際に `right`/`left` を自動的に入れ替え、`;` 区切りの並び順も逆にする（`to` 側が手前になるため）。そのため CSV編集者は常に「CSVの `from`→`to` 方向を向いたときの右左と、`from` 側から数えた並び順」だけを意識すればよく、API（`path_edges`）から返る値は経路の実際の進行方向を基準にした値になる。
 
 ### エッジ種別 (`type`)
 

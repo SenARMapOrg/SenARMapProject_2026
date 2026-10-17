@@ -34,6 +34,30 @@ def test_逆方向のエッジでは右と左が入れ替わる():
     assert G.edges[2, 1]["right"] == "102" and G.edges[2, 1]["left"] == "101"
 
 
+def test_逆方向のエッジでは並び順も手前と奥が入れ替わる():
+    # right/left は from 側（手前）から to 側（奥）への並び。to→from に歩くと to 側が手前になる
+    G = build_graph(*_frames([_edge(right="101;103;105", left="102;104")]))
+    assert G.edges[1, 2]["right"] == "101;103;105" and G.edges[1, 2]["left"] == "102;104"
+    assert G.edges[2, 1]["right"] == "104;102" and G.edges[2, 1]["left"] == "105;103;101"
+
+
+def test_逆方向に歩くと目的地は奥からではなく手前から数える():
+    from ikunavi.serialize import dest_info, path_result
+    G = build_graph(*_frames([_edge(right="101;103;105")]))
+    info = dest_info(path_result(G, [2, 1], 10.0), "105")
+    assert (info["side"], info["position"], info["count"]) == ("left", 1, 3)
+    info = dest_info(path_result(G, [1, 2], 10.0), "105")
+    assert (info["side"], info["position"], info["count"]) == ("right", 3, 3)
+
+
+def test_エスカレータをedge_csvと逆向きに張るときは左右と並び順を反転させる():
+    # from=3(2F) → to=2(1F) と書いた上りエスカレータは 2→3 にだけ張られ、CSVと逆向きに歩く
+    G = build_graph(*_frames([_edge(**{"from": 3, "to": 2, "type": 5, "right": "A;B", "left": "C"})]))
+    assert G.edges[2, 3]["right"] == "C" and G.edges[2, 3]["left"] == "B;A"
+    G = build_graph(*_frames([_edge(**{"from": 2, "to": 3, "type": 5, "right": "A;B", "left": "C"})]))
+    assert G.edges[2, 3]["right"] == "A;B" and G.edges[2, 3]["left"] == "C"
+
+
 def test_上りエスカレータは低い方から高い方へだけ通れる():
     # CSVの from/to の向きに関わらず z 座標で決まる
     G = build_graph(*_frames([_edge(**{"from": 3, "to": 2, "type": 5})]))
