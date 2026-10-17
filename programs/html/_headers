@@ -13,3 +13,9 @@
 # ブログは検索エンジンにインデックスさせない
 /blog/*
   X-Robots-Tag: noindex
+
+# 埋め込みマップ（他のサイトに iframe で載せる）。どのサイトからでも埋め込めることを明示し、
+# 埋め込み用の画面そのものは検索結果に出さない（作り方のページ /embed/builder/ は出す）
+/embed/
+  Content-Security-Policy: frame-ancestors *
+  X-Robots-Tag: noindex

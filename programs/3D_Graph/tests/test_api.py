@@ -43,6 +43,15 @@ def test_一括取得(client):
     assert outdoor["lat"] == 35.61
 
 
+def test_一括取得のノードにはフロアマップ上の座標が入る(client):
+    # 埋め込みフロアマップが教室の位置に印を付けるのに使う。svg_x の無い建物のノードには付けない
+    _, data = get(client, "/api/all")
+    nodes = {n["id"]: n for n in data["nodes"]}
+    assert (nodes[B1[1]]["svg_x"], nodes[B1[1]]["svg_y"]) == (100.0, 100.0)
+    assert "svg_x" not in nodes[B2[1]]
+    assert "svg_x" not in nodes[OUT[1]]
+
+
 # ------------------------------------------------------------------ 経路探索
 
 def test_教室から教室への経路(client):
@@ -73,6 +82,55 @@ def test_ノード指定の経路(client):
     assert data["path"] == [B1[1], B1[2], B1[3]]
 
 
+def test_通路を目的地にできる(client):
+    # 名前の1つだけの通路（男子トイレ）なら、その表示名が目的地の名前になる
+    status, data = get(client, f"/api/route?from_node={B1[1]}&to_edge=100003")
+    assert status == 200
+    assert data["path"][-1] in (B1[3], B1[5])
+    assert data["to_edge"]["id"] == 100003
+    assert data["dest_display"] == "男子トイレ"
+
+
+def test_教室が2つ並ぶ通路を目的地にしたときは名前を決めない(client):
+    status, data = get(client, f"/api/route?from_node={B1[4]}&to_edge=100001")
+    assert status == 200
+    assert data["to_edge"]["id"] == 100001
+    assert data["dest_display"] is None
+
+
+def test_通路を出発地にできる(client):
+    status, data = get(client, "/api/route?from_edge=100002&to_room=101&to_building=1")
+    assert status == 200
+    assert data["from_edge"]["id"] == 100002
+    assert data["path"][0] in (B1[2], B1[3])
+
+
+def test_存在しない通路は404(client):
+    status, data = get(client, f"/api/route?from_node={B1[1]}&to_edge=999")
+    assert status == 404
+    assert data["error"] == "エッジ 999 が存在しません"
+
+
+def test_通路をIDで引く(client):
+    status, data = get(client, "/api/edges?id=100003")
+    assert status == 200
+    assert data == [{"id": 100003, "building": 1, "floor": 2, "from": B1[3], "to": B1[5], "type": "1",
+                     "length": 10.0, "name": "M_Toilet", "display": "男子トイレ"}]
+    status, _ = get(client, "/api/edges?id=42")
+    assert status == 404
+
+
+def test_通路を名前で引く_教室一覧に出ない名前も引ける(client):
+    _, data = get(client, "/api/edges?name=M_Toilet")
+    assert [(e["id"], e["display"]) for e in data] == [(100003, "男子トイレ")]
+    _, data = get(client, "/api/edges?name=102&building=1")   # ignore.csv の名前
+    assert [(e["id"], e["display"]) for e in data] == [(100001, "第一講義室")]
+    _, data = get(client, "/api/edges?name=M_Toilet&building=2")
+    assert data == []
+    status, data = get(client, "/api/edges")
+    assert status == 400
+
+
 def test_エレベータを使わない指定(client):
     status, data = get(client, f"/api/route?from_node={B2[1]}&to_node={B2[5]}")
     assert status == 200 and data["total_weight"] == 4.0
@@ -83,13 +141,13 @@ def test_エレベータを使わない指定(client):
 def test_出発地の指定がなければ400(client):
     status, data = get(client, "/api/route?to_room=101&to_building=1")
     assert status == 400
-    assert data["error"] == "from_room（＋from_building）・from_event・from_node のいずれかを指定してください"
+    assert data["error"] == "from_room（＋from_building）・from_event・from_edge・from_node のいずれかを指定してください"
 
 
 def test_目的地の指定がなければ400(client):
     status, data = get(client, f"/api/route?from_node={B1[1]}")
     assert status == 400
-    assert data["error"] == "to_room（＋to_building）・to_event・to_node のいずれかを指定してください"
+    assert data["error"] == "to_room（＋to_building）・to_event・to_edge・to_node のいずれかを指定してください"
 
 
 def test_建物の指定を忘れたら400(client):

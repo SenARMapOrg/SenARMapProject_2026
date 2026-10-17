@@ -9,14 +9,15 @@ from ..search import (
     candidates_from_event,
     extend_to_far_endpoint,
 )
+from ..naming import first_display_label
 from ..serialize import apply_dest_info, edge_to_dict, path_result
-from ._common import FromSpec, edges_for_room_or_404, use_elevator_param
+from ._common import FromSpec, edge_or_404, edges_for_room_or_404, use_elevator_param
 
 bp = Blueprint("navigation", __name__)
 
 
-def _dest_candidates(G, to_room, to_building, to_node_id, to_event):
-    """目的地指定（to_event / to_room / to_node の優先順）を候補ノードに解決する"""
+def _dest_candidates(G, to_room, to_building, to_node_id, to_event, to_edge_id=None):
+    """目的地指定（to_event / to_room / to_edge / to_node の優先順）を候補ノードに解決する"""
     if to_event:
         candidates = candidates_from_event(G, cache.find_event_candidates(to_event))
         if not candidates:
@@ -27,6 +28,9 @@ def _dest_candidates(G, to_room, to_building, to_node_id, to_event):
         if to_building is None:
             raise ApiError("to_building を指定してください")
         return candidates_from_edges(G, edges_for_room_or_404(to_room, to_building))
+
+    if to_edge_id is not None:
+        return candidates_from_edges(G, [edge_or_404(to_edge_id)])
 
     if to_node_id not in G.nodes:
         raise ApiError(f"ノード {to_node_id} が存在しません", 404)
@@ -40,11 +44,13 @@ def api_route():
 
     出発点（いずれか）:
       from_room=101A&from_building=10  ← 教室名
+      from_edge=1000074                ← エッジID（建物 × 100000 ＋ edge.csv の id。教室の無い通路も指定できる）
       from_node=100001                 ← ノードID
       from_event=たこ焼き屋台          ← イベント名（event.csv）
 
     目的地（いずれか）:
       to_room=202B&to_building=10      ← 教室名
+      to_edge=1000074                  ← エッジID（通路のどこかが目的地。通路の名前が1つだけなら dest_display に入る）
       to_node=100050                   ← ノードID
       to_event=たこ焼き屋台            ← イベント名（event.csv）
 
@@ -57,14 +63,15 @@ def api_route():
     to_building = request.args.get("to_building", type=int)
     to_node_id  = request.args.get("to_node",     type=int)
     to_event    = request.args.get("to_event",    "").strip()
+    to_edge_id  = request.args.get("to_edge",     type=int)
 
     from_spec.require()
-    if not to_room and not to_event and to_node_id is None:
-        raise ApiError("to_room（＋to_building）・to_event・to_node のいずれかを指定してください")
+    if not to_room and not to_event and to_edge_id is None and to_node_id is None:
+        raise ApiError("to_room（＋to_building）・to_event・to_edge・to_node のいずれかを指定してください")
 
     G = cache.get_graph(use_elevator=use_elevator_param())
     start_candidates = from_spec.candidates(G)
-    dest_candidates  = _dest_candidates(G, to_room, to_building, to_node_id, to_event)
+    dest_candidates  = _dest_candidates(G, to_room, to_building, to_node_id, to_event, to_edge_id)
 
     best_path, best_length, best_start_edge, best_dest_edge = best_route(
         G, start_candidates, dest_candidates)
@@ -82,6 +89,11 @@ def api_route():
             result["to_room"] = to_room
         result["to_edge"] = edge_to_dict(best_dest_edge)
         apply_dest_info(result, to_room)
+        if not to_room and not to_event:
+            # 通路を指定したとき: 名前が1つだけの通路（「M_Toilet」「131」など）ならその表示名を目的地の名前にする
+            names = [n for n in str(best_dest_edge.get("name") or "").split(";") if n.strip()]
+            if len(names) == 1:
+                result["dest_display"] = first_display_label(int(best_dest_edge["building"]), names[0])
     return jsonify(result)
 
 

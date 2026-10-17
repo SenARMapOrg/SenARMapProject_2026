@@ -100,7 +100,7 @@ jobs:
       # 構文エラーがあると本番でページごと動かなくなる
       - name: node --check
         run: |
-          for f in programs/html/navi/script/*.js; do
+          for f in programs/html/navi/script/*.js programs/html/embed/*.js programs/html/embed/builder/*.js; do
             echo "checking $f"
             node --check "$f"
           done
