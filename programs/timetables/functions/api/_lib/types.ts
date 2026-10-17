@@ -47,7 +47,7 @@ export interface TimetableEntryRow {
   period: number;
   course_name: string;
   location: string | null;
-  instructor: string | null; // 「科目名から追加」でシラバスから追加した場合のみ入る。手入力ではNULL
+  instructor: string | null; // 「科目名から追加」で担当教員つきの授業を選んだ場合のみ入る（以前のシラバス由来の値を含む）。手入力ではNULL
   created_at: string;
   updated_at: string;
 }
