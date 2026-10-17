@@ -4,17 +4,21 @@
 data/event.csv の読み書きと、紐付け先（教室名・ノードID・エッジID）の検証用参照データを扱う。
 
 仕様は docs/NameDB_EventMode.md の「4. イベントモード」に準拠:
-  - event.csv: title,building,room,node_id,edge_id
+  - event.csv: id,title,building,room,node_id,edge_id,side,position
+  - id … ナビのURL（navi/?to_event=<id>）でイベントを呼び出すための名前。同じ title の行には同じ id を書く
   - 1行につき room / node_id / edge_id のいずれか1つで場所を指定する
   - room    … data/{building}_bldg/edge.csv の name 列（;区切り）に含まれる教室名
   - node_id … 建物内ローカルノードID（building=0 なら data/global_node.csv のID）
-  - edge_id … 建物内ローカルエッジID（building=0 なら data/global_edge.csv のID）
+  - edge_id … 建物内ローカルエッジID（building=0 なら data/global_edge.csv のID）。
+               side（right/left）・position（1始まり）で、教室と同じように通路のどちら側の何番目かも指定できる
+               （edge.csv の from→to の向きで見た値。position は同じ通路の同じ側の展示どうしの並び順）
   - 同じ title の行が複数あれば、複数箇所で開催するイベントとして統合される
 """
 
 from __future__ import annotations
 
 import csv
+import re
 
 from ..common.paths import (  # noqa: F401  (他モジュールが data_store 経由で参照する)
     BUILDING_NAME_CSV,
@@ -25,7 +29,36 @@ from ..common.paths import (  # noqa: F401  (他モジュールが data_store �
     REPO_ROOT,
 )
 
-EVENT_COLS = ["title", "building", "room", "node_id", "edge_id"]
+EVENT_COLS = ["id", "title", "building", "room", "node_id", "edge_id", "side", "position"]
+
+SIDE_RIGHT, SIDE_LEFT = "right", "left"
+SIDE_LABELS = {"": "左右なし", SIDE_RIGHT: "右側", SIDE_LEFT: "左側"}
+_SIDE_ALIASES = {"right": SIDE_RIGHT, "r": SIDE_RIGHT, "右": SIDE_RIGHT,
+                 "left": SIDE_LEFT, "l": SIDE_LEFT, "左": SIDE_LEFT}
+MAX_POSITION = 30
+
+# URLにそのまま書けるよう、英数字・ハイフン・アンダースコアだけにする
+EVENT_ID_PATTERN = re.compile(r"^[A-Za-z0-9_-]{1,40}$")
+
+
+def validate_event_id(event_id: str, others: list) -> str:
+    """問題なければ空文字。others は他のイベントの id の一覧"""
+    event_id = (event_id or "").strip()
+    if not event_id:
+        return "IDが空です（URLでこのイベントを呼び出せません）"
+    if not EVENT_ID_PATTERN.match(event_id):
+        return "IDは半角の英数字・-・_ だけで、40文字までにしてください"
+    if event_id in others:
+        return f"ID '{event_id}' は他のイベントでも使われています"
+    return ""
+
+
+def next_event_id(used: list) -> str:
+    """まだ使われていない一番小さい番号のID（1, 2, 3, ...）"""
+    n = 1
+    while str(n) in used:
+        n += 1
+    return str(n)
 
 KIND_ROOM, KIND_NODE, KIND_EDGE = "room", "node_id", "edge_id"
 KIND_LABELS = {KIND_ROOM: "教室名", KIND_NODE: "ノードID", KIND_EDGE: "エッジID"}
@@ -78,6 +111,7 @@ class BuildingRefs:
         self.rooms = []       # 教室名（重複なし・元の表記順）
         self.node_ids = []    # ノードID（昇順）
         self.edges = []       # [(edge_id, label), ...]（昇順）
+        self._edge_sides = {} # {edge_id: {"right", "left", "from", "to"}}
         self._load()
 
     def _load(self):
@@ -105,6 +139,10 @@ class BuildingRefs:
                         floor = row.get("floor", "")
                         label = f"{eid}（{name}）" if name else f"{eid}（{floor}F）"
                         self.edges.append((eid, label))
+                        self._edge_sides[eid] = {
+                            "right": (row.get("right") or "").strip(), "left": (row.get("left") or "").strip(),
+                            "from": (row.get("from") or "").strip(), "to": (row.get("to") or "").strip(),
+                        }
                     raw_name = (row.get("name") or "").strip()
                     if not raw_name:
                         continue
@@ -114,6 +152,10 @@ class BuildingRefs:
                             seen_rooms.add(room)
                             self.rooms.append(room)
         self.edges.sort(key=lambda t: t[0])
+
+    def edge_sides(self, edge_id) -> dict:
+        """そのエッジの from→to の向きで見た右側・左側の教室名（edge.csv の right/left 列）。位置を決める目安に出す"""
+        return self._edge_sides.get(to_int(edge_id), {"right": "", "left": "", "from": "", "to": ""})
 
     def validate(self, kind: str, value: str) -> str:
         """問題なければ空文字、問題があればエラーメッセージを返す"""
@@ -134,15 +176,19 @@ class BuildingRefs:
 
 
 class EventLocation:
-    def __init__(self, building: int = 0, kind: str = KIND_ROOM, value: str = ""):
+    def __init__(self, building: int = 0, kind: str = KIND_ROOM, value: str = "",
+                 side: str = "", position=None):
         self.building = building
         self.kind = kind
         self.value = value
+        self.side = side          # エッジIDのときだけ使う: "right" / "left" / ""（左右なし）
+        self.position = position  # エッジIDのときだけ使う: 1始まりの何番目か / None
 
 
 class EventEntry:
-    def __init__(self, title: str = ""):
+    def __init__(self, title: str = "", event_id: str = ""):
         self.title = title
+        self.event_id = event_id
         self.locations = []  # [EventLocation, ...]
 
 
@@ -166,6 +212,11 @@ class EventStore:
                 if not title:
                     continue
                 building = to_int(row.get("building"), 0) or 0
+                event_id = (row.get("id") or "").strip()
+                side = _SIDE_ALIASES.get((row.get("side") or "").strip().lower(), "")
+                position = to_int(row.get("position"))
+                if position is not None and position < 1:
+                    position = None
                 room    = (row.get("room") or "").strip()
                 node_id = (row.get("node_id") or "").strip()
                 edge_id = (row.get("edge_id") or "").strip()
@@ -180,13 +231,20 @@ class EventStore:
 
                 entry = by_title.get(title)
                 if entry is None:
-                    entry = EventEntry(title)
+                    entry = EventEntry(title, event_id)
                     by_title[title] = entry
                     self.entries.append(entry)
-                entry.locations.append(EventLocation(building, kind, value))
+                elif not entry.event_id:
+                    entry.event_id = event_id
+                if kind != KIND_EDGE:
+                    side, position = "", None
+                entry.locations.append(EventLocation(building, kind, value, side, position))
+
+    def used_ids(self, exclude=None) -> list:
+        return [e.event_id.strip() for e in self.entries if e is not exclude and e.event_id.strip()]
 
     def add_entry(self, title: str) -> EventEntry:
-        entry = EventEntry(title)
+        entry = EventEntry(title, next_event_id(self.used_ids()))
         self.entries.append(entry)
         self.dirty = True
         return entry
@@ -207,8 +265,12 @@ class EventStore:
                 value = (loc.value or "").strip()
                 if not value:
                     continue
-                row = {"title": title, "building": loc.building, "room": "", "node_id": "", "edge_id": ""}
+                row = {"id": entry.event_id.strip(), "title": title, "building": loc.building,
+                       "room": "", "node_id": "", "edge_id": "", "side": "", "position": ""}
                 row[loc.kind] = value
+                if loc.kind == KIND_EDGE and loc.side:
+                    row["side"] = loc.side
+                    row["position"] = loc.position or ""
                 rows.append(row)
         with open(EVENT_CSV, "w", newline="", encoding="utf-8") as f:
             w = csv.DictWriter(f, fieldnames=EVENT_COLS)

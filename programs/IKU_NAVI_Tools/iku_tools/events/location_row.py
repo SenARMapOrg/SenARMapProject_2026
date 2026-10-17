@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
-"""IKU NAVI Event Editor — イベント1箇所分（建物・種別・値）を編集する行ウィジェット"""
+"""IKU NAVI Event Editor — イベント1箇所分（建物・種別・値、エッジなら左右と何番目）を編集する行ウィジェット"""
 
 from __future__ import annotations
 
 from PyQt6.QtCore import pyqtSignal
-from PyQt6.QtWidgets import QComboBox, QHBoxLayout, QLabel, QPushButton, QWidget
+from PyQt6.QtWidgets import QComboBox, QHBoxLayout, QLabel, QPushButton, QSpinBox, QVBoxLayout, QWidget
 
-from .data_store import KIND_EDGE, KIND_LABELS, KIND_NODE, KIND_ROOM, building_label, list_buildings
+from .data_store import (
+    KIND_EDGE, KIND_LABELS, KIND_NODE, KIND_ROOM, MAX_POSITION, SIDE_LABELS, building_label, list_buildings,
+)
 
 PLACEHOLDER = "-- 選択してください --"
 
@@ -23,8 +25,11 @@ class LocationRowWidget(QWidget):
         self.name_map = name_map
         self.refs_cache = refs_cache  # {building: BuildingRefs}（呼び出し元と共有し、建物ごとに1回だけ読み込む）
 
-        layout = QHBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)
+        outer = QVBoxLayout(self)
+        outer.setContentsMargins(0, 0, 0, 6)
+        outer.setSpacing(2)
+        layout = QHBoxLayout()
+        outer.addLayout(layout)
 
         self.building_combo = QComboBox()
         self.building_combo.setMinimumWidth(110)
@@ -42,6 +47,19 @@ class LocationRowWidget(QWidget):
         self.value_combo.setMinimumWidth(220)
         layout.addWidget(self.value_combo, stretch=1)
 
+        # エッジIDのときだけ: 通路のどちら側の何番目か（教室の right/left 列と同じく、edge.csv の from→to の向き）
+        self.side_combo = QComboBox()
+        for side, label in SIDE_LABELS.items():
+            self.side_combo.addItem(label, side)
+        self.side_combo.setToolTip("通路を from→to の向きに歩いたとき、展示がどちら側にあるか")
+        layout.addWidget(self.side_combo)
+        self.position_spin = QSpinBox()
+        self.position_spin.setRange(1, MAX_POSITION)
+        self.position_spin.setPrefix("手前から ")
+        self.position_spin.setSuffix(" 番目")
+        self.position_spin.setToolTip("同じ通路の同じ側にある展示どうしの並び順。from 側（手前）から 1, 2, 3 …")
+        layout.addWidget(self.position_spin)
+
         self.error_label = QLabel("")
         self.error_label.setStyleSheet("color:#DC2626;font-size:11px;")
         layout.addWidget(self.error_label, stretch=1)
@@ -51,13 +69,24 @@ class LocationRowWidget(QWidget):
         self.delete_btn.setToolTip("この場所を削除")
         layout.addWidget(self.delete_btn)
 
+        # エッジIDのときだけ: 向きの目安（そのエッジの from→to と、右側・左側にある教室）
+        self.edge_hint = QLabel("")
+        self.edge_hint.setStyleSheet("color:#666;font-size:11px;")
+        outer.addWidget(self.edge_hint)
+
         # 初期表示をlocationの内容に合わせる
         idx = self.building_combo.findData(location.building)
         self.building_combo.setCurrentIndex(idx if idx >= 0 else 0)
         idx = self.kind_combo.findData(location.kind)
         self.kind_combo.setCurrentIndex(idx if idx >= 0 else 0)
         self._rebuild_value_combo(preselect=location.value)
+        idx = self.side_combo.findData(location.side or "")
+        self.side_combo.setCurrentIndex(idx if idx >= 0 else 0)
+        self.position_spin.setValue(location.position or 1)
+        self._update_edge_widgets()
 
+        self.side_combo.currentIndexChanged.connect(self._on_side_changed)
+        self.position_spin.valueChanged.connect(self._on_position_changed)
         self.building_combo.currentIndexChanged.connect(self._on_building_changed)
         self.kind_combo.currentIndexChanged.connect(self._on_kind_changed)
         self.value_combo.currentIndexChanged.connect(self._on_value_changed)
@@ -111,14 +140,44 @@ class LocationRowWidget(QWidget):
         self._update_validation()
 
     # ------------------------------------------------------------------
+    def _update_edge_widgets(self):
+        """左右・何番目の欄は、エッジIDで指定しているときだけ出す。左右なしなら何番目は使わない"""
+        is_edge = self.location.kind == KIND_EDGE
+        self.side_combo.setVisible(is_edge)
+        self.position_spin.setVisible(is_edge)
+        self.position_spin.setEnabled(is_edge and bool(self.location.side))
+        if is_edge:
+            self.location.position = self.position_spin.value() if self.location.side else None
+        else:
+            self.location.side, self.location.position = "", None
+        hint = ""
+        if is_edge and self.location.value:
+            sides = self._refs(self.location.building).edge_sides(self.location.value)
+            hint = (f"向き: ノード{sides['from'] or '?'} → ノード{sides['to'] or '?'}　"
+                    f"右側の教室: {sides['right'] or 'なし'}　左側の教室: {sides['left'] or 'なし'}")
+        self.edge_hint.setText(hint)
+        self.edge_hint.setVisible(bool(hint))
+
+    def _on_side_changed(self):
+        self.location.side = self.side_combo.currentData() or ""
+        self._update_edge_widgets()
+        self.changed.emit()
+
+    def _on_position_changed(self):
+        if self.location.side:
+            self.location.position = self.position_spin.value()
+        self.changed.emit()
+
     def _on_building_changed(self):
         self.location.building = self.building_combo.currentData()
         self._rebuild_value_combo(preselect="")
+        self._update_edge_widgets()
         self.changed.emit()
 
     def _on_kind_changed(self):
         self.location.kind = self.kind_combo.currentData()
         self._rebuild_value_combo(preselect="")
+        self._update_edge_widgets()
         self.changed.emit()
 
     def _on_value_changed(self):
@@ -128,6 +187,8 @@ class LocationRowWidget(QWidget):
             data = self.value_combo.currentData()
             self.location.value = data or ""
         self._update_validation()
+        if hasattr(self, "edge_hint"):
+            self._update_edge_widgets()
         self.changed.emit()
 
     def _update_validation(self):

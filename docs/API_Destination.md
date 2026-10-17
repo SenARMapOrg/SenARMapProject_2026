@@ -34,7 +34,8 @@
   - `dest_display`: 目的地そのものの表示名（`name.csv`・トイレ種別による解決済み）。一致しなければ`null`
   - `dest_nearest_display`: その側で一番手前（先頭）にある教室の表示名。一致しなければ`null`
   - navi側は`dest_side`が取れているとき「`<dest_display>`は`<右手/左手>`、`<dest_nearest_display>`から数えて`<dest_position>`番目です」（目的地が一番手前、またはその側に他に教室が無い場合は「`<dest_display>`は`<右手/左手>`です」）を目的地バッジ・到着時の音声案内に使う。`dest_side`が空文字の場合は最終区間の`right_display`/`left_display`を使った簡易フォールバック、それも無理なら汎用文言「この通路沿いが目的地周辺です」を使う
-  - 空文字/`null`になるのは次の場合: 目的地エッジに複数の部屋が面していて、右にも左にも何かがある（＝どちらが指定した目的地か区別できない）場合／`to_node`・`to_event`（ノードID・イベント指定）などそもそも「教室名」に相当する値が無い場合／`/api/shortest_path`（ノードID同士の経路探索でこれらのフィールド自体が無い）
+  - `/api/route` の `to_event`（イベント指定）でも計算されます（`event_dest_info()`）。教室名で場所を指定したイベントはその教室の位置を使い（`dest_display` はイベント名）、エッジIDで場所を指定し `side`・`position` を書いたイベントは、同じエッジの同じ側に並ぶ展示どうしで数えます（`dest_nearest_display` は一番手前の展示名）。`event.csv` の `side`・`position` は edge.csv の from→to の向きの値で、逆向きに歩く経路では左右と並び順を入れ替えて返します
+  - 空文字/`null`になるのは次の場合: 目的地エッジに複数の部屋が面していて、右にも左にも何かがある（＝どちらが指定した目的地か区別できない）場合／`to_node`（ノードID指定）や、ノードIDで場所を指定したイベント・`side` を書いていないエッジIDのイベントなど、位置が分からない場合／`/api/shortest_path`（ノードID同士の経路探索でこれらのフィールド自体が無い）
 
 ---
 
@@ -183,12 +184,12 @@
 - **出発地 (A〜Dのいずれかが必須):**
   - [A] 教室指定: `from_room` (string) & `from_building` (int)
   - [B] ノード指定: `from_node` (int)
-  - [C] イベント指定: `from_event` (string) … `data/event.csv` に登録したタイトル
+  - [C] イベント指定: `from_event` (string) … `data/event.csv` に登録したタイトル（`id` 列の値でもよい）
   - [D] エッジ指定: `from_edge` (int) … グローバルなエッジID（建物 × 100000 ＋ edge.csv の id。屋外は global_edge.csv の id のまま）。教室の無い通路も指定できる
 - **目的地 (A〜Dのいずれかが必須):**
   - [A] 教室指定: `to_room` (string) & `to_building` (int)
   - [B] ノード指定: `to_node` (int)
-  - [C] イベント指定: `to_event` (string) … `data/event.csv` に登録したタイトル
+  - [C] イベント指定: `to_event` (string) … `data/event.csv` に登録したタイトル（`id` 列の値でもよい）
   - [D] エッジ指定: `to_edge` (int) … グローバルなエッジID。教室と同じく、経路はそのエッジのもう一方の端点まで延長される
 - **オプション:**
   - `use_elevator` (任意, string): `"0"` でエレベーター除外。省略時 `"1"`。
@@ -196,7 +197,7 @@
 優先順は 出発地・目的地とも イベント → 教室 → エッジ → ノード。`to_edge` で指定したエッジの名前（name 列）が1つだけなら、
 その表示名（トイレは「男子トイレ」など）が `dest_display` に入る（`dest_side` などの左右は空。教室名の指定が無いため）。
 
-イベント指定時は、レスポンスに `from_event` / `to_event`（指定したタイトル）が含まれます。イベントがエッジ（教室・エッジID）に紐づく場合は `from_edge` / `to_edge` も返り、教室と同様に目的エッジのもう一方の端点まで経路が延長されます。ノードに紐づく場合は延長されません。
+イベント指定時は、レスポンスに `from_event` / `to_event`（イベントのタイトル。`id` で指定した場合もタイトルになる）が含まれます。イベントがエッジ（教室・エッジID）に紐づく場合は `from_edge` / `to_edge` も返り、教室と同様に目的エッジのもう一方の端点まで経路が延長されます。ノードに紐づく場合は延長されません。
 **レスポンス例:**
 ```json
 {
@@ -243,7 +244,7 @@
 - **出発地 (A〜Cのいずれかが必須):**
   - [A] 教室指定: `from_room` (string) & `from_building` (int)
   - [B] ノード指定: `from_node` (int)
-  - [C] イベント指定: `from_event` (string) … `data/event.csv` に登録したタイトル
+  - [C] イベント指定: `from_event` (string) … `data/event.csv` に登録したタイトル（`id` 列の値でもよい）
 - **トイレ種別:**
   - `type` (任意, string): `"M"` (男子), `"F"` (女子), `"C"` (多目的), `"ALL"` (すべて)。省略時は `"ALL"`。
 - **オプション:**
@@ -354,7 +355,7 @@
 - **出発地 (A〜Cのいずれかが必須):**
   - [A] 教室指定: `from_room` (string) & `from_building` (int)
   - [B] ノード指定: `from_node` (int)
-  - [C] イベント指定: `from_event` (string) … `data/event.csv` に登録したタイトル
+  - [C] イベント指定: `from_event` (string) … `data/event.csv` に登録したタイトル（`id` 列の値でもよい）
 - **食堂指定:**
   - `name` (任意, string): 食堂の `name`（`/api/cafeterias` で取得できる値）。省略または `"all"` ですべての食堂を対象に最短を探索。
 - **オプション:**
@@ -392,11 +393,11 @@
 
 ## 11. イベント一覧取得
 **エンドポイント:** `GET /api/events`
-**概要:** `data/event.csv` に登録されたイベント（屋台など）の一覧を返します。ナビ画面はイベントモード（`navi/?event=1`）のときだけこのAPIを呼び、イベント名を検索候補に加えます。event.csv が無い・空の場合は `[]` を返します。
+**概要:** `data/event.csv` に登録されたイベント（屋台など）の一覧を返します。ナビ画面はイベントモード（`navi/?event=1`、または `navi/?to_event=<id>`）のときだけこのAPIを呼び、イベント名を検索候補に加えます。event.csv が無い・空の場合は `[]` を返します。`id` は event.csv の `id` 列（未設定なら `""`）。
 **クエリパラメータ:** なし
 **レスポンス例:**
 ```json
 [
-  { "title": "たこ焼き屋台", "building": 10, "floor": 1 }
+  { "id": "takoyaki", "title": "たこ焼き屋台", "building": 10, "floor": 1 }
 ]
 ```
