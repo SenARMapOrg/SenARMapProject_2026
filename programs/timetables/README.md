@@ -161,8 +161,8 @@ D1 の読み取り行数（課金・無料枠の上限の単位）が登録者�
 
 ### 3-4. 「科目名から追加」の授業の一覧
 
-以前は `programs/syllabus_courses` が集めたシラバスの開講科目データ（`src/data/courses/{年度}.json`）を使っていたが、
-シラバスのデータを持ち続けるのは良くないので、2026-10 にデータと同期スクリプト（`sync-courses`）を全部削除した。
+以前はシラバスから集めた開講科目データ（`src/data/courses/{年度}.json`、集めるプログラムは `programs/syllabus_courses`）を使っていたが、
+シラバスのデータを持ち続けるのは良くないので、2026-10 にデータ・同期スクリプト・集めるプログラムを全部削除した。
 いまは外部の科目データを一切使わない。
 
 - 一覧は `GET /api/timetable/courses`（`listSharedCourses`、`functions/api/_lib/db/timetable.ts`）が、
