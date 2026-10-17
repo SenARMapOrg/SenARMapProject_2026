@@ -3,10 +3,10 @@ from flask import Blueprint, jsonify, request
 
 from .. import cache
 from ..errors import ApiError
-from ..naming import building_display_name
+from ..naming import building_display_name, first_display_label
 from ..search import best_route, candidates_from_edges, extend_to_far_endpoint
 from ..serialize import apply_dest_info, edge_to_dict, path_result
-from ._common import edges_for_room_or_404, use_elevator_param
+from ._common import edge_or_404, edges_for_room_or_404, use_elevator_param
 
 bp = Blueprint("rooms", __name__)
 
@@ -29,6 +29,44 @@ def api_rooms():
         and (not query or query in r["room"].lower())
     ]
     return jsonify(rooms)
+
+
+def _edge_place(row, label_name=None):
+    """/api/edges の1件。label_name を渡せばその名前、無ければ通路の名前が1つだけのときその表示名を display にする"""
+    building = int(row["building"])
+    names = [n.strip() for n in str(row.get("name") or "").split(";") if n.strip()]
+    if label_name is None and len(names) == 1:
+        label_name = names[0]
+    return {
+        "id":       int(row["id"]),
+        "building": building,
+        "floor":    int(row["floor"]),
+        "from":     int(row["from"]),
+        "to":       int(row["to"]),
+        "type":     str(row["type"]),
+        "length":   float(row["length"]),
+        "name":     str(row.get("name") or ""),
+        "display":  first_display_label(building, label_name) if label_name else "",
+    }
+
+
+@bp.route("/api/edges")
+def api_edges():
+    """
+    通路（エッジ）を引く。教室以外の場所（トイレ・名前の無い通路など）を埋め込みマップで出すのに使う。
+      ?id=1000074                 グローバルなエッジID（建物 × 100000 ＋ edge.csv の id）。無ければ404
+      ?name=M_Toilet&building=10  その名前が付いた通路（教室・トイレ・ignore.csv の名前も含む。building は省略可）
+    返却形式: [ { "id", "building", "floor", "from", "to", "type", "length", "name", "display" }, ... ]
+    """
+    edge_id = request.args.get("id", type=int)
+    name    = request.args.get("name", "").strip()
+    building = request.args.get("building", type=int)
+    if edge_id is not None:
+        return jsonify([_edge_place(edge_or_404(edge_id))])
+    if not name:
+        raise ApiError("id か name を指定してください")
+    rows = cache.find_edges_by_name(name, building)
+    return jsonify([_edge_place(row, name) for _, row in rows])
 
 
 @bp.route("/api/all")

@@ -37,12 +37,24 @@ def run_js(expr: str):
 
 # ---------------------------------------------------------------- URL パラメータ
 
+def place(**kw):
+    base = {"room": "", "edge": None, "node": None, "event": "", "bldg": None, "label": ""}
+    return {**base, **kw}
+
+
 def test_出発地と目的地があれば道順():
     p = run_js('parseEmbedParams("?from=10301&to=131&to_bldg=1&elevator=0")')
     assert p["view"] == "route"
-    assert p["from"] == {"room": "10301", "bldg": None, "event": ""}
-    assert p["to"] == {"room": "131", "bldg": 1, "event": ""}
+    assert p["from"] == place(room="10301")
+    assert p["to"] == place(room="131", bldg=1)
     assert p["elevator"] is False and p["header"] is True
+
+
+def test_道順の出発地と目的地は通路や地点でも指定できる():
+    p = run_js('parseEmbedParams("?from_node=3&from_bldg=10&to_edge=74&to_bldg=10&to_label=受付")')
+    assert p["view"] == "route"
+    assert p["from"] == place(node=3, bldg=10)
+    assert p["to"] == place(edge=74, bldg=10, label="受付")
 
 
 def test_展示はイベントのIDで指定できる():
@@ -50,12 +62,20 @@ def test_展示はイベントのIDで指定できる():
     assert p["view"] == "route" and p["to"]["event"] == "b"
 
 
-def test_教室だけなら教室の場所():
+def test_場所は教室名_通路_地点で指定できる():
     assert run_js('parseEmbedParams("?room=10301&bldg=10")') == {
-        "view": "room", "room": "10301", "bldg": 10, "elevator": True, "header": True, "floors": True}
-    # 出発地の無い to も教室の場所として出す
+        "view": "place", "place": place(room="10301", bldg=10), "elevator": True, "header": True, "floors": True}
+    assert run_js('parseEmbedParams("?edge=74&bldg=10&label=受付").place') == place(edge=74, bldg=10, label="受付")
+    assert run_js('parseEmbedParams("?node=1000067").place') == place(node=1000067)
+    # 出発地の無い目的地も場所として出す
     p = run_js('parseEmbedParams("?to=131&to_bldg=1&header=0")')
-    assert (p["view"], p["room"], p["bldg"], p["header"]) == ("room", "131", 1, False)
+    assert (p["view"], p["place"], p["header"]) == ("place", place(room="131", bldg=1), False)
+    assert run_js('parseEmbedParams("?to_edge=5&to_bldg=2").place') == place(edge=5, bldg=2)
+
+
+def test_idは数字だけ受け付ける():
+    assert run_js('parseEmbedParams("?edge=7a&bldg=10").view') == "floor"
+    assert run_js('parseEmbedParams("?edge=-3").view') == "empty"
 
 
 def test_号館と階ならフロアマップ():
@@ -65,13 +85,41 @@ def test_号館と階ならフロアマップ():
     assert run_js('parseEmbedParams("").view') == "empty"
 
 
-def test_出発地の無い展示は道順にできない():
+def test_出発地か目的地の片方だけの道順はできない():
     assert run_js('parseEmbedParams("?to_event=b").view') == "error"
+    assert run_js('parseEmbedParams("?from=10301").view') == "error"
+
+
+def test_csvのidとグローバルなidの変換():
+    assert run_js("globalEdgeId(74, 10)") == 1000074
+    assert run_js("globalEdgeId(1000074, 10)") == 1000074   # 既にグローバル
+    assert run_js("globalEdgeId(5, 0)") == 5                # 屋外のエッジは id のまま
+    assert run_js("globalEdgeId(74, null)") == 74
+    assert run_js("globalNodeId(3, 10)") == 1000003
+    assert run_js("globalNodeId(3, 0)") == 9000003          # 屋外のノード
+
+
+def test_場所の指定を経路APIのパラメータにする():
+    out = run_js("""
+      const q = new URLSearchParams();
+      placeRouteParams(q, "from", parsePlace(new URLSearchParams("from=10301"), "from"), { room: "10301", building: 10 });
+      placeRouteParams(q, "to", parsePlace(new URLSearchParams("to_edge=74&to_bldg=10"), "to"));
+      q.toString()
+    """)
+    assert out == "from_room=10301&from_building=10&to_edge=1000074"
+    out = run_js("""
+      const q = new URLSearchParams();
+      placeRouteParams(q, "from", parsePlace(new URLSearchParams("from_node=2&from_bldg=0"), "from"));
+      placeRouteParams(q, "to", parsePlace(new URLSearchParams("to_event=b"), "to"));
+      q.toString()
+    """)
+    assert out == "from_node=9000002&to_event=b"
 
 
 def test_親ページからの指示は知っているキーだけ受け取る():
     q = run_js('messageToSearch({ room: "10301", bldg: 10, header: false, evil: "x", floor: { a: 1 } })')
     assert q == "?room=10301&bldg=10&header=0"
+    assert run_js('messageToSearch({ from: "811", to_edge: 74, to_bldg: 10, to_label: "受付" })') == "?from=811&to_edge=74&to_bldg=10&to_label=%E5%8F%97%E4%BB%98"
     assert run_js("messageToSearch(null)") == ""
 
 
@@ -151,6 +199,9 @@ def test_IKU_NAVIで開くURL():
         "https://iku-navi.net/navi/?from=10301&to_event=b&elevator=0"
     assert run_js('fullNaviUrl(parseEmbedParams("?room=131&bldg=1"))') == "https://iku-navi.net/navi/?to=131&to_bldg=1"
     assert run_js('fullNaviUrl(parseEmbedParams("?bldg=10&floor=3"))') == "https://iku-navi.net/campus/10/#floor-3"
+    # ナビ画面は通路・地点で呼び出せないので、建物の教室一覧かナビ画面のトップを開く
+    assert run_js('fullNaviUrl(parseEmbedParams("?edge=74&bldg=10"))') == "https://iku-navi.net/campus/10/"
+    assert run_js('fullNaviUrl(parseEmbedParams("?from=10301&to_edge=74&to_bldg=10"))') == "https://iku-navi.net/navi/"
 
 
 # ---------------------------------------------------------------- ページの部品

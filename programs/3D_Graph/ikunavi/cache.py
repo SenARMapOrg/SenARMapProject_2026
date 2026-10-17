@@ -24,6 +24,7 @@ _node_xyz = None      # {node_id: (x, y, z)}
 _event_index = None   # event.csv: {title: [(node_id, edge行|None), ...]}
 _events_list = None   # /api/events 用の整形済みイベント一覧
 _cafeteria_list = None
+_edge_by_id = None    # {グローバルなエッジID: edge行}
 
 
 def get_data():
@@ -128,6 +129,23 @@ def get_room_index():
         _, edges_df = get_data()
         _room_index, _rooms_list = _build_room_index(edges_df)
     return _room_index, _rooms_list
+
+
+def find_edge_by_id(edge_id):
+    """グローバルなエッジID（建物 × 100000 ＋ edge.csv の id。屋外は global_edge.csv の id のまま）→ edge行。無ければ None"""
+    global _edge_by_id
+    if _edge_by_id is None:
+        _, edges_df = get_data()
+        _edge_by_id = {int(row["id"]): row for _, row in edges_df.iterrows()}
+    return _edge_by_id.get(int(edge_id))
+
+
+def find_edges_by_name(name, building=None):
+    """名前（教室・トイレ・ignore.csv の名前も含む。name 列の ";" 区切りの1つ）が付いたエッジ行。
+    building を省くと全建物から探す。戻り値: [(building, edge行), ...]"""
+    index, _ = get_room_index()
+    return [(b, row) for (n, b), rows in index.items() if n == name and (building is None or b == int(building))
+            for row in rows]
 
 
 def find_edges_for_room(room_name, building):
@@ -267,7 +285,8 @@ def get_cafeteria_names():
 def clear_caches():
     global _nodes_df, _edges_df, _graph_with_ev, _graph_without_ev
     global _room_index, _rooms_list, _nodes_list, _node_xyz
-    global _event_index, _events_list, _cafeteria_list
+    global _event_index, _events_list, _cafeteria_list, _edge_by_id
+    _edge_by_id = None
     _nodes_df = None
     _edges_df = None
     _graph_with_ev = None

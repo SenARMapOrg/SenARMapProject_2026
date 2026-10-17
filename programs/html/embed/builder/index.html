@@ -31,24 +31,18 @@
     <form id="form" class="panel" autocomplete="off">
       <fieldset class="kinds">
         <legend>載せるもの</legend>
-        <label><input type="radio" name="kind" value="room" checked> 教室の場所</label>
+        <label><input type="radio" name="kind" value="place" checked> 場所</label>
         <label><input type="radio" name="kind" value="route"> 道順</label>
         <label><input type="radio" name="kind" value="floor"> フロアマップ</label>
       </fieldset>
 
-      <div class="fields" data-kind="room">
-        <label class="field">教室
-          <input id="room" list="room-list" placeholder="例: 10301教室" required>
-        </label>
+      <div class="fields" data-kind="place">
+        <div class="place-field" data-prefix="" data-label="場所"></div>
       </div>
 
       <div class="fields" data-kind="route" hidden>
-        <label class="field">出発する教室
-          <input id="from" list="room-list" placeholder="例: 10301教室">
-        </label>
-        <label class="field">行き先の教室
-          <input id="to" list="room-list" placeholder="例: 131教室">
-        </label>
+        <div class="place-field" data-prefix="from" data-label="出発地"></div>
+        <div class="place-field" data-prefix="to" data-label="行き先"></div>
         <label class="check"><input type="checkbox" id="no-elevator"> エレベーターを使わない道順にする</label>
       </div>
 
@@ -63,13 +57,16 @@
         </div>
       </div>
 
-      <datalist id="room-list"></datalist>
+      <datalist id="place-list"></datalist>
       <p id="form-error" class="form-error" role="alert"></p>
 
       <fieldset class="looks">
         <legend>見た目</legend>
         <label class="field">大きさ
           <select id="size">
+            <option value="ratio-4-3">横幅に合わせる（縦横 4:3）</option>
+            <option value="ratio-16-9">横幅に合わせる（縦横 16:9）</option>
+            <option value="ratio-3-4">横幅に合わせる（縦長 3:4。スマホ向け）</option>
             <option value="fluid">横幅いっぱい（高さ 480px）</option>
             <option value="600x450">600 × 450</option>
             <option value="400x300">400 × 300</option>
@@ -93,12 +90,12 @@
 
   <section class="howto">
     <h2>URL で指定する</h2>
-    <p>コードの <code>src</code> は、次のパラメータを組み合わせた URL です。教室名は教室検索ナビと同じ書き方で、教室名が1つの号館にしか無ければ号館は省けます。</p>
+    <p>コードの <code>src</code> は、次のパラメータを組み合わせた URL です。教室名は教室検索ナビと同じ書き方で、教室名が1つの号館にしか無ければ号館は省けます。通路と地点の id は、IKU NAVI ツールのマップ編集で見られる番号です（号館を付けずにグローバルな ID を書いてもかまいません）。</p>
     <table>
       <thead><tr><th scope="col">載せるもの</th><th scope="col">パラメータ</th><th scope="col">例</th></tr></thead>
       <tbody>
-        <tr><td>教室の場所</td><td><code>room</code>・<code>bldg</code></td><td><code>/embed/?room=10301</code></td></tr>
-        <tr><td>道順</td><td><code>from</code>・<code>from_bldg</code>・<code>to</code>・<code>to_bldg</code><br>（イベントの展示は <code>from_event</code>・<code>to_event</code>）</td><td><code>/embed/?from=10301&amp;to=131&amp;to_bldg=1</code></td></tr>
+        <tr><td>場所</td><td>教室・トイレなどの名前: <code>room</code>（＋<code>bldg</code>）<br>通路: <code>edge</code>（edge.csv の id）＋<code>bldg</code><br>地点: <code>node</code>（node.csv の id）＋<code>bldg</code><br>ピンに出す名前: <code>label</code></td><td><code>/embed/?room=10301</code><br><code>/embed/?room=M_Toilet&amp;bldg=10</code><br><code>/embed/?edge=74&amp;bldg=10&amp;label=受付</code></td></tr>
+        <tr><td>道順</td><td>出発地は <code>from</code>・<code>from_edge</code>・<code>from_node</code>・<code>from_event</code>（＋<code>from_bldg</code>・<code>from_label</code>）<br>行き先は <code>to</code>・<code>to_edge</code>・<code>to_node</code>・<code>to_event</code>（＋<code>to_bldg</code>・<code>to_label</code>）</td><td><code>/embed/?from=10301&amp;to=131&amp;to_bldg=1</code><br><code>/embed/?from=10301&amp;to_edge=74&amp;to_bldg=10</code></td></tr>
         <tr><td>フロアマップ</td><td><code>bldg</code>・<code>floor</code></td><td><code>/embed/?bldg=10&amp;floor=3</code></td></tr>
         <tr><td>共通</td><td><code>elevator=0</code>（エレベーターを使わない）<br><code>header=0</code>（上の帯を出さない）<br><code>floors=0</code>（階の切り替えを出さない）</td><td></td></tr>
       </tbody>
@@ -119,6 +116,7 @@ addEventListener("message", e =&gt; {
     <h2>載せるときのお願い</h2>
     <ul>
       <li>マップの右下の「IKU NAVI」の表示は消さないでください。</li>
+      <li>スマホでは、ページのスクロールを邪魔しないよう、地図は2本指で動かします（全画面にすると1本指で動かせます）。高さが 300px より低い枠では、案内を1行に詰めて出します。</li>
       <li>IKU NAVI は専修大学 ネットワーク情報学部の学生プロジェクトが作っているもので、大学の公式サービスではありません。教室や道順の情報は変わることがあります。</li>
     </ul>
   </section>

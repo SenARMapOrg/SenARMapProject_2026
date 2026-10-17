@@ -1,34 +1,43 @@
 // ================================================================
 // embed/viewer.js
 // 埋め込みフロアマップ（/embed/）の画面。core.js の計算を使って、
-// フロアマップ・教室の場所・道案内（ARなし。階ごとの区間を順に見せる）を表示する。
+// フロアマップ・場所（教室・通路・地点）・道順（ARなし。建物・階ごとの区間を順に見せる）を表示する。
+//
+// 地図の線と印は、拡大縮小しても画面上の太さ・大きさが変わらないように描く（線は non-scaling-stroke、
+// 印は表示範囲が変わるたびに倍率を掛け直す）。iframe がどんな大きさでも、スマホでも同じ見え方になる。
 //
 // 親ページとのやり取り（postMessage。詳しくは docs/API_Embed.md）
 //   送る:   { source: "ikunavi-embed", type: "ready" | "segment" | "error", ... }
 //   受ける: { type: "ikunavi:show", params: {...URLパラメータと同じ} } で表示を差し替える
-//           { type: "ikunavi:segment", index: n } で道案内の n 番目（0始まり）の区間を見せる
+//           { type: "ikunavi:segment", index: n } で道順の n 番目（0始まり）の区間を見せる
 // ================================================================
 
 // ローカル開発（Flask 同居）では同一オリジン、本番は api サブドメイン（ナビ画面の state.js と同じ）
 const API_BASE = ["localhost", "127.0.0.1"].includes(location.hostname) ? "" : "https://api.iku-navi.net";
 const SVG_NS = "http://www.w3.org/2000/svg";
-const EMBEDDED = window.self !== window.top;   // iframe の中か（直接開いたときは1本指でも地図を動かせる）
+const EMBEDDED = window.self !== window.top;   // iframe の中か
 const MAX_ZOOM = 8;
 // 地図に描く線・印の色（embed.css の --accent・--transit-blue・--ink-faint と同じ）
 const COLOR = { accent: "#E8501E", blue: "#1B3A6B", faint: "#8A919C" };
+// 線の太さ・印の大きさ（画面上の px）
+const PX = { route: 5, casing: 9, other: 3, place: 14, pin: 38, dot: 7, label: 13 };
 
 const $ = id => document.getElementById(id);
 
 let campus = null;          // /api/all の中身と索引
 let svgCache = {};          // "10_3" → SVG の文字列 / null（無い）
 let params = null;          // parseEmbedParams の結果
-let route = null;           // 道案内の /api/route の結果
+let route = null;           // 道順の /api/route の結果
+let routeLabels = null;     // { from, to } 見出し・印に出す名前
 let segments = [];
 let segIndex = 0;
 let renderToken = 0;        // 表示の差し替え中に古い読み込みが終わっても描かないための番号
 
-// 地図の表示範囲
+// 地図: 表示中の svg と、印を描く層・地図全体の範囲・最初に見せる範囲
 let svgEl = null, overlay = null, fullBox = null, homeBox = null;
+
+/** 1本指で地図を動かすか（直接開いたとき・全画面のとき）。埋め込みでは1本指はページのスクロールに使わせる */
+const oneFingerPan = () => !EMBEDDED || Boolean(document.fullscreenElement);
 
 // ================================================================
 // 親ページへの通知
@@ -54,6 +63,12 @@ async function loadCampus() {
   return campus;
 }
 
+async function fetchJson(path) {
+  const res = await fetch(`${API_BASE}${path}`);
+  const data = await res.json().catch(() => ({}));
+  return { ok: res.ok, data };
+}
+
 async function loadSvgText(building, floor) {
   const key = `${building}_${floor}`;
   if (svgCache[key] === undefined) {
@@ -73,6 +88,43 @@ function floorsOf(building) {
   return [...set].sort((a, b) => a - b);
 }
 
+class PlaceError extends Error {
+  constructor(title, desc) { super(title); this.desc = desc; }
+}
+
+/**
+ * 場所の指定（core.js の parsePlace）→ 地図に出す場所。
+ * 戻り値: { building, floor, a, b（通路の両端のノード。地点なら b は null）, label, apiRoom（/api/route に名前で渡すとき） }
+ * what は「出発地の」など、エラー文の頭に付ける言葉。
+ */
+async function resolvePlace(pl, what = "") {
+  const named = (building, floor, a, b, label, apiRoom) => ({ building, floor, a, b, label: pl.label || label, apiRoom });
+  if (pl.node != null) {
+    const n = campus.nodes[globalNodeId(pl.node, pl.bldg)];
+    if (!n) throw new PlaceError(`${what}地点 ${pl.node} が見つかりません`, "node には node.csv の id と号館（bldg）か、グローバルなノードIDを指定してください。");
+    return named(n.building, n.floor, n, null, "指定した地点");
+  }
+  if (pl.edge != null) {
+    const { ok, data } = await fetchJson(`/api/edges?id=${globalEdgeId(pl.edge, pl.bldg)}`);
+    if (!ok || !data.length) throw new PlaceError(`${what}通路 ${pl.edge} が見つかりません`, "edge には edge.csv の id と号館（bldg）か、グローバルなエッジIDを指定してください。");
+    const e = data[0];
+    return named(e.building, e.floor, campus.nodes[e.from], campus.nodes[e.to], e.display || "指定した通路");
+  }
+  // 名前: まず教室一覧、無ければトイレなど教室一覧に出ない名前も引く
+  const hit = findRoom(campus.rooms, pl.room, pl.bldg);
+  const ambiguous = () => new PlaceError(`${what}「${pl.room}」は複数の号館にあります`, "号館の番号（bldg・from_bldg・to_bldg）を指定してください。");
+  if (hit === "ambiguous") throw ambiguous();
+  if (hit) return named(hit.building, hit.floor, campus.nodes[hit.from], campus.nodes[hit.to], hit.display, hit.room);
+  const q = new URLSearchParams({ name: pl.room });
+  if (pl.bldg != null) q.set("building", pl.bldg);
+  const { ok, data } = await fetchJson(`/api/edges?${q}`);
+  const found = ok && Array.isArray(data) ? data : [];
+  if (new Set(found.map(e => e.building)).size > 1) throw ambiguous();
+  if (!found.length) throw new PlaceError(`${what}「${pl.room}」が見つかりません`, "教室名は IKU NAVI の教室検索と同じ書き方で指定してください（例: 10301）。");
+  const e = found[0];
+  return named(e.building, e.floor, campus.nodes[e.from], campus.nodes[e.to], e.display || pl.room, pl.room);
+}
+
 // ================================================================
 // 画面の部品
 // ================================================================
@@ -80,6 +132,7 @@ function setBar(plate, title) {
   $("bar-plate").hidden = !plate;
   $("bar-plate").textContent = plate || "";
   $("bar-title").textContent = title;
+  document.title = `${[plate, title].filter(Boolean).join(" ")} | IKU NAVI`;
   $("map").setAttribute("aria-label", [plate, title].filter(Boolean).join(" "));
 }
 
@@ -101,25 +154,31 @@ function showNotice(title, desc = "") {
 
 function hideNotice() { $("notice").hidden = true; }
 
-function showError(title, desc = "") {
-  clearMap();
-  setBar("", title);
-  showNotice(title, desc);
-  $("steps").hidden = true;
-  $("floors").hidden = true;
-  notifyParent("error", { message: title });
-}
-
 function showBanner(text) {
   $("banner").textContent = text;
   $("banner").hidden = false;
 }
 
+function showError(title, desc = "") {
+  clearMap();
+  setBar("", title);
+  showNotice(title, desc);
+  setRouteMode(false);
+  $("floors").hidden = true;
+  notifyParent("error", { message: title });
+}
+
 function clearMap() {
   $("map").replaceChildren();
   $("banner").hidden = true;
+  $("north").hidden = true;
   svgEl = overlay = fullBox = homeBox = null;
   $("zoom").hidden = true;
+}
+
+function setRouteMode(on) {
+  document.body.classList.toggle("route", on);
+  $("steps").hidden = !on;
 }
 
 /** 階の切り替えボタン。current の階を選んだ状態にする */
@@ -138,12 +197,35 @@ function renderFloorChips(building, current, onPick) {
     nav.append(b);
   });
   nav.hidden = false;
+  nav.querySelector('[aria-pressed="true"]')?.scrollIntoView({ block: "nearest", inline: "nearest" });
 }
 
 // ================================================================
-// フロアマップの表示
+// 地図（フロアマップの SVG・屋外の図）と表示範囲
 // ================================================================
-/** SVG を読み込んで地図に置く。無ければ案内を出して false */
+function svgEls(tag, attrs) {
+  const el = document.createElementNS(SVG_NS, tag);
+  Object.entries(attrs).forEach(([k, v]) => el.setAttribute(k, v));
+  return el;
+}
+
+/** svg を地図に置き、印を描く層を用意する */
+function mountSvg(svg) {
+  $("map").replaceChildren(svg);
+  svgEl = svg;
+  const vb = svgEl.viewBox.baseVal;
+  fullBox = { x: vb.x, y: vb.y, w: vb.width || 2481, h: vb.height || 1748 };
+  svgEl.removeAttribute("width");
+  svgEl.removeAttribute("height");
+  svgEl.setAttribute("preserveAspectRatio", "xMidYMid meet");
+  svgEl.setAttribute("overflow", "visible");
+  svgEl.setAttribute("aria-hidden", "true");
+  overlay = svgEls("g", { "pointer-events": "none", class: "overlay" });
+  svgEl.append(overlay);
+  $("zoom").hidden = false;
+}
+
+/** フロアマップを読み込んで地図に置く。無ければ案内を出して false */
 async function mountFloor(building, floor, token) {
   const text = await loadSvgText(building, floor);
   if (token !== renderToken) return false;
@@ -151,31 +233,19 @@ async function mountFloor(building, floor, token) {
   hideNotice();
   if (!text) {
     showNotice(`${embedBldgLabel(campus.names, building)} ${embedFloorLabel(floor)}のフロアマップはまだありません`,
-      "経路のデータはあるので、IKU NAVI で開くと写真で道順を確かめられます。");
+      "IKU NAVI で開くと、写真で道順を確かめられます。");
     return false;
   }
-  const holder = $("map");
-  holder.innerHTML = text;
-  svgEl = holder.querySelector("svg");
-  if (!svgEl) return false;
-  const vb = svgEl.viewBox.baseVal;
-  fullBox = { x: 0, y: 0, w: vb.width || 2481, h: vb.height || 1748 };
-  svgEl.removeAttribute("width");
-  svgEl.removeAttribute("height");
-  svgEl.setAttribute("preserveAspectRatio", "xMidYMid meet");
-  svgEl.setAttribute("overflow", "visible");
-  svgEl.setAttribute("aria-hidden", "true");
-  overlay = document.createElementNS(SVG_NS, "g");
-  overlay.setAttribute("pointer-events", "none");
-  svgEl.append(overlay);
-  $("zoom").hidden = false;
+  const svg = new DOMParser().parseFromString(text, "image/svg+xml").documentElement;
+  if (!svg || svg.nodeName !== "svg") return false;
+  mountSvg(document.importNode(svg, true));
   return true;
 }
 
-/** 地図の枠の縦横比（幅÷高さ） */
-function stageAspect() {
+/** 地図の枠の大きさ */
+function stageRect() {
   const r = $("map").getBoundingClientRect();
-  return r.width > 0 && r.height > 0 ? r.width / r.height : 4 / 3;
+  return { left: r.left, top: r.top, width: r.width || 1, height: r.height || 1 };
 }
 
 /**
@@ -184,14 +254,16 @@ function stageAspect() {
  */
 function setView(box) {
   if (!svgEl) return;
-  const a = stageAspect();
+  const r = stageRect();
+  const a = r.width / r.height;
   const W = fullBox.w, H = fullBox.h;
+  const whole = Math.max(W, H * a);   // 地図全体が収まる幅
   const cx = box.x + box.w / 2, cy = box.y + box.h / 2;
-  let w = Math.max(box.w, box.h * a);
-  w = Math.min(Math.max(w, W / MAX_ZOOM), Math.max(W, H * a));
+  const w = Math.min(Math.max(box.w, box.h * a, whole / MAX_ZOOM), whole);
   const h = w / a;
-  const clamp = (c, size, full) => size >= full ? (full - size) / 2 : Math.max(0, Math.min(c - size / 2, full - size));
-  svgEl.setAttribute("viewBox", `${clamp(cx, w, W)} ${clamp(cy, h, H)} ${w} ${h}`);
+  const clamp = (c, size, full, start) => size >= full ? start + (full - size) / 2 : Math.max(start, Math.min(c - size / 2, start + full - size));
+  svgEl.setAttribute("viewBox", `${clamp(cx, w, W, fullBox.x)} ${clamp(cy, h, H, fullBox.y)} ${w} ${h}`);
+  rescaleMarks(w / r.width);
 }
 
 function currentView() {
@@ -200,203 +272,300 @@ function currentView() {
 }
 
 /** 画面上の点 (px, py) の下にある地点を動かさずに、factor 倍の範囲を表示する（factor < 1 で拡大） */
-function zoomAround(v, factor, px, py) {
-  const rect = $("map").getBoundingClientRect();
-  const fx = px == null ? 0.5 : (px - rect.left) / rect.width;
-  const fy = py == null ? 0.5 : (py - rect.top) / rect.height;
-  const w = v.w * factor, h = v.h * factor;
-  return { x: v.x + v.w * fx - w * fx, y: v.y + v.h * fy - h * fy, w, h };
-}
-
 function zoomAt(factor, px, py) {
-  if (svgEl) setView(zoomAround(currentView(), factor, px, py));
+  if (!svgEl) return;
+  const v = currentView(), r = stageRect();
+  const fx = px == null ? 0.5 : (px - r.left) / r.width;
+  const fy = py == null ? 0.5 : (py - r.top) / r.height;
+  const w = v.w * factor, h = v.h * factor;
+  setView({ x: v.x + v.w * fx - w * fx, y: v.y + v.h * fy - h * fy, w, h });
 }
 
-function svgEls(tag, attrs) {
-  const el = document.createElementNS(SVG_NS, tag);
-  Object.entries(attrs).forEach(([k, v]) => el.setAttribute(k, v));
-  return el;
+/**
+ * 点の集まりと、その周りの印（ピンとその名前・丸）が収まる範囲。
+ * 印は画面上の px で大きさが決まるので、余白も px で取る。minSvg は狭すぎる範囲にしないための最小の幅（地図の単位）
+ */
+function homeAround(points, { minSvg = 0 } = {}) {
+  const r = stageRect();
+  const xs = points.map(p => p.x), ys = points.map(p => p.y);
+  let x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
+  const padPx = { top: PX.pin + 30, side: 36 };
+  // 余白を足したあとの範囲で、1px が地図の何単位になるか
+  const k = Math.max((x1 - x0) / Math.max(r.width - padPx.side * 2, 40), (y1 - y0) / Math.max(r.height - padPx.top - padPx.side, 40), minSvg / r.width);
+  x0 -= padPx.side * k; x1 += padPx.side * k; y0 -= padPx.top * k; y1 += padPx.side * k;
+  const w = Math.max(x1 - x0, minSvg);
+  return { x: (x0 + x1) / 2 - w / 2, y: y0, w, h: y1 - y0 };
 }
 
-/** 目的地のピン（先が地点を指す形）。size は SVG 座標での高さ */
-function drawPin(x, y, size, label) {
-  const s = size;
-  const g = svgEls("g", { transform: `translate(${x},${y})`, class: "pin" });
-  g.append(svgEls("path", {
-    d: `M0 0 C ${-s * 0.12} ${-s * 0.35} ${-s * 0.38} ${-s * 0.5} ${-s * 0.38} ${-s * 0.72} A ${s * 0.38} ${s * 0.38} 0 1 1 ${s * 0.38} ${-s * 0.72} C ${s * 0.38} ${-s * 0.5} ${s * 0.12} ${-s * 0.35} 0 0 Z`,
-    fill: COLOR.accent, stroke: "#fff", "stroke-width": s * 0.06,
-  }));
-  g.append(svgEls("circle", { cx: 0, cy: -s * 0.72, r: s * 0.15, fill: "#fff" }));
-  if (label) {
-    const t = svgEls("text", { x: 0, y: -s * 1.22, "text-anchor": "middle", "font-size": s * 0.34, class: "pin-label" });
-    t.textContent = label;
-    g.append(t);
-  }
+// ================================================================
+// 印（ピン・丸・名前）。画面上の大きさが変わらないよう、表示範囲が変わるたびに倍率を掛け直す
+// ================================================================
+/** (x, y) に、px 単位で描いた中身（children）を置く */
+function addMark(x, y, children) {
+  const g = svgEls("g", { class: "mark" });
+  g.dataset.x = x;
+  g.dataset.y = y;
+  children.forEach(c => g.append(c));
   overlay.append(g);
+  return g;
 }
 
-/** 経路の線と、区間の出発点・終点の印 */
-function drawRouteOnFloor(seg) {
-  const coords = route.path_coords;
-  const size = Math.max(fullBox.w, fullBox.h);
-  const sw = size / 160;
-  // 同じ階を前後でも通るなら、その部分は薄く出す（どの順に歩くかが分かるように）
-  segments.forEach((other, k) => {
-    if (k === segIndex || other.building !== seg.building || other.floor !== seg.floor) return;
-    const pts = coords.slice(other.start, other.end + 1).filter(n => n.svg_x != null);
-    if (pts.length > 1) overlay.append(svgEls("polyline", {
-      points: pts.map(n => `${n.svg_x},${n.svg_y}`).join(" "),
-      fill: "none", stroke: COLOR.faint, "stroke-width": sw * 0.7, "stroke-linecap": "round", "stroke-linejoin": "round", "stroke-dasharray": `${sw * 1.5} ${sw * 1.5}`,
-    }));
+function rescaleMarks(k) {
+  if (!overlay) return;
+  overlay.querySelectorAll(".mark").forEach(g => {
+    g.setAttribute("transform", `translate(${g.dataset.x},${g.dataset.y}) scale(${k})`);
   });
-  const pts = coords.slice(seg.start, seg.end + 1).filter(n => n.svg_x != null);
-  if (!pts.length) return [];
-  if (pts.length > 1) {
-    const line = pts.map(n => `${n.svg_x},${n.svg_y}`).join(" ");
-    overlay.append(svgEls("polyline", { points: line, fill: "none", stroke: "#fff", "stroke-width": sw * 1.8, "stroke-linecap": "round", "stroke-linejoin": "round" }));
-    overlay.append(svgEls("polyline", { points: line, fill: "none", stroke: COLOR.accent, "stroke-width": sw, "stroke-linecap": "round", "stroke-linejoin": "round", class: "route-line" }));
-  }
-  const first = pts[0], last = pts[pts.length - 1];
-  overlay.append(svgEls("circle", { cx: first.svg_x, cy: first.svg_y, r: sw * 1.4, fill: "#fff", stroke: COLOR.blue, "stroke-width": sw * 0.8 }));
-  const isGoal = segIndex === segments.length - 1;
-  if (isGoal) {
-    // 目的地は最後の通路の真ん中あたり（ナビ画面の「この辺です」と同じ区間）
-    const a = coords[coords.length - 2], b = coords[coords.length - 1];
-    const goal = a && b && a.svg_x != null && b.svg_x != null && a.building === b.building && a.floor === b.floor
-      ? { svg_x: (a.svg_x + b.svg_x) / 2, svg_y: (a.svg_y + b.svg_y) / 2 } : last;
-    drawPin(goal.svg_x, goal.svg_y, sw * 9, route.dest_display || "");
-    return [...pts, { svg_x: goal.svg_x, svg_y: goal.svg_y - sw * 9 }];
-  }
-  overlay.append(svgEls("circle", { cx: last.svg_x, cy: last.svg_y, r: sw * 1.6, fill: COLOR.blue, stroke: "#fff", "stroke-width": sw * 0.6 }));
-  return pts;
+}
+
+function labelText(text, y) {
+  const t = svgEls("text", { x: 0, y, "text-anchor": "middle", "font-size": PX.label, class: "map-label" });
+  t.textContent = text;
+  return t;
+}
+
+/** 目的地のピン（先が地点を指す形） */
+function pinMark(x, y, label) {
+  const s = PX.pin;
+  const parts = [
+    svgEls("path", {
+      d: `M0 0 C ${-s * 0.12} ${-s * 0.35} ${-s * 0.38} ${-s * 0.5} ${-s * 0.38} ${-s * 0.72} A ${s * 0.38} ${s * 0.38} 0 1 1 ${s * 0.38} ${-s * 0.72} C ${s * 0.38} ${-s * 0.5} ${s * 0.12} ${-s * 0.35} 0 0 Z`,
+      fill: COLOR.accent, stroke: "#fff", "stroke-width": 2,
+    }),
+    svgEls("circle", { cx: 0, cy: -s * 0.72, r: s * 0.15, fill: "#fff" }),
+  ];
+  if (label) parts.push(labelText(label, -s * 1.18));
+  return addMark(x, y, parts);
+}
+
+/** 区間の出発点（白丸）・終点（紺丸） */
+function dotMark(x, y, filled, label, labelBelow = false) {
+  const parts = [svgEls("circle", filled
+    ? { r: PX.dot + 1, fill: COLOR.blue, stroke: "#fff", "stroke-width": 2.5 }
+    : { r: PX.dot, fill: "#fff", stroke: COLOR.blue, "stroke-width": 3 })];
+  if (label) parts.push(labelText(label, labelBelow ? PX.dot + 17 : -PX.dot - 7));
+  return addMark(x, y, parts);
+}
+
+/** 線（画面上の太さが変わらない） */
+function polyline(points, stroke, width, extra = {}) {
+  overlay.append(svgEls("polyline", {
+    points: points.map(p => `${p.x},${p.y}`).join(" "), fill: "none", stroke, "stroke-width": width,
+    "stroke-linecap": "round", "stroke-linejoin": "round", "vector-effect": "non-scaling-stroke", ...extra,
+  }));
+}
+
+function routeLine(points) {
+  if (points.length < 2) return;
+  polyline(points, "#fff", PX.casing);
+  polyline(points, COLOR.accent, PX.route, { class: "route-line" });
 }
 
 // ================================================================
-// 屋外の区間（フロアマップが無いので、歩く道の形と距離だけ見せる）
+// 屋外（フロアマップが無いので、北を上にした 10m 方眼の上に道の形を描く）
 // ================================================================
-function drawOutdoorSketch(seg) {
+/** 緯度経度の点 → 方眼の svg を地図に置く。戻り値は各点の svg 座標（m） */
+function mountOutdoor(latlngs) {
   clearMap();
   hideNotice();
-  const pts = route.path_coords.slice(seg.start, seg.end + 1).filter(n => n.lat != null && n.lng != null);
-  const holder = $("map");
-  if (pts.length < 2) return;
-  // 緯度経度をメートルに直して、北を上にした小さな図にする
-  const lat0 = pts[0].lat, cos = Math.cos(lat0 * Math.PI / 180);
-  const xy = pts.map(p => ({ x: (p.lng - pts[0].lng) * 111320 * cos, y: -(p.lat - lat0) * 111320 }));
+  const lat0 = latlngs[0].lat, lng0 = latlngs[0].lng, cos = Math.cos(lat0 * Math.PI / 180);
+  const xy = latlngs.map(p => ({ x: (p.lng - lng0) * 111320 * cos, y: -(p.lat - lat0) * 111320 }));
   const xs = xy.map(p => p.x), ys = xy.map(p => p.y);
-  const span = Math.max(Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys), 40);
-  const m = span * 0.25;
-  const vb = `${Math.min(...xs) - m} ${Math.min(...ys) - m} ${Math.max(...xs) - Math.min(...xs) + m * 2} ${Math.max(...ys) - Math.min(...ys) + m * 2}`;
-  const svg = svgEls("svg", { viewBox: vb, class: "outdoor", preserveAspectRatio: "xMidYMid meet", "aria-hidden": "true" });
-  const sw = span / 60;
-  const line = xy.map(p => `${p.x},${p.y}`).join(" ");
-  svg.append(svgEls("polyline", { points: line, fill: "none", stroke: "#fff", "stroke-width": sw * 2, "stroke-linecap": "round", "stroke-linejoin": "round" }));
-  svg.append(svgEls("polyline", { points: line, fill: "none", stroke: COLOR.accent, "stroke-width": sw, "stroke-linecap": "round", "stroke-linejoin": "round", class: "route-line" }));
-  const a = xy[0], b = xy[xy.length - 1];
-  svg.append(svgEls("circle", { cx: a.x, cy: a.y, r: sw * 1.5, fill: "#fff", stroke: COLOR.blue, "stroke-width": sw * 0.8 }));
-  svg.append(svgEls("circle", { cx: b.x, cy: b.y, r: sw * 1.7, fill: COLOR.blue, stroke: "#fff", "stroke-width": sw * 0.6 }));
+  const span = Math.max(Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys), 60);
+  const m = span * 0.6;
+  const box = { x: Math.min(...xs) - m, y: Math.min(...ys) - m, w: Math.max(...xs) - Math.min(...xs) + m * 2, h: Math.max(...ys) - Math.min(...ys) + m * 2 };
+  const svg = svgEls("svg", { viewBox: `${box.x} ${box.y} ${box.w} ${box.h}`, class: "outdoor" });
+  const grid = svgEls("pattern", { id: "grid10", width: 10, height: 10, patternUnits: "userSpaceOnUse" });
+  grid.append(svgEls("path", { d: "M10 0H0V10", fill: "none", stroke: "#DBDCD4", "stroke-width": 1, "vector-effect": "non-scaling-stroke" }));
+  const defs = svgEls("defs", {});
+  defs.append(grid);
+  svg.append(defs, svgEls("rect", { x: box.x - box.w * 4, y: box.y - box.h * 4, width: box.w * 9, height: box.h * 9, fill: "url(#grid10)" }));
+  mountSvg(svg);
+  $("north").hidden = false;
+  return xy;
+}
+
+function drawOutdoorSegment(seg) {
+  const pts = route.path_coords.slice(seg.start, seg.end + 1).filter(n => n.lat != null && n.lng != null);
+  if (pts.length < 2) { clearMap(); return; }
+  const xy = mountOutdoor(pts);
+  routeLine(xy);
   const prev = segments[segIndex - 1], next = segments[segIndex + 1];
-  const label = (p, text, below) => {
-    if (!text) return;
-    const t = svgEls("text", { x: p.x, y: p.y + (below ? sw * 5 : -sw * 3.2), "text-anchor": "middle", "font-size": sw * 3.2, class: "pin-label" });
-    t.textContent = text;
-    svg.append(t);
-  };
-  const startBelow = a.y <= b.y;
-  label(a, prev ? embedBldgLabel(campus.names, prev.building) : "出発", !startBelow);
-  label(b, next ? embedBldgLabel(campus.names, next.building) : "到着", startBelow);
-  const north = svgEls("text", { x: Math.max(...xs) + m * 0.6, y: Math.min(...ys) - m * 0.4, "text-anchor": "middle", "font-size": sw * 3, class: "north" });
-  north.textContent = "↑北";
-  svg.append(north);
-  holder.append(svg);
+  const a = xy[0], b = xy[xy.length - 1];
+  const startBelow = a.y > b.y;   // 名前は、もう一方の点から離れる側に
+  dotMark(a.x, a.y, false, prev ? embedBldgLabel(campus.names, prev.building) : routeLabels.from, startBelow);
+  if (next) dotMark(b.x, b.y, true, embedBldgLabel(campus.names, next.building), !startBelow);
+  else pinMark(b.x, b.y, routeLabels.to);
+  homeBox = homeAround(xy);
+  setView(homeBox);
 }
 
 // ================================================================
 // 表示の種類ごと
 // ================================================================
-async function showFloorView(building, floor, token, mark) {
+async function showFloorView(building, floor, token, place) {
   const floors = floorsOf(building);
   if (!floors.length) return showError(`${embedBldgLabel(campus.names, building)}のデータが見つかりません`, "bldg に号館の番号（10号館なら 10）を指定してください。");
   if (floor == null || !floors.includes(floor)) floor = floors.includes(1) ? 1 : floors[0];
-  setBar(embedBldgLabel(campus.names, building), mark ? `${embedFloorLabel(floor)} ・ ${mark.display}` : embedFloorLabel(floor));
+  setBar(embedBldgLabel(campus.names, building), place ? `${embedFloorLabel(floor)}・${place.label}` : embedFloorLabel(floor));
   renderFloorChips(building, floor, f => {
-    // 教室の場所を出しているときに別の階を選んだら、ただのフロアマップにする
+    // 場所を出しているときに別の階を選んだら、ただのフロアマップにする
     params = { ...params, view: "floor", bldg: building, floor: f };
     $("open-full").href = fullNaviUrl(params);
     showFloorView(building, f, ++renderToken, null);
   });
   if (!(await mountFloor(building, floor, token))) return;
   homeBox = fullBox;
-  if (mark) {
-    const a = campus.nodes[mark.from], b = campus.nodes[mark.to];
-    if (a?.svg_x != null && b?.svg_x != null) {
-      const x = (a.svg_x + b.svg_x) / 2, y = (a.svg_y + b.svg_y) / 2;
-      const size = Math.max(fullBox.w, fullBox.h) / 18;
-      overlay.append(svgEls("line", { x1: a.svg_x, y1: a.svg_y, x2: b.svg_x, y2: b.svg_y, stroke: COLOR.accent, "stroke-width": size / 9, "stroke-linecap": "round", opacity: "0.35" }));
-      drawPin(x, y, size, mark.display);
-      homeBox = fitViewBox([{ x, y }, { x, y: y - size * 1.4 }], fullBox.w, fullBox.h, { min: Math.min(fullBox.w, 900) });
+  if (place) {
+    const pa = place.a?.svg_x != null ? { x: place.a.svg_x, y: place.a.svg_y } : null;
+    const pb = place.b?.svg_x != null ? { x: place.b.svg_x, y: place.b.svg_y } : null;
+    if (pa) {
+      if (pb) polyline([pa, pb], COLOR.accent, PX.place, { opacity: "0.3" });
+      const at = pb ? { x: (pa.x + pb.x) / 2, y: (pa.y + pb.y) / 2 } : pa;
+      pinMark(at.x, at.y, place.label);
+      homeBox = homeAround(pb ? [pa, pb, at] : [at], { minSvg: fullBox.w * 0.35 });
     } else {
-      showBanner(`${mark.display}は${embedFloorLabel(floor)}にあります（この建物は、地図上の教室の位置をまだ登録していません）`);
+      showBanner(`${place.label}は${embedFloorLabel(floor)}にあります（この建物は、地図上の位置をまだ登録していません）`);
     }
   }
   setView(homeBox);
-  notifyParent("ready", { view: mark ? "room" : "floor", building, floor });
+  notifyParent("ready", { view: place ? "place" : "floor", building, floor });
 }
 
-async function showRoomView(token) {
-  const hit = findRoom(campus.rooms, params.room, params.bldg);
-  if (hit === "ambiguous") return showError(`「${params.room}」は複数の号館にあります`, "bldg に号館の番号を指定してください。");
-  if (!hit) return showError(`「${params.room}」が見つかりません`, "教室名は IKU NAVI の教室検索と同じ書き方で指定してください（例: 10301）。");
-  await showFloorView(hit.building, hit.floor, token, hit);
+async function showPlaceView(token) {
+  let place;
+  try {
+    place = await resolvePlace(params.place);
+  } catch (e) {
+    if (e instanceof PlaceError) return showError(e.message, e.desc);
+    throw e;
+  }
+  if (token !== renderToken) return;
+  if (place.building !== 0) return showFloorView(place.building, place.floor, token, place);
+  // 屋外の通路・地点
+  setBar("屋外", place.label);
+  $("floors").hidden = true;
+  const pts = [place.a, place.b].filter(n => n?.lat != null);
+  if (!pts.length) return showError(`${place.label}の位置が分かりません`);
+  const xy = mountOutdoor(pts);
+  if (xy.length > 1) polyline(xy, COLOR.accent, PX.place, { opacity: "0.3" });
+  const at = xy.length > 1 ? { x: (xy[0].x + xy[1].x) / 2, y: (xy[0].y + xy[1].y) / 2 } : xy[0];
+  pinMark(at.x, at.y, place.label);
+  homeBox = homeAround([...xy, at], { minSvg: 120 });
+  setView(homeBox);
+  notifyParent("ready", { view: "place", building: 0, floor: place.floor });
 }
 
 async function showRouteView(token) {
   const q = new URLSearchParams();
   q.set("use_elevator", params.elevator ? "1" : "0");
-  for (const [side, p] of [["from", params.from], ["to", params.to]]) {
-    if (p.event) { q.set(`${side}_event`, p.event); continue; }
-    const hit = findRoom(campus.rooms, p.room, p.bldg);
-    const what = side === "from" ? "出発地" : "目的地";
-    if (hit === "ambiguous") return showError(`${what}の「${p.room}」は複数の号館にあります`, `${side}_bldg に号館の番号を指定してください。`);
-    if (!hit) return showError(`${what}の「${p.room}」が見つかりません`, "教室名は IKU NAVI の教室検索と同じ書き方で指定してください（例: 10301）。");
-    q.set(`${side}_room`, hit.room);
-    q.set(`${side}_building`, hit.building);
+  const labels = {};
+  for (const [side, pl, what] of [["from", params.from, "出発地の"], ["to", params.to, "目的地の"]]) {
+    if (pl.event) { placeRouteParams(q, side, pl); labels[side] = pl.label || pl.event; continue; }
+    let place;
+    try {
+      place = await resolvePlace(pl, what);
+    } catch (e) {
+      if (e instanceof PlaceError) return showError(e.message, e.desc);
+      throw e;
+    }
+    placeRouteParams(q, side, pl, { room: place.apiRoom, building: place.building });
+    labels[side] = place.label;
   }
-  const res = await fetch(`${API_BASE}/api/route?${q}`);
-  const data = await res.json().catch(() => ({}));
+  const { ok, data } = await fetchJson(`/api/route?${q}`);
   if (token !== renderToken) return;
-  if (!res.ok) return showError("道順が見つかりませんでした", data.error || "時間をおいて開き直してください。");
+  if (!ok) return showError("道順が見つかりませんでした", data.error || "時間をおいて開き直してください。");
   route = data;
+  // 目的地の名前: 指定した表示名 → API が決めた名前（教室・トイレなど） → 場所の名前
+  routeLabels = { from: labels.from, to: params.to.label || route.dest_display || labels.to };
+  route.dest_display = routeLabels.to;
   segments = splitRouteSegments(route.path_coords || [], route.path_edges || []);
   if (!segments.length) return showError("道順が見つかりませんでした");
   $("floors").hidden = true;
-  $("steps").hidden = false;
-  const fromName = params.from.event || findRoom(campus.rooms, params.from.room, params.from.bldg)?.display || params.from.room;
-  const toName = route.dest_display || params.to.event || findRoom(campus.rooms, params.to.room, params.to.bldg)?.display || params.to.room;
-  setBar("", `${fromName} → ${toName}`);
-  $("map").dataset.route = `${fromName}から${toName}への道順`;
+  setRouteMode(true);
+  setBar("", `${routeLabels.from} → ${routeLabels.to}`);
+  renderSegmentList();
   notifyParent("ready", { view: "route", segments: segments.length, total_length: Math.round(segments.reduce((s, x) => s + x.length, 0)) });
   await showSegment(0, token);
+}
+
+/** 全区間の一覧（横に広い枠では地図の横、それ以外では隠す） */
+function renderSegmentList() {
+  $("seg-list").replaceChildren(...segments.map((seg, k) => {
+    const span = (cls, text) => {
+      const s = document.createElement("span");
+      s.className = cls;
+      s.textContent = text;
+      return s;
+    };
+    const b = document.createElement("button");
+    b.type = "button";
+    b.append(
+      span("li-title", segmentTitle(seg, campus.names)),
+      span("li-dist", seg.kind === "outdoor" || seg.length >= 10 ? distanceText(seg.length) : ""),
+      span("li-next", segmentNextText(route, segments, k, campus.names)),
+    );
+    b.addEventListener("click", () => showSegment(k));
+    const li = document.createElement("li");
+    li.append(b);
+    return li;
+  }));
 }
 
 async function showSegment(k, token = renderToken) {
   if (!route || k < 0 || k >= segments.length) return;
   segIndex = k;
   const seg = segments[k];
+  const title = segmentTitle(seg, campus.names);
   $("seg-count").textContent = `${k + 1}/${segments.length}`;
-  $("seg-title").textContent = segmentTitle(seg, campus.names);
+  $("seg-title").textContent = title;
   $("seg-dist").textContent = seg.kind === "outdoor" || seg.length >= 10 ? distanceText(seg.length) : "";
   $("seg-next").textContent = segmentNextText(route, segments, k, campus.names);
   $("seg-prev").disabled = k === 0;
   $("seg-next-btn").disabled = k === segments.length - 1;
-  $("map").setAttribute("aria-label", `${$("map").dataset.route}。${k + 1}番目の区間、${segmentTitle(seg, campus.names)}`);
-  notifyParent("segment", { index: k, total: segments.length, kind: seg.kind, building: seg.building, floor: seg.floor, title: segmentTitle(seg, campus.names) });
+  $("seg-list").querySelectorAll("button").forEach((b, i) => {
+    if (i === k) b.setAttribute("aria-current", "step"); else b.removeAttribute("aria-current");
+  });
+  const item = $("seg-list").children[k];
+  if (item && getComputedStyle($("seg-list")).display !== "none") item.scrollIntoView({ block: "nearest" });
+  $("map").setAttribute("aria-label", `${routeLabels.from}から${routeLabels.to}への道順。${k + 1}番目の区間、${title}`);
+  notifyParent("segment", { index: k, total: segments.length, kind: seg.kind, building: seg.building, floor: seg.floor, title });
 
-  if (seg.kind === "outdoor") return drawOutdoorSketch(seg);
+  if (seg.kind === "outdoor") return drawOutdoorSegment(seg);
   if (!(await mountFloor(seg.building, seg.floor, token)) || token !== renderToken || segIndex !== k) return;
-  const pts = drawRouteOnFloor(seg);
-  if (!pts.length) showBanner("この建物は、地図上の道順をまだ登録していません。下の案内を見てください。");
-  homeBox = fitViewBox(pts.map(n => ({ x: n.svg_x, y: n.svg_y })), fullBox.w, fullBox.h, { min: Math.min(fullBox.w, 800) });
+  drawFloorSegment(seg);
+}
+
+/** 屋内の区間: 経路の線と、区間の出発点・終点の印 */
+function drawFloorSegment(seg) {
+  const coords = route.path_coords;
+  const xy = n => ({ x: n.svg_x, y: n.svg_y });
+  // 同じ階を別の区間でも通るなら、その部分は点線で薄く出す（どこをいつ歩くかが分かるように）
+  segments.forEach((other, i) => {
+    if (i === segIndex || other.building !== seg.building || other.floor !== seg.floor) return;
+    const pts = coords.slice(other.start, other.end + 1).filter(n => n.svg_x != null).map(xy);
+    if (pts.length > 1) polyline(pts, COLOR.faint, PX.other, { "stroke-dasharray": "6 6" });
+  });
+  const pts = coords.slice(seg.start, seg.end + 1).filter(n => n.svg_x != null).map(xy);
+  if (!pts.length) {
+    showBanner("この建物は、地図上の道順をまだ登録していません。案内の文を見てください。");
+    homeBox = fullBox;
+    return setView(homeBox);
+  }
+  routeLine(pts);
+  const isGoal = segIndex === segments.length - 1;
+  dotMark(pts[0].x, pts[0].y, false, segIndex === 0 ? routeLabels.from : "", true);
+  let focus = pts;
+  if (isGoal) {
+    // 目的地は最後の通路の真ん中あたり（ナビ画面の「この辺です」と同じ区間）
+    const a = coords[coords.length - 2], b = coords[coords.length - 1];
+    const goal = a && b && a.svg_x != null && b.svg_x != null && a.building === b.building && a.floor === b.floor
+      ? { x: (a.svg_x + b.svg_x) / 2, y: (a.svg_y + b.svg_y) / 2 } : pts[pts.length - 1];
+    pinMark(goal.x, goal.y, routeLabels.to);
+    focus = [...pts, goal];
+  } else {
+    dotMark(pts[pts.length - 1].x, pts[pts.length - 1].y, true, "");
+  }
+  homeBox = homeAround(focus, { minSvg: fullBox.w * 0.4 });
   setView(homeBox);
 }
 
@@ -406,7 +575,7 @@ async function render(search) {
   route = null; segments = [];
   document.body.classList.toggle("no-header", !params.header);
   $("open-full").href = fullNaviUrl(params);
-  $("steps").hidden = true;
+  setRouteMode(false);
   $("floors").hidden = true;
   hideNotice();
   try {
@@ -417,7 +586,7 @@ async function render(search) {
     await loadCampus();
     if (token !== renderToken) return;
     if (params.view === "floor") return await showFloorView(params.bldg, params.floor, token, null);
-    if (params.view === "room") return await showRoomView(token);
+    if (params.view === "place") return await showPlaceView(token);
     if (params.view === "route") return await showRouteView(token);
   } catch (e) {
     if (token === renderToken) showError("地図を読み込めませんでした", e.message || "通信できる場所で開き直してください。");
@@ -429,14 +598,30 @@ async function render(search) {
 // ================================================================
 $("seg-prev").addEventListener("click", () => showSegment(segIndex - 1));
 $("seg-next-btn").addEventListener("click", () => showSegment(segIndex + 1));
-$("zoom-in").addEventListener("click", () => zoomAt(1 / 1.5));
-$("zoom-out").addEventListener("click", () => zoomAt(1.5));
+$("zoom-in").addEventListener("click", () => zoomAt(1 / 1.6));
+$("zoom-out").addEventListener("click", () => zoomAt(1.6));
 $("zoom-fit").addEventListener("click", () => { if (homeBox) setView(homeBox); });
 document.addEventListener("keydown", e => {
-  if (!route || e.target.closest("a")) return;
-  if (e.key === "ArrowRight") showSegment(segIndex + 1);
-  if (e.key === "ArrowLeft") showSegment(segIndex - 1);
+  if (e.target.closest("input, textarea, select")) return;
+  if (route && e.key === "ArrowRight") showSegment(segIndex + 1);
+  if (route && e.key === "ArrowLeft") showSegment(segIndex - 1);
+  if (e.key === "+" || e.key === "=") zoomAt(1 / 1.6);
+  if (e.key === "-") zoomAt(1.6);
 });
+
+// 全画面: 小さな iframe の中でも大きくして見られるように（使えないブラウザ・iPhone ではボタンを出さない）
+if (document.fullscreenEnabled) {
+  const btn = $("fullscreen");
+  btn.hidden = false;
+  btn.addEventListener("click", () => {
+    if (document.fullscreenElement) document.exitFullscreen();
+    else document.documentElement.requestFullscreen().catch(() => {});
+  });
+  document.addEventListener("fullscreenchange", () => {
+    btn.setAttribute("aria-label", document.fullscreenElement ? "全画面をやめる" : "全画面で見る");
+    document.body.classList.toggle("standalone", oneFingerPan());
+  });
+}
 
 let hintTimer = null;
 function flashHint(text) {
@@ -448,67 +633,120 @@ function flashHint(text) {
 }
 
 const stage = $("map");
-if (!EMBEDDED) document.body.classList.add("standalone");
+document.body.classList.toggle("standalone", oneFingerPan());
 
-// マウス: ドラッグで動かす。ホイールはページのスクロールに使わせ、Ctrl（トラックパッドのピンチ）のときだけ拡大縮小
+// マウス: ドラッグで動かす・ダブルクリックで拡大（Shift で縮小）。ホイールは、埋め込みではページのスクロールに使わせ、
+// Ctrl（トラックパッドのピンチ）のときだけ拡大縮小する
 let drag = null;
 stage.addEventListener("pointerdown", e => {
-  if (!svgEl || e.pointerType === "touch") return;   // 指は下の touch イベントで扱う
+  if (!svgEl || e.pointerType === "touch" || e.button !== 0) return;   // 指は下の touch イベントで扱う
   drag = { x: e.clientX, y: e.clientY, v: currentView() };
   stage.setPointerCapture(e.pointerId);
   stage.classList.add("dragging");
 });
 stage.addEventListener("pointermove", e => {
   if (!drag || !svgEl) return;
-  const k = drag.v.w / stage.getBoundingClientRect().width;
+  const k = drag.v.w / stageRect().width;
   setView({ ...drag.v, x: drag.v.x - (e.clientX - drag.x) * k, y: drag.v.y - (e.clientY - drag.y) * k });
 });
 const endDrag = () => { drag = null; stage.classList.remove("dragging"); };
 stage.addEventListener("pointerup", endDrag);
 stage.addEventListener("pointercancel", endDrag);
+stage.addEventListener("dblclick", e => zoomAt(e.shiftKey ? 2 : 0.5, e.clientX, e.clientY));
 stage.addEventListener("wheel", e => {
   if (!svgEl) return;
-  if (EMBEDDED && !e.ctrlKey) { flashHint("Ctrl キーを押しながらスクロールで拡大・縮小"); return; }
+  if (!oneFingerPan() && !e.ctrlKey) { flashHint("Ctrl キーを押しながらスクロールで拡大・縮小"); return; }
   e.preventDefault();
   zoomAt(Math.exp(e.deltaY * (e.ctrlKey ? 0.01 : 0.002)), e.clientX, e.clientY);
 }, { passive: false });
 
-// 指: 埋め込みでは1本指はページのスクロールに使わせ、2本指で動かす・拡大縮小する（直接開いたときは1本指でも動かせる）
+// 指: 2本指で動かす・拡大縮小（直接開いたとき・全画面では1本指でも動かせる）。ダブルタップで拡大
 let touch = null;
+let lastTap = null;
 const touchPoints = e => [...e.touches].slice(0, 2).map(t => ({ x: t.clientX, y: t.clientY }));
-const touchStartState = e => ({ pts: touchPoints(e), v: currentView() });
+const touchStartState = e => ({ pts: touchPoints(e), v: currentView(), moved: false, t: Date.now() });
 stage.addEventListener("touchstart", e => {
   if (!svgEl) return;
-  if (e.touches.length === 1 && EMBEDDED) { touch = null; flashHint("2本の指で地図を動かせます"); return; }
+  if (e.touches.length === 1 && !oneFingerPan()) {
+    touch = { pts: touchPoints(e), moved: false, t: Date.now(), scrollOnly: true };
+    return;
+  }
   e.preventDefault();
   touch = touchStartState(e);
 }, { passive: false });
 stage.addEventListener("touchmove", e => {
   if (!touch || !svgEl) return;
   const pts = touchPoints(e);
+  if (touch.scrollOnly) {
+    if (pts.length < 2) {
+      // 1本指のスワイプはページのスクロールに任せ、2本指で動かせることを知らせる
+      if (!touch.moved && Math.hypot(pts[0].x - touch.pts[0].x, pts[0].y - touch.pts[0].y) > 12) {
+        touch.moved = true;
+        flashHint("2本の指で地図を動かせます");
+      }
+      return;
+    }
+    touch = touchStartState(e);
+  }
   if (pts.length !== touch.pts.length) { touch = touchStartState(e); return; }
   e.preventDefault();
-  const rect = stage.getBoundingClientRect();
-  const k = touch.v.w / rect.width;
+  const r = stageRect();
+  const k = touch.v.w / r.width;
   const mid = p => p.length > 1 ? { x: (p[0].x + p[1].x) / 2, y: (p[0].y + p[1].y) / 2 } : p[0];
   const m0 = mid(touch.pts), m1 = mid(pts);
+  if (Math.hypot(m1.x - m0.x, m1.y - m0.y) > 6) touch.moved = true;
   let f = 1;
   if (pts.length > 1) {
     const d0 = Math.hypot(touch.pts[0].x - touch.pts[1].x, touch.pts[0].y - touch.pts[1].y);
     const d1 = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
-    if (d0 > 1 && d1 > 1) f = d0 / d1;
+    if (d0 > 1 && d1 > 1) { f = d0 / d1; touch.moved = true; }
   }
   // 指の真ん中の下にあった地点が、動かしたあとの指の真ん中に来るように
-  const sx = touch.v.x + (m0.x - rect.left) * k, sy = touch.v.y + (m0.y - rect.top) * k;
-  const w = touch.v.w * f, h = touch.v.h * f;
-  setView({ x: sx - (m1.x - rect.left) * k * f, y: sy - (m1.y - rect.top) * k * f, w, h });
+  const sx = touch.v.x + (m0.x - r.left) * k, sy = touch.v.y + (m0.y - r.top) * k;
+  setView({ x: sx - (m1.x - r.left) * k * f, y: sy - (m1.y - r.top) * k * f, w: touch.v.w * f, h: touch.v.h * f });
 }, { passive: false });
-const endTouch = e => { touch = e.touches.length && (e.touches.length > 1 || !EMBEDDED) ? touchStartState(e) : null; };
+const endTouch = e => {
+  // 動かさずに素早く2回たたいたら、そこを中心に拡大
+  if (touch && !touch.moved && e.touches.length === 0 && touch.pts.length === 1 && Date.now() - touch.t < 300) {
+    const p = touch.pts[0];
+    if (lastTap && Date.now() - lastTap.t < 320 && Math.hypot(p.x - lastTap.x, p.y - lastTap.y) < 30) {
+      if (e.cancelable) e.preventDefault();
+      zoomAt(0.5, p.x, p.y);
+      lastTap = null;
+    } else {
+      lastTap = { ...p, t: Date.now() };
+    }
+  }
+  touch = e.touches.length > 1 || (e.touches.length === 1 && oneFingerPan()) ? touchStartState(e) : null;
+};
 stage.addEventListener("touchend", endTouch);
 stage.addEventListener("touchcancel", endTouch);
 
-// 枠の大きさが変わったら（iframe の幅が変わる・画面を回すなど）、見ていた範囲を合わせ直す
-new ResizeObserver(() => { if (svgEl) setView(currentView()); }).observe(stage);
+// 道順の帯を左右にスワイプして区間を切り替える（スマホで ◀ ▶ を狙わなくてよいように）
+let swipe = null;
+$("steps").addEventListener("touchstart", e => {
+  swipe = e.touches.length === 1 && !e.target.closest(".seg-list") ? { x: e.touches[0].clientX, y: e.touches[0].clientY } : null;
+}, { passive: true });
+$("steps").addEventListener("touchend", e => {
+  if (!swipe) return;
+  const t = e.changedTouches[0];
+  const dx = t.clientX - swipe.x, dy = t.clientY - swipe.y;
+  if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5) showSegment(segIndex + (dx < 0 ? 1 : -1));
+  swipe = null;
+});
+
+// 枠の大きさが変わったら（iframe の大きさが変わる・画面を回す・一覧の出し入れなど）、
+// 見ていた中心と 1px あたりの長さを保って合わせ直す（枠が広がればそのぶん広く見える）
+let lastRect = null;
+new ResizeObserver(() => {
+  const r = stageRect();
+  if (svgEl && lastRect) {
+    const v = currentView();
+    const k = v.w / lastRect.width;
+    setView({ x: v.x + v.w / 2 - (r.width * k) / 2, y: v.y + v.h / 2 - (r.height * k) / 2, w: r.width * k, h: r.height * k });
+  }
+  lastRect = r;
+}).observe(stage);
 
 // 親ページからの指示
 window.addEventListener("message", e => {
