@@ -1,13 +1,12 @@
 # Mac での開発環境のセットアップ
 
-IKU NAVI のサブプログラム（Python 製のツール・API・スクレイパー）を Mac で動かすまでの手順。
+IKU NAVI のサブプログラム（Python 製のツール・API）を Mac で動かすまでの手順。
 Apple シリコン（M1〜）・Intel のどちらの Mac でも同じ手順で動く。
 
 | プログラム | 場所 | 使う依存ファイル | 用途 |
 |---|---|---|---|
 | IKU NAVI ツール | `programs/IKU_NAVI_Tools` | `requirements.txt` | マップ編集・ID一覧・イベント設定・ルート検証・画像チェック・画像リネーム・人物ぼかし・SVG座標取得（デスクトップアプリ） |
 | 経路探索API | `programs/3D_Graph` | `requirements.txt`（テストもするなら `requirements-dev.txt`） | ナビの経路探索。ルート検証・画像チェックのタブもこれを使う |
-| シラバス取得 | `programs/syllabus_courses` | `requirements.txt` | 時間割共有の科目データを作る |
 | 時間割共有 | `programs/timetables` | `package.json`（Node.js） | Web アプリ（Python ではない。[最後の章](#7-時間割共有nodejs)を参照） |
 
 
@@ -68,16 +67,15 @@ pip install -r programs/IKU_NAVI_Tools/requirements.txt
 - **人物ぼかしを使わない場合**は、`requirements.txt` の `ultralytics` の行を除いて入れれば数百MBで済む
   （入っていなくても他のタブは普通に使える）
 
-### 3-2. 経路探索API・シラバス取得
+### 3-2. 経路探索API
 
 ```bash
 python3.13 -m venv .venv
 source .venv/bin/activate
-pip install -r programs/3D_Graph/requirements-dev.txt    # API＋シラバス取得＋テスト（pytest）一式
+pip install -r programs/3D_Graph/requirements-dev.txt    # API＋テスト（pytest）一式
 ```
 
-API を動かすだけなら `programs/3D_Graph/requirements.txt`、シラバス取得だけなら
-`programs/syllabus_courses/requirements.txt` でもよい。
+API を動かすだけなら `programs/3D_Graph/requirements.txt` でもよい。
 
 > どちらの `.venv` もリポジトリには含まれない（`.gitignore` 済み）。
 > 別の venv に切り替えるときは `deactivate` してから、使いたい方を `source .../bin/activate` する。
@@ -109,19 +107,11 @@ python app.py                  # http://localhost:5001 で起動。止めると�
 
 ブラウザで http://localhost:5001/3d/ を開くと 3D の経路グラフが見られる。
 
-### シラバス取得
-
-```bash
-source .venv/bin/activate
-cd programs/syllabus_courses
-python scrape.py --by-dept     # 詳しいオプションは programs/syllabus_courses/README.md
-```
-
 ## 5. テスト
 
 ```bash
 source .venv/bin/activate
-pytest                         # リポジトリの一番上で。経路探索API・ナビ画面・シラバス取得のテスト
+pytest                         # リポジトリの一番上で。経路探索API・ナビ画面のテスト
 
 source programs/IKU_NAVI_Tools/.venv/bin/activate
 pip install pytest             # 初回のみ

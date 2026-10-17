@@ -17,7 +17,7 @@ AR 領域にはエッジ間の経路写真（Cloudflare R2 CDN 配信）を表�
 
 ## 開発環境のセットアップ
 
-Mac でサブプログラム（IKU NAVI ツール・経路探索API・シラバス取得・時間割共有）を動かす手順は
+Mac でサブプログラム（IKU NAVI ツール・経路探索API・時間割共有）を動かす手順は
 [docs/setup_mac.md](docs/setup_mac.md) にまとめている。
 
 ## テスト
@@ -52,8 +52,7 @@ SenARMapProject_2026/
 │   ├── Website/             # プロジェクト紹介 LP（学内発表用、Pages では非公開）
 │   ├── IKU_NAVI_Tools/      # データ作成・検証用デスクトップアプリ（PyQt6）。マップ編集・イベント設定・ルート検証・画像チェック・画像リネーム・人物ぼかし・SVG座標取得をタブで切り替えて使う
 │   ├── image_uploader/      # Cloudflare Pages + R2 を使った画像一括アップローダー
-│   ├── timetables/          # 時間割共有サービス（Cloudflare Pages Functions + D1、別サービス）
-│   └── syllabus_courses/    # timetables 用シラバススクレイパー
+│   └── timetables/          # 時間割共有サービス（Cloudflare Pages Functions + D1、別サービス）
 ├── data/                    # CSV / JSON データ（ノード・エッジ・食堂・画像マッピング・名前DB・イベント等、建物別サブディレクトリあり）
 ├── pytest.ini               # テスト設定（programs/3D_Graph/tests と programs/html/tests を実行）
 ├── docs/                    # 設計ドキュメント（技術概要・API仕様・座標設計・非機能要件・名前DB/イベントモード・Cloudflare移行手順・PROJECT_BIBLEほか）
