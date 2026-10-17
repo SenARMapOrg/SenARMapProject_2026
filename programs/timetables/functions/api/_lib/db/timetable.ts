@@ -52,6 +52,44 @@ export async function replaceTimetable(
 }
 
 /**
+ * 「科目名から追加」の候補にする、ほかの学生が登録した授業の一覧（学期・曜日・時限・科目名・担当教員ごと）。
+ * シラバスなどの外部の科目データは使わず、この時間割サービスに登録されている行だけから作る。
+ *
+ * 科目名は自由に書ける欄なので、1人しか登録していないものは出さない（MIN_SHARED_COURSE_USERS）。
+ * 「バイト」「通院」のような個人の予定や、名前入りのメモがほかの人の候補に出てしまわないようにするため。
+ * 誰が登録したかは返さず、人数だけを返す。学年では絞らない（同じ授業は毎年ほぼ同じ曜日・時限なので、
+ * 学年をまたいでまとめた方が候補が増える。教室の候補 findCommonLocationForCourse と同じ考え方）。
+ */
+export const MIN_SHARED_COURSE_USERS = 2;
+/** 返す件数の上限（応答を大きくしすぎないため。人数の多い順に残る） */
+export const MAX_SHARED_COURSES = 3000;
+
+export interface SharedCourseRow {
+  term: Term;
+  day_of_week: number;
+  period: number;
+  course_name: string;
+  instructor: string | null;
+  user_count: number;
+}
+
+export async function listSharedCourses(db: D1Database, excludeUserId: number): Promise<SharedCourseRow[]> {
+  const { results } = await db
+    .prepare(
+      `SELECT term, day_of_week, period, course_name, instructor, COUNT(DISTINCT user_id) AS user_count
+       FROM timetable_entries
+       WHERE user_id != ?
+       GROUP BY term, day_of_week, period, course_name, instructor
+       HAVING COUNT(DISTINCT user_id) >= ?
+       ORDER BY user_count DESC, course_name, term, day_of_week, period
+       LIMIT ?`,
+    )
+    .bind(excludeUserId, MIN_SHARED_COURSE_USERS, MAX_SHARED_COURSES)
+    .all<SharedCourseRow>();
+  return results;
+}
+
+/**
  * ユーザーが時間割を持っている(grade, term)の組を一覧する（entriesが1件でもあれば対象。
  * 空のまま公開範囲だけ設定したスナップショットは対象外＝実質「時間割が存在する学年」の一覧になる）。
  * 「学年タブ」に何を並べるかに使う。

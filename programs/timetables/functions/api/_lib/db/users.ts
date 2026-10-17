@@ -109,7 +109,7 @@ export async function updateProfile(
  * instructorも一致条件に含める: 同じ科目名でも担当教員が違えば別クラス(別教室であることが多い)
  * なので、instructorで絞らないと別クラスの教室が混ざって提案されてしまう
  * （"IS ?" を使うのはSQLiteの"="はNULL同士を一致とみなさないため。instructorがNULL同士
- * 　＝どちらもシラバスに紐づかない手入力同士、の場合だけ一致させたい）。
+ * 　＝どちらも担当教員の無い手入力同士、の場合だけ一致させたい）。
  */
 
 export async function findCommonLocationForCourse(

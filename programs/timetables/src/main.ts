@@ -1,6 +1,5 @@
 import { api, type Me } from "./api";
 import { renderBrowsePanel } from "./browse-view";
-import { prefetchCatalog } from "./course-catalog";
 import { renderFriendsPanel } from "./friends-view";
 import { buildAccountDeleteRow, buildSettingsPanel } from "./settings-view";
 import { renderSharedView } from "./shared-view";
@@ -73,8 +72,6 @@ function describeLoginError(code: string): string {
 
 function renderAppView(me: Me): void {
   appRoot.replaceChildren();
-  // 「科目を追加・削除する」を押す前に、科目データの取得を済ませておく（押してから待たされないように）
-  prefetchCatalog();
 
   const tabs = document.createElement("div");
   tabs.className = "tabs";

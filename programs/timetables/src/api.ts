@@ -27,6 +27,16 @@ export type Term = "spring" | "fall"; // spring=前期 fall=後期
  */
 export type Visibility = "private" | "friends" | "link" | "public";
 
+/** ほかの学生が登録した授業（「科目名から追加」の候補）。2人以上が登録したものだけがサーバーから返る */
+export interface SharedCourse {
+  term: Term;
+  day_of_week: number;
+  period: number;
+  course_name: string;
+  instructor: string | null;
+  user_count: number;
+}
+
 export const VISIBILITY_LABELS: Record<Visibility, string> = {
   private: "非公開", friends: "友達のみ", link: "リンク限定", public: "公開",
 };
@@ -118,6 +128,10 @@ export const api = {
     patch: { faculty?: string | null; department?: string | null; current_grade?: number },
   ): Promise<Me> {
     return apiFetch("/api/me", { method: "PATCH", body: JSON.stringify(patch) });
+  },
+
+  getSharedCourses(): Promise<{ courses: SharedCourse[] }> {
+    return apiFetch("/api/timetable/courses");
   },
 
   getLocationSuggestion(
