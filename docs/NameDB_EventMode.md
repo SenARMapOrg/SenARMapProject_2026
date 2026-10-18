@@ -110,24 +110,35 @@ building,display_name
 
 ### 列
 
-1行につき1イベント。場所は `room` / `node_id` / `edge_id` の **いずれか1つ** で指定します。
+1行につき1か所。場所は `room` / `node_id` / `edge_id` の **いずれか1つ** で指定します
+（IKU NAVI ツールの「イベント設定」タブで、CSVを直接書かずに設定できます）。
 
 | 列 | 必須 | 説明 |
 |---|---|---|
-| `title` | 必須 | 屋台などのイベント名（検索候補に表示される） |
+| `id` | 任意 | URL（`navi/?to_event=<id>`）でイベントを呼び出すための名前。半角の英数字・`-`・`_`。同じ `title` の行には同じ `id` を書く。イベントどうしで重複させない |
+| `title` | 必須 | 屋台などのイベント名（検索候補・案内に表示される） |
 | `building` | 必須 | 号館番号。屋外なら `0` |
-| `room` | いずれか | 既存の教室名に紐づける（例: `101A`） |
+| `room` | いずれか | 既存の教室名に紐づける（例: `101A`）。到着時の左右・何番目はその教室の位置を使う |
 | `node_id` | いずれか | 建物内のローカルノードID。`building=0` なら `global_node.csv` のID |
 | `edge_id` | いずれか | 建物内のローカルエッジID。`building=0` なら `global_edge.csv` のID |
+| `side` | 任意 | `edge_id` のときだけ。通路のどちら側にあるか: `right` / `left`（`右` / `左` でも可） |
+| `position` | 任意 | `edge_id` と `side` のときだけ。同じ通路の同じ側にある展示どうしで、手前から何番目か（1始まり） |
+
+`side`・`position` は、教室の `right`/`left` 列と同じく **edge.csv の from→to の向きに歩いたとき** の値です
+（`position` は from 側を 1 にする）。逆向きに歩く経路では、ナビが左右と並び順を自動で入れ替えて案内します。
 
 ### 記入例
 
 ```csv
-title,building,room,node_id,edge_id
-たこ焼き屋台,10,101A,,
-お化け屋敷,1,,,7
-本部テント,0,,12,
+id,title,building,room,node_id,edge_id,side,position
+takoyaki,たこ焼き屋台,10,101A,,,,
+obake,お化け屋敷,1,,,7,,
+honbu,本部テント,0,,12,,,
+photo,写真部の展示,8,,,15,right,1
+art,美術部の展示,8,,,15,right,2
 ```
+
+この例で 8号館のエッジ15を from→to の向きに歩くと、到着時に「美術部の展示は右手、写真部の展示から数えて2番目です」と案内します。
 
 ### 挙動
 
@@ -135,4 +146,7 @@ title,building,room,node_id,edge_id
 - 同じ `title` の行を複数書くと、全候補のうち最短で行ける場所へ案内します（複数箇所で開催する屋台など）。
 - 場所を解決できない行（存在しない教室名・IDなど）は起動ログに警告を出してスキップされます。
 - QRコード等でイベント誘導する場合は `navi/?event=1` を配布してください。
-- API的には `/api/events`（一覧）と、`/api/route` の `from_event` / `to_event`、`/api/nearest_toilet` / `/api/nearest_cafeteria` の `from_event` が追加されています。詳細は `API_Destination.md` を参照。
+- 展示ごとのQRコードには `navi/?to_event=<id>` を使えます。目的地にその展示名が入った状態でナビが開きます（イベントモードも自動で有効）。
+  出発地も決める場合は `navi/?from_event=<id>&to_event=<id>`（両方決まれば自動でルート検索）。`id` の代わりに展示名でも呼び出せます。
+- エッジIDで場所を指定し `side`・`position` を書いた展示は、到着時に「○○は右手、△△から数えて2番目です」と、教室と同じように案内します。
+- API的には `/api/events`（一覧。`id` を含む）と、`/api/route` の `from_event` / `to_event`（タイトルまたは `id`）、`/api/nearest_toilet` / `/api/nearest_cafeteria` の `from_event` が追加されています。詳細は `API_Destination.md` を参照。

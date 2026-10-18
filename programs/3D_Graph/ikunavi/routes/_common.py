@@ -48,7 +48,7 @@ class FromSpec:
             room=request.args.get("from_room", "").strip(),
             building=request.args.get("from_building", type=int),
             node_id=request.args.get("from_node", type=int),
-            event=request.args.get("from_event", "").strip(),
+            event=cache.resolve_event_title(request.args.get("from_event", "")),
             edge_id=request.args.get("from_edge", type=int),
         )
 

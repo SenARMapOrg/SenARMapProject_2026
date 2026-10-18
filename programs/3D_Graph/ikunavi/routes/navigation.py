@@ -10,7 +10,7 @@ from ..search import (
     extend_to_far_endpoint,
 )
 from ..naming import first_display_label
-from ..serialize import apply_dest_info, edge_to_dict, path_result
+from ..serialize import apply_dest_info, apply_event_dest_info, edge_to_dict, path_result
 from ._common import FromSpec, edge_or_404, edges_for_room_or_404, use_elevator_param
 
 bp = Blueprint("navigation", __name__)
@@ -46,13 +46,13 @@ def api_route():
       from_room=101A&from_building=10  ← 教室名
       from_edge=1000074                ← エッジID（建物 × 100000 ＋ edge.csv の id。教室の無い通路も指定できる）
       from_node=100001                 ← ノードID
-      from_event=たこ焼き屋台          ← イベント名（event.csv）
+      from_event=たこ焼き屋台          ← イベント名（event.csv）。event.csv の id でもよい
 
     目的地（いずれか）:
       to_room=202B&to_building=10      ← 教室名
       to_edge=1000074                  ← エッジID（通路のどこかが目的地。通路の名前が1つだけなら dest_display に入る）
       to_node=100050                   ← ノードID
-      to_event=たこ焼き屋台            ← イベント名（event.csv）
+      to_event=たこ焼き屋台            ← イベント名（event.csv）。event.csv の id でもよい
 
     条件:
       use_elevator=0/1  （省略時 1）
@@ -62,7 +62,7 @@ def api_route():
     to_room     = request.args.get("to_room",     "").strip()
     to_building = request.args.get("to_building", type=int)
     to_node_id  = request.args.get("to_node",     type=int)
-    to_event    = request.args.get("to_event",    "").strip()
+    to_event    = cache.resolve_event_title(request.args.get("to_event", ""))
     to_edge_id  = request.args.get("to_edge",     type=int)
 
     from_spec.require()
@@ -88,7 +88,10 @@ def api_route():
         if to_room:
             result["to_room"] = to_room
         result["to_edge"] = edge_to_dict(best_dest_edge)
-        apply_dest_info(result, to_room)
+        if to_event:
+            apply_event_dest_info(result, to_event, best_dest_edge)
+        else:
+            apply_dest_info(result, to_room)
         if not to_room and not to_event:
             # 通路を指定したとき: 名前が1つだけの通路（「M_Toilet」「131」など）ならその表示名を目的地の名前にする
             names = [n for n in str(best_dest_edge.get("name") or "").split(";") if n.strip()]

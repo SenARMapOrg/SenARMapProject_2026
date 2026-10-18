@@ -10,10 +10,13 @@ from PyQt6.QtWidgets import (
     QVBoxLayout, QWidget,
 )
 
-from .data_store import EVENT_CSV, EventLocation, EventStore, KIND_ROOM, load_building_name_map
+from .data_store import (
+    EVENT_CSV, EventLocation, EventStore, KIND_ROOM, load_building_name_map, validate_event_id,
+)
 from .location_row import LocationRowWidget
 
 NEW_EVENT_TITLE = "新しいイベント"
+NAVI_EVENT_URL = "https://iku-navi.net/navi/?to_event={}"
 
 
 class MainWindow(QMainWindow):
@@ -87,6 +90,21 @@ class MainWindow(QMainWindow):
         self.title_warn_label.setStyleSheet("color:#B45309;font-size:11px;")
         right_v.addWidget(self.title_warn_label)
 
+        right_v.addWidget(QLabel("ID（URLでこのイベントを呼び出すための名前。半角の英数字・-・_）"))
+        id_row = QHBoxLayout()
+        self.id_edit = QLineEdit()
+        self.id_edit.setMaximumWidth(200)
+        self.id_edit.textEdited.connect(self._on_id_edited)
+        id_row.addWidget(self.id_edit)
+        self.url_label = QLabel("")
+        self.url_label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+        self.url_label.setStyleSheet("color:#444;font-size:11px;")
+        id_row.addWidget(self.url_label, stretch=1)
+        right_v.addLayout(id_row)
+        self.id_warn_label = QLabel("")
+        self.id_warn_label.setStyleSheet("color:#B45309;font-size:11px;")
+        right_v.addWidget(self.id_warn_label)
+
         right_v.addWidget(QLabel(
             "場所（複数登録すると、検索時に最短で行ける候補が自動で選ばれます）"
         ))
@@ -107,6 +125,8 @@ class MainWindow(QMainWindow):
 
         hint = QLabel(
             "教室名・ノードID・エッジIDのいずれか1つで場所を指定します。\n"
+            "エッジIDのときは、教室と同じように通路のどちら側の何番目かも指定できます（到着時に「右手、○○から数えて2番目」と案内）。"
+            "左右と何番目は、そのエッジを from→to の向きに歩いたときの値で、何番目は同じ通路の同じ側の展示どうしの並び順です。\n"
             "屋外(建物=屋外)の場合、ノードID/エッジIDは global_node.csv / global_edge.csv のIDです。\n"
             "詳細は docs/NameDB_EventMode.md を参照してください。"
         )
@@ -141,7 +161,8 @@ class MainWindow(QMainWindow):
     def _list_label(entry) -> str:
         n = len(entry.locations)
         title = entry.title.strip() or "(名称未設定)"
-        return f"{title}  [{n}箇所]"
+        event_id = entry.event_id.strip()
+        return f"{title}  [{n}箇所]" + (f"  id={event_id}" if event_id else "")
 
     def _refresh_current_item_label(self):
         item = self.list_widget.currentItem()
@@ -163,6 +184,10 @@ class MainWindow(QMainWindow):
         self.title_edit.setText(entry.title if entry else "")
         self.title_edit.blockSignals(False)
         self._update_title_warning()
+        self.id_edit.blockSignals(True)
+        self.id_edit.setText(entry.event_id if entry else "")
+        self.id_edit.blockSignals(False)
+        self._update_id_warning()
 
         self._clear_location_rows()
         if entry is not None:
@@ -212,6 +237,24 @@ class MainWindow(QMainWindow):
         self._refresh_current_item_label()
         self._update_title_warning()
         self._mark_dirty()
+
+    def _on_id_edited(self, text: str):
+        if self.current_entry is None:
+            return
+        self.current_entry.event_id = text.strip()
+        self._refresh_current_item_label()
+        self._update_id_warning()
+        self._mark_dirty()
+
+    def _update_id_warning(self):
+        if self.current_entry is None:
+            self.id_warn_label.setText("")
+            self.url_label.setText("")
+            return
+        event_id = self.current_entry.event_id.strip()
+        err = validate_event_id(event_id, self.store.used_ids(exclude=self.current_entry))
+        self.id_warn_label.setText(f"⚠ {err}" if err else "")
+        self.url_label.setText(f"呼び出しURL: {NAVI_EVENT_URL.format(event_id)}" if not err else "")
 
     def _update_title_warning(self):
         if self.current_entry is None:
@@ -272,7 +315,26 @@ class MainWindow(QMainWindow):
                     count += 1
         return count
 
+    def _collect_id_problems(self) -> list:
+        problems = []
+        for entry in self.store.entries:
+            if not entry.title.strip():
+                continue
+            err = validate_event_id(entry.event_id, self.store.used_ids(exclude=entry))
+            if err:
+                problems.append(f"・{entry.title.strip()}: {err}")
+        return problems
+
     def _save(self):
+        id_problems = self._collect_id_problems()
+        if id_problems:
+            reply = QMessageBox.question(
+                self, "確認",
+                "IDに問題があるイベントがあります（URLで呼び出せない・別のイベントが開くことがあります）。\n"
+                + "\n".join(id_problems[:10]) + "\n保存を続けますか？",
+            )
+            if reply != QMessageBox.StandardButton.Yes:
+                return
         invalid = self._collect_invalid_count()
         if invalid:
             reply = QMessageBox.question(

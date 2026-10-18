@@ -3,7 +3,7 @@
 「どちら側にあるか」「手前から何番目か」といった案内文言のもとになる情報も
 ここで組み立てる。左右は進行方向に補正済みのエッジ属性からしか判定しないこと。
 """
-from .cache import get_node_xyz
+from .cache import event_lineup, find_event_place, get_node_xyz
 from .naming import first_display_label
 
 
@@ -141,6 +141,64 @@ def dest_info(result, room_name):
 def apply_dest_info(result, room_name):
     """dest_info()の結果をresultのdest_*フィールドとして書き込む共通処理"""
     info = dest_info(result, room_name)
+    result["dest_side"] = info["side"]
+    result["dest_position"] = info["position"]
+    result["dest_count"] = info["count"]
+    result["dest_nearest_display"] = info["nearest_display"]
+    result["dest_display"] = info["dest_display"]
+
+
+_OTHER_SIDE = {"right": "left", "left": "right"}
+
+
+def event_dest_info(result, title, dest_edge_row):
+    """
+    イベント（event.csv）を目的地にしたときの dest_info()。最終区間（目的のエッジ）のどちら側の何番目かを返す。
+      - 教室名で場所を指定したイベントは、その教室の位置をそのまま使い、名前だけイベント名にする
+      - エッジIDで場所を指定し side・position を書いたイベントは、同じエッジの同じ側に並ぶ展示どうしで数える
+        （「たこ焼きは右手、射的から数えて2番目です」）。side・position は edge.csv の from→to の向きの値なので、
+        逆向きに歩くときは左右と並び順を入れ替える
+    """
+    edges = result.get("path_edges") or []
+    if not edges or dest_edge_row is None:
+        return dict(_EMPTY_DEST_INFO)
+    last = edges[-1]
+    u, v = int(dest_edge_row["from"]), int(dest_edge_row["to"])
+    if {int(last["from"]), int(last["to"])} != {u, v}:
+        return dict(_EMPTY_DEST_INFO)
+    place = find_event_place(title, dest_edge_row["id"])
+    if not place:
+        return dict(_EMPTY_DEST_INFO)
+
+    if place.get("room"):
+        info = dest_info(result, place["room"])
+        if info["side"]:
+            info["dest_display"] = title
+        return info
+
+    side = place.get("side")
+    if side not in _OTHER_SIDE:
+        return dict(_EMPTY_DEST_INFO)
+    forward = int(last["from"]) == u
+    walk_side = side if forward else _OTHER_SIDE[side]
+    lineup = event_lineup(dest_edge_row["id"], side)
+    if not forward:
+        lineup = lineup[::-1]
+    if place.get("position") is None or title not in lineup:
+        return {"side": walk_side, "position": None, "count": None,
+                "nearest_display": None, "dest_display": title}
+    return {
+        "side": walk_side,
+        "position": lineup.index(title) + 1,
+        "count": len(lineup),
+        "nearest_display": lineup[0],
+        "dest_display": title,
+    }
+
+
+def apply_event_dest_info(result, title, dest_edge_row):
+    """event_dest_info() の結果を result の dest_* フィールドとして書き込む（apply_dest_info と同じ形）"""
+    info = event_dest_info(result, title, dest_edge_row)
     result["dest_side"] = info["side"]
     result["dest_position"] = info["position"]
     result["dest_count"] = info["count"]

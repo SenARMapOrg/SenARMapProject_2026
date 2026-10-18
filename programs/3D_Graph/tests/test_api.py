@@ -236,8 +236,10 @@ def test_イベント一覧(client):
     status, data = get(client, "/api/events")
     assert status == 200
     assert data == [
-        {"title": "たこ焼き", "building": 2, "floor": 1},
-        {"title": "射的", "building": 0, "floor": 1},
+        {"id": "t1", "title": "たこ焼き", "building": 2, "floor": 1},
+        {"id": "", "title": "射的", "building": 0, "floor": 1},
+        {"id": "a", "title": "展示A", "building": 1, "floor": 1},
+        {"id": "b", "title": "展示B", "building": 1, "floor": 1},
     ]
 
 
@@ -252,6 +254,40 @@ def test_イベントを出発地にできる(client):
     assert status == 200
     assert data["from_event"] == "射的"
     assert data["path"][0] == OUT[2]
+
+
+def test_イベントはidでも指定できる(client):
+    status, data = get(client, f"/api/route?from_event=t1&to_event=b")
+    assert status == 200
+    assert data["from_event"] == "たこ焼き"
+    assert data["to_event"] == "展示B"
+
+
+def test_通路の展示は左右と何番目かを案内する(client):
+    # n1 から n1→n2 の向きに歩く: 展示B は右手、展示A から数えて2番目
+    status, data = get(client, f"/api/route?from_node={B1[1]}&to_event=展示B")
+    assert status == 200
+    assert data["path"][-2:] == [B1[1], B1[2]]
+    assert (data["dest_side"], data["dest_position"], data["dest_count"]) == ("right", 2, 2)
+    assert data["dest_nearest_display"] == "展示A"
+    assert data["dest_display"] == "展示B"
+
+
+def test_通路の展示を逆向きに歩くと左右と並び順が入れ替わる(client):
+    # n4 から来ると n2→n1 の向きに歩く: 右側に書いた展示は左手になり、展示B が手前になる
+    status, data = get(client, f"/api/route?from_node={B1[4]}&to_event=展示A")
+    assert status == 200
+    assert data["path"][-2:] == [B1[2], B1[1]]
+    assert (data["dest_side"], data["dest_position"], data["dest_count"]) == ("left", 2, 2)
+    assert data["dest_nearest_display"] == "展示B"
+    assert data["dest_display"] == "展示A"
+
+
+def test_教室で場所を指定したイベントは教室の位置を使う(client):
+    status, data = get(client, f"/api/route?from_node={B2[1]}&to_event=たこ焼き")
+    assert status == 200
+    assert data["dest_side"] == "right"
+    assert data["dest_display"] == "たこ焼き"
 
 
 def test_存在しないイベントは404(client):

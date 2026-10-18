@@ -12,7 +12,11 @@ const API_BASE = ["localhost", "127.0.0.1"].includes(location.hostname) ? "" : "
 
 // イベントモード: navi/?event=1 で有効化。
 // event.csv に登録されたイベント名（屋台など）を検索候補に加え、イベント名でルート検索できる。
-const EVENT_MODE = new URLSearchParams(location.search).get("event") === "1";
+// ?to_event=<id>・?from_event=<id>（event.csv の id で展示を呼び出す。data.js の applyUrlParams）でも有効になる。
+const EVENT_MODE = (() => {
+  const q = new URLSearchParams(location.search);
+  return q.get("event") === "1" || q.has("to_event") || q.has("from_event");
+})();
 // 経路の線・ドットなど、CSS(var(--accent))を参照できないJS描画箇所で使うアクセントカラー
 const ACCENT_COLOR = EVENT_MODE ? "#EA580C" : "#3B82F6";
 if (EVENT_MODE) {

@@ -70,7 +70,14 @@ FILES = {
     "building_name.csv": "building,display_name\n1,第一実験棟\n",
     "ignore.csv": "id\n102\n",
     "cafeteria_edge.csv": "name,building,display_name\nCafe,2,テスト食堂\n",
-    "event.csv": "title,building,room,node_id,edge_id\nたこ焼き,2,201,,\n射的,0,,2,\n",
+    # 展示A・展示B は 1号館の通路(エッジ1, n1→n2)の右側に、from 側から A・B の順に並ぶ
+    "event.csv": (
+        "id,title,building,room,node_id,edge_id,side,position\n"
+        "t1,たこ焼き,2,201,,,,\n"
+        ",射的,0,,2,,,\n"
+        "a,展示A,1,,,1,right,1\n"
+        "b,展示B,1,,,1,右,2\n"
+    ),
     "edge_image.csv": "id,from,to,image_name\n1,100001,100002,a.jpg\n2,0,0,skip.jpg\n",
 }
 
