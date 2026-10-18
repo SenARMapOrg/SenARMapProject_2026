@@ -6,12 +6,13 @@
 #   curl -fsSL https://cdn.iku-navi.net/tools/install.sh | bash
 #
 # 2回目からも同じ1行で起動できる（入っているものは飛ばすので速い）。デスクトップにできる
-# 「IKU NAVI ツール.command」をダブルクリックしても起動できる。
+# 「IKU NAVI ツール.command」をダブルクリックしても起動できる。.command は開くたびに最新の
+# install.sh を取ってきて実行するので、毎回リポジトリとライブラリが最新になってから起動する。
 #
 # やること:
 #   1. リポジトリを探す（~/GitHub のほか、デスクトップ・書類・ダウンロードなど、よく置かれる場所も探す）。
 #      どこにも無ければ ~/GitHub/SenARMapProject_2026 に clone する（~/GitHub が無ければ作る）。
-#      main にいて変更が無ければ最新にする
+#      変更が無ければ、今のブランチを GitHub の最新にする（main でも、ES などのユーザごとのブランチでも）
 #   2. Python 3.13 が無ければ Homebrew で入れる（Homebrew が無ければ、Mac に最初からある Python 3.9 を使う）
 #   3. programs/IKU_NAVI_Tools/.venv を作り、requirements.txt を入れる（requirements.txt が変わったときだけ入れ直す）
 #   4. デスクトップに起動用のファイルを作り、ツールを起動する
@@ -33,6 +34,7 @@ main() {
   set -euo pipefail
 
   local REPO_URL="https://github.com/SenARMapOrg/SenARMapProject_2026.git"
+  local INSTALL_URL="https://cdn.iku-navi.net/tools/install.sh"
   local DEFAULT_REPO="$HOME/GitHub/SenARMapProject_2026"
   local REPO="${IKU_REPO:-}"
   local LITE=0 LAUNCH=1 SHORTCUT=1
@@ -84,20 +86,7 @@ main() {
   local TOOLS="$REPO/programs/IKU_NAVI_Tools"
   [ -f "$TOOLS/main.py" ] || die "$TOOLS/main.py がありません。リポジトリの場所が違うときは --repo で指定してください。"
 
-  # main にいて変更が無いときだけ最新にする（作業中のブランチや変更には触らない）
-  local BRANCH
-  BRANCH="$(git -C "$REPO" rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")"
-  if [ ! -d "$REPO/.git" ]; then
-    warn "Git で取ってきたフォルダではない（zip を展開したもの など）ため、最新にはしません"
-  elif [ "$BRANCH" = "main" ] && [ -z "$(git -C "$REPO" status --porcelain --untracked-files=no 2>/dev/null)" ]; then
-    if git -C "$REPO" pull --ff-only --quiet </dev/null 2>/dev/null; then
-      ok "最新の main にしました"
-    else
-      warn "最新にできませんでした（ネットにつながっていない など）。今あるもので続けます"
-    fi
-  else
-    warn "今のブランチは「${BRANCH:-不明}」か、変更があるため、最新にはしません（そのままのツールで起動します）"
-  fi
+  update_repo "$REPO"
 
   # ---------------------------------------------------------------- 2. Python
   step "2/4 Python を確認しています"
@@ -163,10 +152,22 @@ main() {
   step "4/4 起動の準備をしています"
   if [ "$SHORTCUT" = 1 ] && [ "$OS" = "Darwin" ] && [ -d "$HOME/Desktop" ]; then
     local CMD="$HOME/Desktop/IKU NAVI ツール.command"
+    local OPTS=""
+    [ "$LITE" = 1 ] && OPTS=" --lite"
     cat >"$CMD" <<EOF
 #!/bin/bash
 # ダブルクリックで IKU NAVI ツールを起動する（install.sh が作ったファイル。消しても問題ない）
-cd "$TOOLS" && exec "$VPY" main.py
+# 開くたびに最新の install.sh を取ってきて実行する（リポジトリとライブラリ、このファイルも最新にしてから起動する）。
+# ネットにつながらないときは、手元の install.sh か、今あるツールのまま起動する。
+REPO="$REPO"
+if SCRIPT="\$(curl -fsSL --connect-timeout 10 --max-time 30 $INSTALL_URL)"; then
+  exec bash -c "\$SCRIPT" install.sh --repo "\$REPO"$OPTS
+elif [ -f "\$REPO/programs/IKU_NAVI_Tools/install.sh" ]; then
+  echo "最新の install.sh を取ってこられなかったので、手元のもので起動します"
+  exec bash "\$REPO/programs/IKU_NAVI_Tools/install.sh" --repo "\$REPO"$OPTS
+else
+  cd "$TOOLS" && exec "$VPY" main.py
+fi
 EOF
     chmod +x "$CMD"
     ok "デスクトップに「IKU NAVI ツール.command」を作りました（次からはダブルクリックで起動できます）"
@@ -225,6 +226,47 @@ find_repo() {
     is_repo "$d" && { echo "$d"; return 0; }
   done
   echo ""
+}
+
+# リポジトリの今のブランチを GitHub の最新にする（fast-forward できるときだけ）。
+# 変更（コミットしていない編集）があるとき・GitHub に無いブランチのとき・手元にしか無いコミットがあるときは触らない
+update_repo() {
+  local repo="$1" branch before after n
+  if [ ! -d "$repo/.git" ]; then
+    warn "Git で取ってきたフォルダではない（zip を展開したもの など）ため、最新にはしません"
+    return 0
+  fi
+  branch="$(git -C "$repo" symbolic-ref --short -q HEAD 2>/dev/null || echo "")"
+  if [ -z "$branch" ]; then
+    warn "ブランチに入っていない（特定のコミットを見ている）ため、最新にはしません"
+    return 0
+  fi
+  if [ -n "$(git -C "$repo" status --porcelain --untracked-files=no 2>/dev/null)" ]; then
+    warn "「${branch}」にコミットしていない変更があるため、最新にはしません（変更を消さないため）。そのままのツールで起動します"
+    return 0
+  fi
+  if ! git -C "$repo" rev-parse --abbrev-ref -q "$branch@{upstream}" >/dev/null 2>&1; then
+    warn "「${branch}」は GitHub に無いブランチなので、最新にはしません"
+    return 0
+  fi
+  info "「${branch}」を GitHub の最新にしています"
+  before="$(git -C "$repo" rev-parse HEAD)"
+  if ! GIT_TERMINAL_PROMPT=0 git -C "$repo" -c http.lowSpeedLimit=1000 -c http.lowSpeedTime=20 \
+       fetch --quiet </dev/null 2>/dev/null; then
+    warn "GitHub につながらなかったので、最新にできませんでした。今あるもので続けます"
+    return 0
+  fi
+  if ! git -C "$repo" merge --ff-only --quiet "$branch@{upstream}" </dev/null >/dev/null 2>&1; then
+    warn "「${branch}」は手元と GitHub で別々に進んでいるため、最新にはしません（git pull で取り込んでください）"
+    return 0
+  fi
+  after="$(git -C "$repo" rev-parse HEAD)"
+  if [ "$before" = "$after" ]; then
+    ok "「${branch}」は最新です"
+  else
+    n="$(git -C "$repo" rev-list --count "$before..$after")"
+    ok "「${branch}」を最新にしました（${n}件の更新）"
+  fi
 }
 
 # 指定した版の python3.X を探して、見つかった最初のものを出す。"any" なら python3 でも、3.9 以上ならよい

@@ -14,11 +14,16 @@ curl -fsSL https://cdn.iku-navi.net/tools/install.sh | bash
 
 - リポジトリは `~/GitHub/SenARMapProject_2026` のほか、デスクトップ・書類・ダウンロードなどよく置かれる場所を
   探して使う。どこにも無ければ `~/GitHub/SenARMapProject_2026` に clone する
-  （`~/GitHub` が無ければ作る）。main にいて変更が無ければ最新にし、作業中のブランチや変更には触らない。
-  場所を決めるときは `… | bash -s -- --repo <場所>`
+  （`~/GitHub` が無ければ作る）。場所を決めるときは `… | bash -s -- --repo <場所>`
+- 起動のたびに、今のブランチ（main でも ES などのユーザごとのブランチでも）を GitHub の最新にする。
+  コミットしていない変更があるとき・GitHub に無いブランチのとき・手元と GitHub で別々に進んでいるときは、
+  変更を消さないよう最新にせず、そのまま起動する（理由を表示する）
 - Python 3.13 が無ければ Homebrew で入れる（Homebrew が無ければ Mac に最初からある Python 3.9 を使う）
 - `programs/IKU_NAVI_Tools/.venv` に入れる。ライブラリは `requirements.txt` が変わったときだけ入れ直す
-- デスクトップに「IKU NAVI ツール.command」を作る。次からはこれをダブルクリックしても起動できる
+- デスクトップに「IKU NAVI ツール.command」を作る。次からはこれをダブルクリックしても起動できる。
+  開くたびに最新の install.sh を `cdn.iku-navi.net` から取ってきて実行するので、リポジトリ・ライブラリ・この .command 自体が
+  最新になってから起動する（`--lite` で入れたなら `--lite` のまま）。ネットにつながらないときは、手元の install.sh か、今あるツールのまま起動する。
+  前の版の install.sh で作った .command は最新にしないので、一度この1行を実行して作り直す
 - 人物ぼかしを使わないなら `… | bash -s -- --lite`（約1GB の ultralytics・PyTorch を入れない）。
   ほかに `--no-launch`（入れるだけ）・`--no-shortcut`（デスクトップに作らない）
 - 起動できないと分かったときは、環境診断（`--doctor`）の結果を出して止まる
