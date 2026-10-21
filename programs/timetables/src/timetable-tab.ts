@@ -144,7 +144,7 @@ export async function renderTimetableTab(content: HTMLElement, me: Me): Promise<
     displaySection.hidden = true;
     editGradeTermHint.textContent = `${gradeLabel(currentGrade)}に追加・削除されます:`;
     refreshEditGrid();
-    // 既定で開いている「科目名から追加」のシラバスデータを読み始める
+    // 既定で開いている「科目名から追加」の授業の一覧を読み始める
     // （読み込み済みなら何もしない。タブを手で切り替えていた場合はそのまま）
     if (!nameForm.root.hidden) nameForm.onShow();
   }
@@ -360,7 +360,7 @@ export async function renderTimetableTab(content: HTMLElement, me: Me): Promise<
   regHeading.textContent = "科目を追加・削除";
   editSection.appendChild(regHeading);
 
-  // 登録欄は「科目名から追加」を既定にする。シラバスから選べば曜日・時限・教員が埋まるので、
+  // 登録欄は「科目名から追加」を既定にする。ほかの学生が登録した授業から選べば曜日・時限・教員が埋まるので、
   // 手入力（時間を指定して追加・削除）より先にこちらを見せた方が速い。
   const regTabs = document.createElement("div");
   regTabs.className = "term-tabs";
@@ -374,7 +374,7 @@ export async function renderTimetableTab(content: HTMLElement, me: Me): Promise<
   editSection.appendChild(regTabs);
 
   const slotForm = buildSlotForm(() => currentTerm, addSlot, removeSlot);
-  const nameForm = buildNameForm(addSlot);
+  const nameForm = buildNameForm(addSlot, () => currentTerm);
   slotForm.root.hidden = true;
   editSection.append(nameForm.root, slotForm.root);
 
@@ -383,7 +383,7 @@ export async function renderTimetableTab(content: HTMLElement, me: Me): Promise<
     slotModeBtn.classList.remove("active");
     nameForm.root.hidden = false;
     slotForm.root.hidden = true;
-    nameForm.onShow();   // 初回だけシラバスデータを読み込む
+    nameForm.onShow();   // 初回だけ授業の一覧を読み込む
   }
 
   function showSlotForm(): void {

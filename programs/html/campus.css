@@ -1,0 +1,69 @@
+/* 建物・教室一覧（/campus/。deploy_env/pages/generate_campus_pages.py がビルド時に作る）。
+   教室検索ナビ・3Dマップと同じ「構内の案内サイン」: 紙と墨と罫線、朱は主な操作、数字は細身の数字書体 */
+:root {
+  --ink: #14181F;
+  --ink-soft: #4B5563;
+  --paper: #F6F6F2;
+  --paper-deep: #ECECE5;
+  --line: #DBDCD4;
+  --line-strong: #C3C5BB;
+  --accent: #E8501E;
+  --accent-dark: #B93C14;
+  --accent-light: #FCEEE7;
+  --transit-blue: #1B3A6B;
+  --font: 'BIZ UDPGothic', 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', 'Yu Gothic', sans-serif;
+  --font-num: 'Barlow Semi Condensed', 'BIZ UDPGothic', sans-serif;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--paper); color: var(--ink); font-family: var(--font); line-height: 1.75; -webkit-font-smoothing: antialiased; }
+a { color: inherit; }
+:focus-visible { outline: 2px solid var(--transit-blue); outline-offset: 2px; }
+
+.site-head { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; padding: 12px max(16px, calc((100% - 960px) / 2)); background: var(--ink); color: #fff; }
+.site-head .brand { font-family: var(--font-num); font-size: 20px; font-weight: 600; letter-spacing: 0.02em; text-decoration: none; }
+.site-head nav { display: flex; gap: 6px 16px; flex-wrap: wrap; margin-left: auto; font-size: 14px; }
+.site-head nav a { text-decoration: none; color: rgba(255, 255, 255, 0.85); }
+.site-head nav a:hover { color: #fff; text-decoration: underline; }
+
+.wrap { max-width: 960px; margin: 0 auto; padding: 20px 16px 48px; }
+.crumbs { font-size: 13px; color: var(--ink-soft); margin-bottom: 18px; }
+.crumbs a { color: var(--ink-soft); }
+
+h1 { font-size: clamp(24px, 4.5vw, 34px); line-height: 1.35; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin-bottom: 12px; }
+/* 建物名は、建物の入口にある号館の表示板のように */
+.plate { display: inline-block; font-family: var(--font-num), var(--font); font-weight: 600; background: var(--ink); color: #fff; padding: 2px 14px 3px 12px; border-left: 6px solid var(--accent); border-radius: 6px; }
+.lead { max-width: 40em; color: var(--ink-soft); margin-bottom: 16px; }
+.actions { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 24px; }
+.btn { display: inline-flex; align-items: center; height: 46px; padding: 0 18px; border-radius: 8px; border: 1px solid var(--line-strong); background: #fff; font-weight: 700; text-decoration: none; }
+.btn:hover { border-color: var(--ink); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.btn.primary:hover { background: var(--accent-dark); }
+
+.floor-index { position: sticky; top: 0; z-index: 1; display: flex; gap: 6px; flex-wrap: wrap; padding: 10px 0; margin-bottom: 8px; background: var(--paper); border-bottom: 1px solid var(--line); }
+.floor-index a { font-family: var(--font-num), var(--font); font-size: 17px; font-weight: 600; text-decoration: none; padding: 2px 12px; border: 1px solid var(--line-strong); border-radius: 6px; background: #fff; }
+.floor-index a:hover { border-color: var(--ink); }
+
+.floor { padding: 28px 0 8px; border-bottom: 1px solid var(--line); scroll-margin-top: 64px; }
+.floor h2 { display: flex; align-items: baseline; gap: 12px; margin-bottom: 8px; }
+.floor-no { font-family: var(--font-num), var(--font); font-size: 30px; font-weight: 600; }
+.floor-count { font-size: 14px; font-weight: 400; color: var(--ink-soft); }
+.floor-facts { font-size: 14px; color: var(--ink-soft); margin-bottom: 12px; }
+.floor-map { margin: 4px 0 16px; background: #fff; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.floor-map img { display: block; width: 100%; height: auto; aspect-ratio: 2481 / 1748; object-fit: contain; }
+.floor-map figcaption { font-size: 12px; color: var(--ink-soft); padding: 6px 12px; border-top: 1px solid var(--line); }
+
+.rooms { list-style: none; display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 8px; margin-bottom: 20px; }
+.rooms a { display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; background: #fff; border: 1px solid var(--line); border-radius: 8px; text-decoration: none; height: 100%; }
+.rooms a:hover { border-color: var(--accent); background: var(--accent-light); }
+.room-name { font-weight: 700; font-variant-numeric: tabular-nums; }
+.room-go { font-size: 12px; color: var(--accent-dark); }
+
+.buildings { list-style: none; display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+.buildings a { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; padding: 16px; background: #fff; border: 1px solid var(--line); border-radius: 10px; text-decoration: none; height: 100%; }
+.buildings a:hover { border-color: var(--ink); }
+.buildings .plate { font-size: 24px; }
+.b-meta { font-weight: 700; }
+.b-rooms { font-size: 13px; color: var(--ink-soft); }
+
+.site-foot { max-width: 960px; margin: 0 auto; padding: 24px 16px 40px; font-size: 13px; color: var(--ink-soft); }
+.site-foot p + p { margin-top: 8px; }

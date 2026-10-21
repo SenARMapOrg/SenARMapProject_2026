@@ -20,14 +20,36 @@ function setupAutocomplete(inputId, suggId, bldgSelectId) {
       : allRooms;
     if (query) candidates = candidates.filter(r =>
       r.room.toLowerCase().includes(query) || r.display.toLowerCase().includes(query));
-    return candidates.slice(0, 20);
+    // イベントモードでは、イベント（屋台など）を上にまとめ、その下に今まで通りの教室を並べる。
+    // 教室の件数でイベントが押し出されないよう、上限はそれぞれに設ける
+    const events = candidates.filter(r => r.isEvent).slice(0, 20);
+    const rooms  = candidates.filter(r => !r.isEvent).slice(0, 20);
+    return events.concat(rooms);
+  }
+
+  // イベントと教室の両方が候補にあるときだけ、区切りの見出しを入れる。
+  // ナビ画面のデザイン案(navi1〜9)ごとにCSSが別なので、色は周りの文字色を薄めて使う
+  function groupHeader(text) {
+    const h = document.createElement("div");
+    h.className = "sugg-header";
+    h.textContent = text;
+    h.style.cssText = "padding:4px 12px;font-size:11px;font-weight:700;opacity:.6;"
+      + "pointer-events:none;border-bottom:1px solid var(--line, #e5e7eb);";
+    return h;
   }
 
   function renderSugg(matches) {
     const selectedBldg = bldg ? bldg.value : "";
     sugg.innerHTML = "";
     if (!matches.length) { sugg.style.display = "none"; return; }
-    matches.forEach(r => {
+    const hasEvents = matches.some(r => r.isEvent);
+    const hasRooms  = matches.some(r => !r.isEvent);
+    const showHeaders = hasEvents && hasRooms;
+    if (showHeaders) sugg.appendChild(groupHeader("イベント"));
+    matches.forEach((r, i) => {
+      if (showHeaders && !r.isEvent && (i === 0 || matches[i - 1].isEvent)) {
+        sugg.appendChild(groupHeader("教室"));
+      }
       const item = document.createElement("div");
       item.className = "item";
       const label = r.isEvent ? `\u{1F3AA} ${r.display}` : r.display;
@@ -138,30 +160,36 @@ function setCategory(cat) {
 // Facility autocomplete
 // ================================================================
 // facSearchMode ("room"/"gps") から設備検索の出発地点を解決して params に埋め込む。
-// 失敗時はエラーを alert して false を返す（呼び出し元はそのまま return する）。
+// 成功時は出発地の表示名（集計用。track.js 参照）、失敗時はエラーを alert して null を返す
+// （呼び出し元はそのまま return する）。
 function resolveFacFromParams(params) {
   if (facSearchMode === "room") {
     const fromInfo = resolveRoom("fac-from-input", "fac-from-bldg");
-    if (!fromInfo)               { alert("出発教室を入力してください。"); return false; }
-    if (fromInfo === "ambiguous") { alert("出発教室が複数の号館に存在します。号館を指定してください。"); return false; }
+    if (!fromInfo)               { alert("出発教室を入力してください。"); return null; }
+    if (fromInfo === "ambiguous") { alert("出発教室が複数の号館に存在します。号館を指定してください。"); return null; }
     if (fromInfo.isEvent) {
       params.set("from_event", fromInfo.room);
     } else {
       params.set("from_room",     fromInfo.room);
       params.set("from_building", fromInfo.building);
     }
-  } else {
-    if (!facGpsCoords) { alert("GPS位置を先に取得してください。"); return false; }
-    const nearest = findNearestNode(facGpsCoords.lat, facGpsCoords.lng);
-    if (!nearest) { alert("近くの出発ノードが見つかりません。\nキャンパスから離れすぎている可能性があります。"); return false; }
-    params.set("from_node", nearest.id);
+    // 表示名が空のデータでも検索自体は続けられるよう、生の名前にフォールバックする
+    // （戻り値が偽だと呼び出し元が検索を中断してしまうため）
+    return fromInfo.display || fromInfo.room;
   }
-  return true;
+  if (!facGpsCoords) { alert("GPS位置を先に取得してください。"); return null; }
+  const nearest = findNearestNode(facGpsCoords.lat, facGpsCoords.lng);
+  if (!nearest) { alert("近くの出発ノードが見つかりません。\nキャンパスから離れすぎている可能性があります。"); return null; }
+  params.set("from_node", nearest.id);
+  return "現在地";
 }
 
 // 検索APIを叩いてルート表示まで行う共通処理（doSearch / doToiletSearch / doCafeteriaSearch で共用）
 // 経路描画は屋外区間があると google.maps.Polyline/Marker を使うため、地図の初期化を待つ。
-async function fetchRouteAndNavigate(url) {
+// fromLabel・toLabel は鳳祭の案内人数集計（track.js）に記録する出発地・目的地の表示名。
+// レスポンスの dest_display は「目的地が最終区間の左右一覧に載っている場合」だけ入るため使わず、
+// 利用者が実際に指定した名前を呼び出し元から渡す。
+async function fetchRouteAndNavigate(url, fromLabel = "", toLabel = "") {
   await waitForMapReady();
   setLoading(true);
   try {
@@ -169,6 +197,7 @@ async function fetchRouteAndNavigate(url) {
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
     if (data.error) { alert("エラー: " + data.error); return; }
+    trackSearch(fromLabel, toLabel);
     await initRoute(data.path_coords, data.path_edges, {
       side: data.dest_side, position: data.dest_position, count: data.dest_count,
       display: data.dest_display, nearestDisplay: data.dest_nearest_display,
@@ -181,14 +210,22 @@ async function fetchRouteAndNavigate(url) {
   }
 }
 
+// 設備検索の目的地は「最寄りの○○」なので、選択中の選択肢の表示名を集計用のラベルにする
+function selectedOptionLabel(selectId) {
+  const sel = document.getElementById(selectId);
+  return sel?.selectedOptions[0]?.textContent?.trim() || "";
+}
+
 async function doToiletSearch() {
   arRequestPermissionsEarly();
   const params = new URLSearchParams({
     type:         document.getElementById("fac-toilet-type").value,
     use_elevator: document.getElementById("fac-use-elevator").checked ? "1" : "0",
   });
-  if (!resolveFacFromParams(params)) return;
-  await fetchRouteAndNavigate(`${API_BASE}/api/nearest_toilet?${params}`);
+  const fromLabel = resolveFacFromParams(params);
+  if (!fromLabel) return;
+  const toLabel = `最寄りのトイレ（${selectedOptionLabel("fac-toilet-type")}）`;
+  await fetchRouteAndNavigate(`${API_BASE}/api/nearest_toilet?${params}`, fromLabel, toLabel);
 }
 
 function onFacCategoryChange() {
@@ -209,8 +246,10 @@ async function doCafeteriaSearch() {
     use_elevator: document.getElementById("fac-use-elevator").checked ? "1" : "0",
     name:         document.getElementById("fac-cafeteria-name").value,
   });
-  if (!resolveFacFromParams(params)) return;
-  await fetchRouteAndNavigate(`${API_BASE}/api/nearest_cafeteria?${params}`);
+  const fromLabel = resolveFacFromParams(params);
+  if (!fromLabel) return;
+  const toLabel = `最寄りの食堂（${selectedOptionLabel("fac-cafeteria-name")}）`;
+  await fetchRouteAndNavigate(`${API_BASE}/api/nearest_cafeteria?${params}`, fromLabel, toLabel);
 }
 
 // ================================================================

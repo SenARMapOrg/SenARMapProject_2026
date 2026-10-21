@@ -27,7 +27,7 @@ async function loadAllData() {
     if (evRes && evRes.ok) {
       const events = await evRes.json();
       events.forEach(ev => allRooms.push({
-        room: ev.title, display: ev.title, building: ev.building, isEvent: true,
+        room: ev.title, display: ev.title, building: ev.building, isEvent: true, eventId: ev.id || "",
       }));
     }
     if (imgRes.ok) edgeImages = await imgRes.json();
@@ -57,16 +57,30 @@ loadAllData();
 //   ?from=101A&from_bldg=10&to=131&to_bldg=1 → 自動でルート検索して表示
 //   &elevator=0                           → エレベーター不使用
 //   &mode=gps                             → 現在地(屋外)タブで目的地入力済み
+//   ?to_event=<id>・?from_event=<id>      → イベント設定で付けた id で展示を呼び出す（展示名が入る。
+//                                            イベントモードも自動で有効。id の代わりに展示名でもよい）
 // 号館(_bldg)は教室名が1つの号館にしか無い場合は省略可
 // ================================================================
+
+/** event.csv の id（または展示名）→ 展示。見つからなければ null */
+function findEventByIdOrTitle(value) {
+  if (!value) return null;
+  const events = allRooms.filter(r => r.isEvent);
+  return events.find(r => r.eventId && r.eventId === value)
+    || events.find(r => r.room === value) || null;
+}
+
 function applyUrlParams() {
   const q    = new URLSearchParams(location.search);
-  const to   = q.get("to");
-  const from = q.get("from");
+  const toEvent   = findEventByIdOrTitle(q.get("to_event"));
+  const fromEvent = findEventByIdOrTitle(q.get("from_event"));
+  const to   = toEvent?.room   || q.get("to");
+  const from = fromEvent?.room || q.get("from");
   if (!to && !from) return;
 
-  const toBldg   = q.get("to_bldg")   || q.get("to_building")   || "";
-  const fromBldg = q.get("from_bldg") || q.get("from_building") || "";
+  // 展示は建物で絞らずに名前だけで決まるので、号館は展示の号館を入れる
+  const toBldg   = toEvent   ? String(toEvent.building)   : q.get("to_bldg")   || q.get("to_building")   || "";
+  const fromBldg = fromEvent ? String(fromEvent.building) : q.get("from_bldg") || q.get("from_building") || "";
 
   // select は該当 option がある場合のみ反映（API未取得時は空のまま）
   const setSelect = (id, val) => {
@@ -124,6 +138,14 @@ function applyUrlParams() {
 
 function bldgLabel(b) {
   return buildingNames[Number(b)] || (Number(b) === 0 ? "屋外" : `${b}号館`);
+}
+
+// 階の表示名。経路データでは地下1階を 0、地下2階を -1 …と整数で持っている
+// （SVG のファイル名も 7_0F.svg のように同じ値を使う）ので、表示と読み上げのときだけ「地下◯階」に直す。
+function floorLabel(floor) {
+  const f = Number(floor);
+  if (!Number.isFinite(f)) return `${floor}階`;
+  return f <= 0 ? `地下${1 - f}階` : `${f}階`;
 }
 
 function initBuildingNames(buildings) {

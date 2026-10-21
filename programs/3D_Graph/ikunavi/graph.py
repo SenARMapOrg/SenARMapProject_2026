@@ -1,8 +1,9 @@
 """ノード表・エッジ表から NetworkX の有向グラフを組み立てる。
 
-双方向に歩ける通路は往復2本の辺として張り、進行方向で左右が入れ替わるため
-right/left 属性も反転させて持たせる。エスカレータ(type 5/6)だけは
-高低差から通行可能な向きを決めて片方向のみ張る。
+双方向に歩ける通路は往復2本の辺として張り、逆向き（to→from）の辺には
+right/left 属性を入れ替え、それぞれの並び順（;区切り、手前から奥）も逆にして持たせる。
+エスカレータ(type 5/6)だけは高低差から通行可能な向きを決めて片方向のみ張る
+（edge.csv と逆向きに張るときは、同じく左右と並び順を反転させる）。
 """
 import networkx as nx
 import pandas as pd
@@ -50,6 +51,19 @@ def _edge_attrs(row, edge_type):
     )
 
 
+def _reverse_order(names):
+    """";"区切りの並び（手前から奥）を逆順にする"""
+    parts = [n.strip() for n in str(names or "").split(";") if n.strip()]
+    return ";".join(reversed(parts))
+
+
+def _reversed_attrs(edge_attrs):
+    """edge.csv の to→from の向きに歩くときの属性。右と左が入れ替わり、手前と奥も入れ替わる"""
+    return dict(edge_attrs,
+                right=_reverse_order(edge_attrs["left"]),
+                left=_reverse_order(edge_attrs["right"]))
+
+
 def build_graph(nodes_df, edges_df, use_elevator=True):
     G = nx.DiGraph()
     for _, row in nodes_df.iterrows():
@@ -65,14 +79,13 @@ def build_graph(nodes_df, edges_df, use_elevator=True):
         if edge_type == ESCALATOR_UP_EDGE_TYPE:
             # 上りESC: z が低い→高い方向のみ通行可
             lo, hi = (u, v) if G.nodes[u]["z"] <= G.nodes[v]["z"] else (v, u)
-            G.add_edge(lo, hi, **edge_attrs)
+            G.add_edge(lo, hi, **(edge_attrs if lo == u else _reversed_attrs(edge_attrs)))
         elif edge_type == ESCALATOR_DOWN_EDGE_TYPE:
             # 下りESC: z が高い→低い方向のみ通行可
             hi, lo = (u, v) if G.nodes[u]["z"] >= G.nodes[v]["z"] else (v, u)
-            G.add_edge(hi, lo, **edge_attrs)
+            G.add_edge(hi, lo, **(edge_attrs if hi == u else _reversed_attrs(edge_attrs)))
         else:
-            # それ以外は双方向。逆方向(v→u)は進行方向が反転するため、right/leftも入れ替える
+            # それ以外は双方向。逆方向(v→u)は進行方向が反転するため、right/leftを入れ替え、並び順も逆にする
             G.add_edge(u, v, **edge_attrs)
-            reversed_attrs = dict(edge_attrs, right=edge_attrs["left"], left=edge_attrs["right"])
-            G.add_edge(v, u, **reversed_attrs)
+            G.add_edge(v, u, **_reversed_attrs(edge_attrs))
     return G

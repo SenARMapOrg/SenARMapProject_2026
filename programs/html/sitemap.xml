@@ -1,22 +1,59 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<urlset
-      xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
-      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-      xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9
-            http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd">
-<!-- created with Free Online Sitemap Generator www.xml-sitemaps.com -->
-
-
+<!-- deploy_env/pages/generate_campus_pages.py がビルドのたびに作り直す -->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 <url>
   <loc>https://iku-navi.net/</loc>
-  <lastmod>2026-07-17T00:00:00+00:00</lastmod>
+  <lastmod>2026-10-16</lastmod>
   <priority>1.00</priority>
 </url>
 <url>
   <loc>https://iku-navi.net/navi/</loc>
-  <lastmod>2026-07-17T00:00:00+00:00</lastmod>
+  <lastmod>2026-10-16</lastmod>
+  <priority>0.90</priority>
+</url>
+<url>
+  <loc>https://iku-navi.net/map3d/</loc>
+  <lastmod>2026-10-16</lastmod>
   <priority>0.80</priority>
 </url>
-
-
+<url>
+  <loc>https://iku-navi.net/campus/</loc>
+  <lastmod>2026-10-16</lastmod>
+  <priority>0.80</priority>
+</url>
+<url>
+  <loc>https://iku-navi.net/campus/1/</loc>
+  <lastmod>2026-10-16</lastmod>
+  <priority>0.70</priority>
+</url>
+<url>
+  <loc>https://iku-navi.net/campus/2/</loc>
+  <lastmod>2026-10-16</lastmod>
+  <priority>0.70</priority>
+</url>
+<url>
+  <loc>https://iku-navi.net/campus/5/</loc>
+  <lastmod>2026-10-16</lastmod>
+  <priority>0.70</priority>
+</url>
+<url>
+  <loc>https://iku-navi.net/campus/7/</loc>
+  <lastmod>2026-10-16</lastmod>
+  <priority>0.70</priority>
+</url>
+<url>
+  <loc>https://iku-navi.net/campus/8/</loc>
+  <lastmod>2026-10-16</lastmod>
+  <priority>0.70</priority>
+</url>
+<url>
+  <loc>https://iku-navi.net/campus/9/</loc>
+  <lastmod>2026-10-16</lastmod>
+  <priority>0.70</priority>
+</url>
+<url>
+  <loc>https://iku-navi.net/campus/10/</loc>
+  <lastmod>2026-10-16</lastmod>
+  <priority>0.70</priority>
+</url>
 </urlset>

@@ -12,7 +12,7 @@ on:
 
 jobs:
   python:
-    name: 経路探索API・ナビ画面・シラバス解析のテスト
+    name: 経路探索API・ナビ画面のテスト
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -23,7 +23,7 @@ jobs:
           cache: pip
           cache-dependency-path: |
             deploy_env/python/requirements.txt
-            programs/syllabus_courses/requirements.txt
+            programs/3D_Graph/requirements.txt
             programs/3D_Graph/requirements-dev.txt
 
       - name: 依存をインストール
@@ -59,6 +59,33 @@ jobs:
       - name: ビルドが通るか
         run: npm run build
 
+  event-guide-counter:
+    name: 鳳祭 案内人数集計のテスト
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: programs/event_guide_counter
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: programs/event_guide_counter/package-lock.json
+
+      - name: 依存をインストール
+        run: npm ci
+
+      - name: 型チェック
+        run: npm run typecheck
+
+      - name: vitest
+        run: npm run test
+
+      - name: ビルドが通るか
+        run: npm run build
+
   navi-scripts:
     name: ナビ画面スクリプトの構文チェック
     runs-on: ubuntu-latest
@@ -73,7 +100,7 @@ jobs:
       # 構文エラーがあると本番でページごと動かなくなる
       - name: node --check
         run: |
-          for f in programs/html/navi/script/*.js; do
+          for f in programs/html/navi/script/*.js programs/html/embed/*.js programs/html/embed/builder/*.js; do
             echo "checking $f"
             node --check "$f"
           done

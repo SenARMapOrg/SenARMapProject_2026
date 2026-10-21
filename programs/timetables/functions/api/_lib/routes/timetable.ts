@@ -3,7 +3,7 @@ import { Hono } from "hono";
 
 import {
   canViewSnapshot, changeGrade, findCommonLocationForCourse, findSnapshotByToken, findUserById,
-  getSnapshotSettings, listMyGrades, listPublicSnapshots, listTimetable, replaceTimetable,
+  getSnapshotSettings, listMyGrades, listPublicSnapshots, listSharedCourses, listTimetable, replaceTimetable,
   upsertSnapshotSettings,
 } from "../db";
 import { requireAuth } from "../session";
@@ -88,7 +88,7 @@ timetableRoutes.put("/", requireAuth(), async (c) => {
   return c.json({ entries: await listTimetable(c.env.DB, user.id, grade, term) });
 });
 
-// 「科目名から追加」の自動入力候補。同じ学期・曜日・時限・科目名・担当教員で、自分以外の学生が
+// 「科目名から追加」の教室の自動入力候補。同じ学期・曜日・時限・科目名・担当教員で、自分以外の学生が
 // 登録している教室のうち最も多いものを返す（個人を特定できる情報は返さない）。
 // gradeでは絞らない: 同じ授業は毎年ほぼ同じ曜日・時限に開講されるため、学年をまたいで
 // プールした方が候補の母数が増えて有用（instructor+曜日+時限+科目名が既に十分具体的）。
@@ -118,6 +118,15 @@ timetableRoutes.get("/location-suggestion", requireAuth(), async (c) => {
     term, dayOfWeek: day, period, courseName, instructor, excludeUserId: user.id,
   });
   return c.json({ location });
+});
+
+// 「科目名から追加」の候補: ほかの学生が登録した授業の一覧（2人以上が登録したものだけ。listSharedCourses 参照）。
+// 画面は編集を開いたときに1回だけ取り、絞り込みは画面側で行う（入力のたびに問い合わせると D1 の読み取りが増えるため）。
+timetableRoutes.get("/courses", requireAuth(), async (c) => {
+  const user = c.get("user");
+  const courses = await listSharedCourses(c.env.DB, user.id);
+  c.header("Cache-Control", "private, max-age=300");
+  return c.json({ courses });
 });
 
 // 自分が時間割を登録済みの(学年, 学期)一覧。「学年タブ」に何を並べるかに使う。

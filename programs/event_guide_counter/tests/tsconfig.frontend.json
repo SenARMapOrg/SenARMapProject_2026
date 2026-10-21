@@ -1,0 +1,8 @@
+{
+  "//": "ブラウザ側（src/）のテストの型チェック",
+  "extends": "../tsconfig.json",
+  "include": [
+    "admin-format.test.ts",
+    "../src"
+  ]
+}

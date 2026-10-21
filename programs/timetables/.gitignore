@@ -3,3 +3,6 @@ dist/
 .wrangler/
 .dev.vars
 *.log
+
+# ビルド時に生成する管理画面のHTML（scripts/embed-admin-page.mjs）
+functions/api/_lib/admin-page.generated.ts

@@ -1,0 +1,3 @@
+# 経路探索API をローカルで動かすための依存（本番イメージと同じもの）。
+#   pip install -r programs/3D_Graph/requirements.txt && python programs/3D_Graph/app.py
+-r ../../deploy_env/python/requirements.txt

@@ -1,0 +1,205 @@
+/* 埋め込みフロアマップ（/embed/）。教室検索ナビと同じ「構内の案内サイン」の配色・書体:
+   紙と墨と罫線を地にして、朱（--accent）は歩く道と目的地、紺（--transit-blue）は区間の出発点と終点だけに使う。
+
+   iframe の大きさは埋め込む側が決めるので、枠の大きさに合わせて組み替える:
+   - ふつう（スマホの幅を含む）: 地図の下に、道順の帯（◀ 区間 ▶）
+   - 横に広い枠（幅 720px 以上・高さ 380px 以上）: 地図の右に、全区間の一覧
+   - 低い枠（高さ 300px 以下）: 帯を1行に詰め、階のボタンを横に並べる
+   - 指で操作する端末: ボタンを指で押しやすい大きさに */
+:root {
+  --ink: #14181F;
+  --ink-soft: #4B5563;
+  --ink-faint: #8A919C;
+  --paper: #F6F6F2;
+  --paper-deep: #ECECE5;
+  --line: #DBDCD4;
+  --line-strong: #C3C5BB;
+  --accent: #E8501E;
+  --accent-dark: #B93C14;
+  --accent-light: #FCEEE7;
+  --transit-blue: #1B3A6B;
+  --font: 'BIZ UDPGothic', 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', 'Yu Gothic', sans-serif;
+  --font-num: 'Barlow Semi Condensed', 'BIZ UDPGothic', sans-serif;
+  --tap: 36px;          /* ボタンの大きさ */
+  --gap: 8px;           /* 地図の端からの余白 */
+}
+@media (pointer: coarse) {
+  :root { --tap: 44px; }
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body {
+  display: flex; flex-direction: column; overflow: hidden;
+  background: var(--paper); color: var(--ink); font-family: var(--font);
+  font-size: 14px; line-height: 1.5; -webkit-font-smoothing: antialiased;
+  -webkit-text-size-adjust: 100%; text-size-adjust: 100%;
+}
+button, a { font: inherit; color: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+:focus-visible { outline: 2px solid var(--transit-blue); outline-offset: 2px; }
+
+/* ---------------------------------------------------------------- 上の帯: 号館の表示板と、いま見ているもの */
+.bar {
+  flex: none; display: flex; align-items: center; gap: 8px; min-height: 40px;
+  padding: 4px max(8px, env(safe-area-inset-right)) 4px max(10px, env(safe-area-inset-left));
+  padding-top: max(4px, env(safe-area-inset-top));
+  background: var(--ink); color: #fff;
+}
+body.no-header .bar { display: none; }
+.plate {
+  flex: none; font-family: var(--font-num), var(--font); font-weight: 600; font-size: 15px;
+  background: #fff; color: var(--ink); padding: 0 8px 1px 7px; border-left: 4px solid var(--accent); border-radius: 4px;
+}
+.plate[hidden] { display: none; }
+.bar-title { flex: 1; min-width: 0; font-size: 14px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bar-btn {
+  flex: none; display: inline-flex; align-items: center; justify-content: center; min-width: 32px; height: 32px; padding: 0 9px;
+  font-size: 12px; color: #fff; text-decoration: none; background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.35); border-radius: 6px;
+}
+.bar-btn[hidden] { display: none; }
+#fullscreen { padding: 0; width: 32px; }
+.bar-btn:hover { background: rgba(255, 255, 255, 0.12); }
+.open-full .short { display: none; }
+@media (max-width: 380px) {
+  .open-full .long { display: none; }
+  .open-full .short { display: inline; }
+}
+
+/* ---------------------------------------------------------------- 地図と道順の並べ方 */
+.layout { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.stage { position: relative; flex: 1; min-height: 0; overflow: hidden; background: #fff; }
+@media (min-width: 720px) and (min-height: 380px) {
+  body.route .layout { flex-direction: row; }
+  body.route .steps { width: clamp(260px, 30vw, 340px); border-top: 0; border-left: 1px solid var(--line-strong); }
+}
+
+/* ---------------------------------------------------------------- 地図 */
+.map { position: absolute; inset: 0; cursor: grab; touch-action: pan-x pan-y; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+body.standalone .map { touch-action: none; }
+.map.dragging { cursor: grabbing; }
+.map > svg { display: block; width: 100%; height: 100%; }
+.map > svg.outdoor { background: var(--paper); }
+.map-label {
+  font-family: var(--font); font-weight: 700; fill: var(--ink);
+  paint-order: stroke; stroke: #fff; stroke-width: 4px; stroke-linejoin: round;
+}
+.north {
+  position: absolute; top: var(--gap); right: var(--gap); font-weight: 700; font-size: 12px; color: var(--ink-soft);
+  background: rgba(255, 255, 255, 0.9); padding: 1px 6px; border-radius: 4px; pointer-events: none;
+}
+.north[hidden] { display: none; }
+
+/* 地図が出せないときの案内 */
+.notice {
+  position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: center; gap: 6px;
+  padding: 16px; background: var(--paper); text-align: center; overflow: auto;
+}
+.notice[hidden] { display: none; }
+.notice-title { font-weight: 700; font-size: 15px; }
+.notice-desc { color: var(--ink-soft); font-size: 13px; max-width: 32em; margin: 0 auto; overflow-wrap: anywhere; }
+
+/* 地図は出せるが、道順や場所の印を描けないとき（その建物のノードにフロアマップ上の座標がまだ無い） */
+.banner {
+  position: absolute; left: calc(var(--tap) + var(--gap) * 2); right: calc(var(--tap) + var(--gap) * 2); top: var(--gap);
+  margin: 0 auto; max-width: 30em; width: fit-content;
+  padding: 5px 10px; border-radius: 6px; background: rgba(255, 255, 255, 0.94); border: 1px solid var(--line-strong);
+  font-size: 12px; color: var(--ink-soft); pointer-events: none;
+}
+.banner[hidden] { display: none; }
+
+/* 「2本の指で地図を動かせます」など、操作のこつを一瞬だけ */
+.hint {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; padding: 16px;
+  background: rgba(20, 24, 31, 0.55); color: #fff; font-weight: 700; text-align: center;
+  opacity: 0; pointer-events: none; transition: opacity 0.2s;
+}
+.hint.show { opacity: 1; }
+
+.zoom {
+  position: absolute; right: var(--gap); bottom: calc(var(--gap) + 18px); display: flex; flex-direction: column;
+  border-radius: 8px; overflow: hidden; border: 1px solid var(--line-strong); background: #fff;
+}
+.zoom[hidden], .floors[hidden], .steps[hidden] { display: none; }
+.zoom button { width: var(--tap); height: var(--tap); border: 0; background: #fff; font-size: 18px; display: grid; place-items: center; }
+.zoom button + button { border-top: 1px solid var(--line); }
+.zoom button:hover { background: var(--paper-deep); }
+
+/* 階の切り替え: エレベーターの階数ボタンのように縦に並べる */
+.floors {
+  position: absolute; left: var(--gap); top: var(--gap); display: flex; flex-direction: column; gap: 4px;
+  max-height: calc(100% - var(--gap) * 2); overflow-y: auto; scrollbar-width: none;
+}
+.floors::-webkit-scrollbar { display: none; }
+.floors button {
+  flex: none; width: var(--tap); height: var(--tap); border-radius: 50%; border: 1px solid var(--line-strong); background: #fff;
+  font-family: var(--font-num); font-weight: 600; font-size: 16px;
+}
+.floors button:hover { border-color: var(--ink); }
+.floors button[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: #fff; }
+
+.credit {
+  position: absolute; right: var(--gap); bottom: 3px; font-family: var(--font-num); font-weight: 600; font-size: 11px;
+  color: var(--ink-soft); text-decoration: none; background: rgba(255, 255, 255, 0.85); padding: 0 4px; border-radius: 3px;
+}
+.credit:hover { color: var(--ink); text-decoration: underline; }
+
+/* ---------------------------------------------------------------- 道順: ◀ 1/4 10号館 3階 約40m ▶ と、歩き終えたらすること */
+.steps {
+  flex: none; display: flex; flex-direction: column; min-height: 0;
+  border-top: 1px solid var(--line-strong); background: var(--paper);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.seg-bar { flex: none; display: flex; align-items: stretch; }
+.seg-btn { flex: none; width: max(44px, var(--tap)); border: 0; background: transparent; font-size: 16px; color: var(--ink); }
+.seg-btn:hover:not(:disabled) { background: var(--paper-deep); }
+.seg-btn:disabled { color: var(--line-strong); cursor: default; }
+.seg-body { flex: 1; min-width: 0; padding: 7px 2px 8px; }
+.seg-head { display: flex; align-items: baseline; gap: 8px; white-space: nowrap; }
+.seg-count { font-family: var(--font-num); font-weight: 600; color: var(--ink-soft); }
+.seg-title { font-weight: 700; overflow: hidden; text-overflow: ellipsis; }
+.seg-dist { font-family: var(--font-num), var(--font); color: var(--ink-soft); }
+.seg-next { color: var(--accent-dark); font-weight: 700; font-size: 13px; }
+
+/* 全区間の一覧（横に広い枠だけ） */
+.seg-list { display: none; list-style: none; overflow-y: auto; border-top: 1px solid var(--line); counter-reset: seg; }
+.seg-list li { counter-increment: seg; }
+.seg-list button {
+  display: grid; grid-template-columns: 24px 1fr auto; gap: 0 6px; width: 100%; padding: 9px 12px 9px 8px;
+  text-align: left; border: 0; border-bottom: 1px solid var(--line); background: transparent;
+}
+.seg-list button::before { content: counter(seg); grid-row: span 2; font-family: var(--font-num); font-weight: 600; color: var(--ink-faint); text-align: right; }
+.seg-list button:hover { background: var(--paper-deep); }
+.seg-list button[aria-current="step"] { background: var(--accent-light); box-shadow: inset 3px 0 0 var(--accent); }
+.seg-list button[aria-current="step"]::before { color: var(--accent-dark); }
+.li-title { font-weight: 700; }
+.li-dist { font-family: var(--font-num), var(--font); color: var(--ink-soft); font-size: 13px; }
+.li-next { grid-column: 2 / 4; font-size: 13px; color: var(--ink-soft); }
+@media (min-width: 720px) and (min-height: 380px) {
+  body.route .steps { flex: none; }
+  body.route .seg-list { display: block; flex: 1; }
+  body.route .seg-bar { border-bottom: 0; }
+}
+
+/* ---------------------------------------------------------------- 低い枠（高さ 300px 以下）: 詰めて出す */
+@media (max-height: 300px) {
+  :root { --gap: 6px; }
+  .bar { min-height: 34px; padding-top: 2px; padding-bottom: 2px; }
+  .bar-title { font-size: 13px; }
+  .bar-btn { height: 28px; min-width: 28px; }
+  #fullscreen { width: 28px; }
+  #zoom-out, #zoom-fit { display: none; }
+  .zoom { bottom: calc(var(--gap) + 16px); }
+  .floors { flex-direction: row; top: auto; bottom: var(--gap); max-height: none; max-width: calc(100% - var(--tap) - var(--gap) * 4); overflow-x: auto; overflow-y: hidden; }
+  .seg-body { padding: 4px 2px; display: flex; gap: 8px; align-items: baseline; min-width: 0; }
+  .seg-head { flex: none; gap: 6px; }
+  .seg-dist { display: none; }
+  .seg-next { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+}
+/* さらに低い枠: 上の帯を消して地図を広く */
+@media (max-height: 220px) {
+  .bar { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hint { transition: none; }
+}

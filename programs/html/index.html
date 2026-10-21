@@ -3,23 +3,26 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="専修大学 生田キャンパスのARキャンパスマップ「IKU NAVI」。教室名で検索するだけで、AR写真ガイドが目的の教室・建物まで道案内。新入生や来訪者のキャンパス内ナビゲーションに。2026年度 生亀プロジェクト。">
+  <meta name="description" content="専修大学 生田キャンパスの地図と教室検索ナビ「IKU NAVI」。教室名を入れるだけで、階段・エレベーターまで考えた最短ルートを写真付きで道案内します。3Dキャンパスマップ、建物ごとの教室一覧・フロアマップ、トイレ・食堂の検索にも対応。インストール不要で使えます。">
   <meta name="robots" content="index, follow, max-image-preview:large">
-  <title>IKU NAVI — 専修大学 生田キャンパスARマップ | 生亀プロジェクト 2026</title>
+  <title>IKU NAVI — 専修大学 生田キャンパスの地図・教室検索ナビ | 生亀プロジェクト</title>
   <link rel="canonical" href="https://iku-navi.net/">
 
   <!-- OGP / SNSシェア -->
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="IKU NAVI">
-  <meta property="og:title" content="IKU NAVI — 専修大学 生田キャンパスARマップ">
-  <meta property="og:description" content="専修大学 生田キャンパスのARキャンパスマップ。教室名で検索するだけで、AR写真ガイドが目的の教室・建物まで道案内します。">
+  <meta property="og:title" content="IKU NAVI — 専修大学 生田キャンパスの地図・教室検索ナビ">
+  <meta property="og:description" content="教室名を入れるだけで、教室までの道順を写真付きで案内。3Dキャンパスマップ、建物ごとの教室一覧・フロアマップ、トイレ・食堂の検索にも対応しています。">
   <meta property="og:url" content="https://iku-navi.net/">
-  <meta property="og:image" content="https://iku-navi.net/images/logo.png">
+  <meta property="og:image" content="https://iku-navi.net/images/og-image.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="IKU NAVI — 専修大学 生田キャンパスの教室検索・ARナビ（生亀プロジェクト）">
   <meta property="og:locale" content="ja_JP">
-  <meta name="twitter:card" content="summary">
-  <meta name="twitter:title" content="IKU NAVI — 専修大学 生田キャンパスARマップ">
-  <meta name="twitter:description" content="専修大学 生田キャンパスのARキャンパスマップ。教室名で検索して、AR写真ガイドで目的地まで道案内。">
-  <meta name="twitter:image" content="https://iku-navi.net/images/logo.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="IKU NAVI — 専修大学 生田キャンパスの地図・教室検索ナビ">
+  <meta name="twitter:description" content="教室名を入れるだけで、教室までの道順を写真付きで案内。3Dキャンパスマップや建物ごとの教室一覧・フロアマップもあります。">
+  <meta name="twitter:image" content="https://iku-navi.net/images/og-image.png">
 
   <!-- 構造化データ -->
   <script type="application/ld+json">
@@ -29,7 +32,7 @@
     "name": "IKU NAVI",
     "alternateName": ["イクナビ", "専修大学 生田キャンパスマップ"],
     "url": "https://iku-navi.net/",
-    "description": "専修大学 生田キャンパスのARキャンパスマップ。教室名で検索するだけで、AR写真ガイドが目的の教室・建物まで道案内します。",
+    "description": "専修大学 生田キャンパスの地図と教室検索ナビ。教室名で検索するだけで、写真付きのARガイドが目的の教室・建物まで道案内します。",
     "inLanguage": "ja",
     "about": {
       "@type": "Place",
@@ -66,6 +69,14 @@
       },
       {
         "@type": "Question",
+        "name": "専修大学 生田キャンパスの建物ごとのフロアマップや教室一覧はありますか？",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "IKU NAVIの「建物・教室一覧」（https://iku-navi.net/campus/）で、建物・階ごとの教室とフロアマップを見られます。教室を選ぶと、その教室までのナビを開けます。キャンパス全体は3Dキャンパスマップで立体的に見られます。"
+        }
+      },
+      {
+        "@type": "Question",
         "name": "トイレや食堂も探せますか？",
         "acceptedAnswer": {
           "@type": "Answer",
@@ -84,7 +95,10 @@
   }
   </script>
 
-  <link rel="icon" href="images/favicon.ico">
+  <link rel="icon" href="/images/favicon.ico" sizes="any">
+  <link rel="apple-touch-icon" href="/images/apple-touch-icon.png">
+  <link rel="manifest" href="/site.webmanifest">
+  <meta name="theme-color" content="#14181F">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -124,14 +138,14 @@
         <span class="card-cta">記事を読む <span aria-hidden="true" class="card-arrow">↗</span></span>
       </a>
 
-      <a href="https://timetables.iku-navi.net/" class="card card-timetable">
-        <span class="card-label">Timetable</span>
+      <a href="map3d/" class="card card-map3d">
+        <span class="card-label">3D Map</span>
         <div class="card-body">
-          <span class="card-glyph" aria-hidden="true">▦</span>
-          <h2 class="card-heading">時間割共有</h2>
-          <p class="card-text">シラバスから科目を選んで時間割を作り、友達と共有できます。次の教室へのナビもここから開けます。</p>
+          <span class="card-glyph" aria-hidden="true">◈</span>
+          <h2 class="card-heading">3Dキャンパスマップ</h2>
+          <p class="card-text">建物・通路・階段を3Dで見渡せます。教室を選ぶと道順を3Dで表示し、通路の写真で現地の様子も確かめられます。</p>
         </div>
-        <span class="card-cta">時間割を開く <span aria-hidden="true" class="card-arrow">↗</span></span>
+        <span class="card-cta">マップを開く <span aria-hidden="true" class="card-arrow">↗</span></span>
       </a>
     </nav>
 
@@ -145,7 +159,11 @@
       </p>
       <p class="info-buildings">
         <span class="info-label">対応建物</span>
-        2号館・5号館・7号館・8号館・10号館（130年記念館）と屋外エリア — 順次拡大中
+        <a class="info-link" href="/campus/1/">1号館</a>・<a class="info-link" href="/campus/2/">2号館</a>・<a class="info-link" href="/campus/5/">5号館</a>・<a class="info-link" href="/campus/7/">7号館</a>・<a class="info-link" href="/campus/8/">8号館</a>・<a class="info-link" href="/campus/9/">9号館</a>・<a class="info-link" href="/campus/10/">10号館（130年記念館）</a>と屋外エリア — 順次拡大中
+      </p>
+      <p class="info-buildings">
+        <span class="info-label">教室一覧</span>
+        <a class="info-link" href="/campus/">建物ごとの教室一覧・フロアマップ</a>から、教室を選んでそのままナビを開けます
       </p>
       <p class="info-buildings">
         <span class="info-label">運営</span>
@@ -161,6 +179,10 @@
         <div class="faq-item">
           <dt>紙のフロアマップ・案内図との違いは？</dt>
           <dd>フロアごとの地図から自分で経路を考える必要がなく、階段・エレベータ・エスカレータの上下移動まで含めたルートを自動で計算します。エレベータを使わない経路の指定もできます。</dd>
+        </div>
+        <div class="faq-item">
+          <dt>建物ごとのフロアマップや教室一覧はありますか？</dt>
+          <dd><a class="info-link" href="/campus/">建物・教室一覧</a>で、建物・階ごとの教室とフロアマップを見られます。教室を選ぶと、その教室までのナビを開けます。キャンパス全体は<a class="info-link" href="/map3d/">3Dキャンパスマップ</a>で立体的に見られます。</dd>
         </div>
         <div class="faq-item">
           <dt>トイレや食堂も探せますか？</dt>

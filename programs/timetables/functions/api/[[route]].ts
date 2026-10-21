@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { handle } from "hono/cloudflare-pages";
 
+import { adminRoutes } from "./_lib/routes/admin";
 import { authRoutes } from "./_lib/routes/auth";
 import { friendsRoutes } from "./_lib/routes/friends";
 import { meRoutes } from "./_lib/routes/me";
@@ -13,6 +14,7 @@ app.route("/auth", authRoutes);
 app.route("/me", meRoutes);
 app.route("/timetable", timetableRoutes);
 app.route("/friends", friendsRoutes);
+app.route("/admin", adminRoutes);
 
 app.notFound((c) => c.json({ error: "Not Found" }, 404));
 app.onError((err, c) => {

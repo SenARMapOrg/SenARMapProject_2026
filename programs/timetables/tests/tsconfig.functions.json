@@ -1,5 +1,19 @@
 {
   "//": "Cloudflare Pages Functions 側（functions/）のテストの型チェック",
   "extends": "../functions/tsconfig.json",
-  "include": ["validate.test.ts", "../functions"]
+  "include": [
+    "validate.test.ts",
+    "admin.test.ts",
+    "session-migration.test.ts",
+    "location-suggestion.test.ts",
+    "cookie-names.test.ts",
+    "helpers/d1-sqlite.ts",
+    "../functions"
+  ],
+  "compilerOptions": {
+    "types": [
+      "@cloudflare/workers-types",
+      "vite/client"
+    ]
+  }
 }

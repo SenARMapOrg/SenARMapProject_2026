@@ -22,3 +22,11 @@ const CONFIG = {
 EOF
 
 echo "[pages] config.js generated."
+
+# 建物ごとの教室一覧・フロアマップ（/campus/）と sitemap.xml を data/ から作る（検索エンジン向け）。
+# 失敗してもサイト本体は出せるよう、ビルドは止めない（そのときはリポジトリの sitemap.xml のまま）
+if command -v python3 >/dev/null 2>&1; then
+    python3 deploy_env/pages/generate_campus_pages.py || echo "[pages] WARN: campus pages were not generated." >&2
+else
+    echo "[pages] WARN: python3 not found; campus pages were not generated." >&2
+fi

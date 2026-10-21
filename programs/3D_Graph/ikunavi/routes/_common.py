@@ -24,14 +24,23 @@ def edges_for_room_or_404(room_name, building, label="教室"):
     return edges
 
 
-class FromSpec:
-    """出発点の指定（from_room＋from_building / from_node / from_event）"""
+def edge_or_404(edge_id):
+    """グローバルなエッジID→edge行。見つからなければ404"""
+    row = cache.find_edge_by_id(edge_id)
+    if row is None:
+        raise ApiError(f"エッジ {edge_id} が存在しません", 404)
+    return row
 
-    def __init__(self, room="", building=None, node_id=None, event=""):
+
+class FromSpec:
+    """出発点の指定（from_room＋from_building / from_edge / from_node / from_event）"""
+
+    def __init__(self, room="", building=None, node_id=None, event="", edge_id=None):
         self.room = room
         self.building = building
         self.node_id = node_id
         self.event = event
+        self.edge_id = edge_id
 
     @classmethod
     def from_request(cls):
@@ -39,18 +48,19 @@ class FromSpec:
             room=request.args.get("from_room", "").strip(),
             building=request.args.get("from_building", type=int),
             node_id=request.args.get("from_node", type=int),
-            event=request.args.get("from_event", "").strip(),
+            event=cache.resolve_event_title(request.args.get("from_event", "")),
+            edge_id=request.args.get("from_edge", type=int),
         )
 
     def require(self):
         """いずれも指定されていなければ400"""
-        if not self.room and not self.event and self.node_id is None:
-            raise ApiError("from_room（＋from_building）・from_event・from_node のいずれかを指定してください")
+        if not self.room and not self.event and self.edge_id is None and self.node_id is None:
+            raise ApiError("from_room（＋from_building）・from_event・from_edge・from_node のいずれかを指定してください")
         return self
 
     def candidates(self, G):
         """
-        出発点指定（from_event / from_room / from_node の優先順）を
+        出発点指定（from_event / from_room / from_edge / from_node の優先順）を
         候補ノードのリスト [(node_id, edge行|None), ...] に解決する。
         """
         if self.event:
@@ -64,6 +74,9 @@ class FromSpec:
                 raise ApiError("from_building を指定してください")
             edges = edges_for_room_or_404(self.room, self.building)
             return candidates_from_edges(G, edges, dedupe=True)
+
+        if self.edge_id is not None:
+            return candidates_from_edges(G, [edge_or_404(self.edge_id)], dedupe=True)
 
         if self.node_id not in G.nodes:
             raise ApiError(f"ノード {self.node_id} が存在しません", 404)

@@ -1,5 +1,5 @@
 """レスポンス整形: 経路のノード列・区間列と、目的地の左右・順番の判定"""
-from conftest import B1
+from tiny_campus import B1
 from ikunavi.cache import get_graph
 from ikunavi.serialize import apply_dest_info, dest_info, path_result, side_for_room
 

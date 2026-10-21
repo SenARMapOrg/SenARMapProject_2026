@@ -4,6 +4,9 @@ export type Bindings = {
   OAUTH_REDIRECT_URI: string;
   GOOGLE_CLIENT_ID: string;
   GOOGLE_CLIENT_SECRET: string;
+  // 管理画面(/admin)を見られるメールアドレス（カンマ区切り）。未設定なら誰も見られない。
+  // リポジトリには書かず、Cloudflare Pages の環境変数（本番のみ）で設定する。
+  ADMIN_EMAILS?: string;
 };
 
 export type Variables = {
@@ -27,7 +30,7 @@ export interface UserRow {
 }
 
 export interface SessionRow {
-  id: string;
+  id: string;         // セッショントークンの SHA-256（Cookie に入る生のトークンではない）
   user_id: number;
   created_at: string;
   expires_at: string;
@@ -44,7 +47,7 @@ export interface TimetableEntryRow {
   period: number;
   course_name: string;
   location: string | null;
-  instructor: string | null; // 「科目名から追加」でシラバスから追加した場合のみ入る。手入力ではNULL
+  instructor: string | null; // 「科目名から追加」で担当教員つきの授業を選んだ場合のみ入る（以前のシラバス由来の値を含む）。手入力ではNULL
   created_at: string;
   updated_at: string;
 }

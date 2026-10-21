@@ -2,6 +2,7 @@
 // 編集画面のグリッドでセルをクリックした時、selectSlot() で外部から曜日・時限とその場の内容を反映できる。
 
 import type { Term } from "./api";
+import { createLocationField } from "./location-field";
 import { DAY_LABELS, PERIOD_COUNT, TERM_LABELS } from "./timetable-grid";
 
 export interface SlotFormHandle {
@@ -23,14 +24,14 @@ export function buildSlotForm(
   root.innerHTML = `
     <p class="hint">
       曜日・時限を選び、科目名を入力して追加します。今表示している学期（上のタブ）に追加されます。
-      シラバスに載っていない科目（学外の予定など）にも使えます。「削除」で指定した曜日・時限のコマを消せます。
+      「科目名から追加」の一覧に無い授業や、学外の予定にも使えます。「削除」で指定した曜日・時限のコマを消せます。
       下のグリッドのマスをクリックしても曜日・時限を選べます。
     </p>
     <form class="slot-form">
       <label>曜日 <select class="reg-day"></select></label>
       <label>時限 <select class="reg-period"></select></label>
       <label>科目名 <input type="text" class="reg-course-name" maxlength="100" placeholder="科目名" required></label>
-      <label>教室(任意) <input type="text" class="reg-location" maxlength="100" placeholder="教室"></label>
+      <label class="reg-location-label">教室(任意) <span class="reg-location-slot"></span></label>
       <button type="submit" class="btn btn-primary">追加</button>
       <button type="button" class="btn btn-ghost reg-delete-btn">このコマを削除</button>
     </form>
@@ -55,7 +56,10 @@ export function buildSlotForm(
 
   const form = root.querySelector<HTMLFormElement>(".slot-form")!;
   const courseNameInput = root.querySelector<HTMLInputElement>(".reg-course-name")!;
-  const locationInput = root.querySelector<HTMLInputElement>(".reg-location")!;
+  // 教室欄: IKU NAVI の教室のプルダウン・予測変換・自由入力のどれでも入れられる
+  const locationField = createLocationField();
+  root.querySelector(".reg-location-slot")!.replaceWith(locationField.root);
+  const locationInput = locationField.input;
   const deleteBtn = root.querySelector<HTMLButtonElement>(".reg-delete-btn")!;
   const messageEl = root.querySelector<HTMLParagraphElement>(".reg-message")!;
 
@@ -73,7 +77,7 @@ export function buildSlotForm(
       messageEl.className = "message message-ok reg-message";
       messageEl.hidden = false;
       courseNameInput.value = "";
-      locationInput.value = "";
+      locationField.setValue("");
       courseNameInput.focus();
     }
   });
@@ -90,7 +94,7 @@ export function buildSlotForm(
     messageEl.hidden = false;
     if (removed) {
       courseNameInput.value = "";
-      locationInput.value = "";
+      locationField.setValue("");
     }
   });
 
@@ -100,7 +104,7 @@ export function buildSlotForm(
     daySelect.value = String(day);
     periodSelect.value = String(period);
     courseNameInput.value = existing?.course_name ?? "";
-    locationInput.value = existing?.location ?? "";
+    locationField.setValue(existing?.location ?? "");
     messageEl.hidden = true;
   }
 

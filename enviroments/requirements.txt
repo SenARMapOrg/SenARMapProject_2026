@@ -1,6 +1,6 @@
-pandas
-networkx
-Flask
-plotly
-gunicorn
-pyvis
+# 経路探索API（programs/3D_Graph）の開発用Dockerイメージ用の依存（deploy_env/python/requirements.txt と同じ内容にしておく）。
+# 3D表示の Plotly はブラウザ側で CDN から読み込むので、Python 側には不要。
+Flask>=3.0
+gunicorn>=22.0      # 本番のWSGIサーバー（ローカルで python app.py するだけなら使わない）
+networkx>=3.2       # 経路探索（グラフ・最短経路）
+pandas>=2.2         # CSV（ノード・エッジ・教室）の読み込み
