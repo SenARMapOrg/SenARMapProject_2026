@@ -11,6 +11,9 @@
   not_required … 建物出入口エッジ（type=7, anchors.csv由来）。
                  navi側はこの区間で写真の代わりにカメラARを起動するため、
                  edge_image.csv 未登録でも欠損・未登録として扱わない。
+
+「屋外を除く」（既定でオン。設定は次回も残る）: 屋外（building=0）のエッジは別の AR で案内するので、
+一覧・件数・欠損の出力から外し、画像も取りに行かない。オフにすると、その時点で屋外の画像を取りに行く。
 """
 
 from __future__ import annotations
@@ -27,9 +30,9 @@ from PyQt6.QtWidgets import (
     QHBoxLayout, QVBoxLayout, QGridLayout,
     QLabel, QPushButton, QLineEdit, QScrollArea,
     QFrame, QProgressBar, QMessageBox,
-    QDialog, QTextEdit, QComboBox, QFileDialog,
+    QDialog, QTextEdit, QComboBox, QFileDialog, QCheckBox,
 )
-from PyQt6.QtCore import Qt, QThread, pyqtSignal, QTimer
+from PyQt6.QtCore import Qt, QThread, pyqtSignal, QTimer, QSettings
 from PyQt6.QtGui import QFont, QColor, QPixmap, QPainter, QPen
 
 from ..common.api import BROWSER_HEADERS, DEFAULT_API, make_session
@@ -58,6 +61,8 @@ CARD_W      = 230
 CARD_H      = 215
 THUMB_H     = 135
 MAX_WORKERS = 6     # Cloudflare レート制限対策で抑え気味
+OUTDOOR     = 0     # 屋外の building
+SETTING_EXCLUDE_OUTDOOR = "image_checker/exclude_outdoor"
 
 def _make_session() -> requests.Session:
     return make_session(headers=BROWSER_HEADERS, total=3, backoff_factor=0.5,
@@ -520,7 +525,11 @@ class MainWindow(QMainWindow):
         self._filter_state:     str = FILTER_ALL
 
         self._fetch_worker: FetchGraphWorker  | None = None
-        self._img_worker:   ImageFetchWorker  | None = None
+        self._img_workers:  list[ImageFetchWorker] = []
+        # 屋外を除いている間は取りに行かず、ここに残しておく画像の (key, url)
+        self._deferred_tasks: list[tuple[str, str]] = []
+        self._settings = QSettings("SenARMap", "IKU_NAVI_Tools")
+        self._exclude_outdoor = self._settings.value(SETTING_EXCLUDE_OUTDOOR, True, type=bool)
 
         self._resize_timer = QTimer(self)
         self._resize_timer.setSingleShot(True)
@@ -602,6 +611,15 @@ class MainWindow(QMainWindow):
 
         row.addSpacing(6)
 
+        self._outdoor_chk = QCheckBox("屋外を除く")
+        self._outdoor_chk.setChecked(self._exclude_outdoor)
+        self._outdoor_chk.setToolTip("屋外の経路は別の AR で案内するので、写真の確認から外す")
+        self._outdoor_chk.setStyleSheet(f"color: {TXT_PRIMARY}; font-size: 15px;")
+        self._outdoor_chk.toggled.connect(self._set_exclude_outdoor)
+        row.addWidget(self._outdoor_chk)
+
+        row.addSpacing(6)
+
         self._progress = QProgressBar()
         self._progress.setFixedSize(180, 8)
         self._progress.setRange(0, 1)
@@ -647,7 +665,7 @@ class MainWindow(QMainWindow):
         self._filterbar_row.addWidget(all_bldg)
         self._bldg_btn_map[-1] = all_bldg
 
-        for bldg in self._buildings:
+        for bldg in self._shown_buildings():
             btn = self._make_pill(_bldg_label(bldg), False)
             btn.clicked.connect(lambda _=False, b=bldg: self._filter_building(b))
             self._filterbar_row.addWidget(btn)
@@ -749,6 +767,7 @@ class MainWindow(QMainWindow):
 
         self._cards.clear()
         self._buildings.clear()
+        self._deferred_tasks = []
         self._current_building = -1
         self._filter_state     = FILTER_ALL
 
@@ -819,20 +838,22 @@ class MainWindow(QMainWindow):
                 self._cards[key] = card
 
         self._buildings = sorted(buildings_set)
+        if self._exclude_outdoor:
+            self._deferred_tasks = [t for t in tasks if self._cards[t[0]].building == OUTDOOR]
+            tasks = [t for t in tasks if self._cards[t[0]].building != OUTDOOR]
         self._rebuild_filterbar()
         self._refresh_grid()
         self._export_btn.setEnabled(True)
 
-        total_edges = len(self._cards)
+        active      = self._active_cards()
+        total_edges = len(active)
         registered  = len(tasks)
-        _, _, unreg, not_required = _count_states(self._cards.values())
+        _, _, unreg, not_required = _count_states(active)
         self._set_status(
             f"全 {total_edges} エッジ  登録済 {registered}  未登録 {unreg}  "
             f"AR起動区間(不要) {not_required}  — 画像取得中...",
             TXT_SUB,
         )
-        self._progress.setRange(0, max(1, registered))
-        self._progress.setValue(0)
 
         if not tasks:
             self._fetch_btn.setEnabled(True)
@@ -841,11 +862,19 @@ class MainWindow(QMainWindow):
             )
             return
 
-        self._img_worker = ImageFetchWorker(tasks)
-        self._img_worker.image_ready.connect(self._on_image_ready)
-        self._img_worker.progress.connect(self._on_progress)
-        self._img_worker.finished.connect(self._on_images_done)
-        self._img_worker.start()
+        self._fetch_images(tasks)
+
+    def _fetch_images(self, tasks: list[tuple[str, str]]):
+        """登録済みエッジの画像を取りに行く"""
+        self._fetch_btn.setEnabled(False)
+        self._progress.setRange(0, max(1, len(tasks)))
+        self._progress.setValue(0)
+        worker = ImageFetchWorker(tasks)
+        worker.image_ready.connect(self._on_image_ready)
+        worker.progress.connect(self._on_progress)
+        worker.finished.connect(lambda w=worker: self._on_images_done(w))
+        self._img_workers.append(worker)
+        worker.start()
 
     def _on_image_ready(self, key: str, data: bytes):
         card = self._cards.get(key)
@@ -857,10 +886,20 @@ class MainWindow(QMainWindow):
         self._progress.setValue(done)
         self._set_status(f"画像取得中... {done} / {total}", TXT_SUB)
 
-    def _on_images_done(self):
+    def _on_images_done(self, worker: ImageFetchWorker):
+        if worker in self._img_workers:
+            self._img_workers.remove(worker)
+        if self._img_workers:
+            return
+        self._show_done_status()
+        if self._filter_state != FILTER_ALL:
+            self._refresh_grid()
+
+    def _show_done_status(self):
         self._fetch_btn.setEnabled(True)
-        ok, missing, unreg, _ = _count_states(self._cards.values())
-        total = len(self._cards)
+        active = self._active_cards()
+        ok, missing, unreg, _ = _count_states(active)
+        total = len(active)
 
         if missing or unreg:
             self._set_status(
@@ -869,10 +908,36 @@ class MainWindow(QMainWindow):
             )
         else:
             self._set_status(f"完了: 全 {total} エッジ  ✔ 全て OK", COL_OK)
-
         self._update_count_lbl()
-        if self._filter_state != FILTER_ALL:
-            self._refresh_grid()
+
+    # ── 屋外を除く ────────────────────────────────────────────────────────────
+
+    def _active_cards(self) -> list[ImageCard]:
+        """確認の対象のカード（「屋外を除く」がオンなら屋外を外す）"""
+        if not self._exclude_outdoor:
+            return list(self._cards.values())
+        return [c for c in self._cards.values() if c.building != OUTDOOR]
+
+    def _shown_buildings(self) -> list[int]:
+        if not self._exclude_outdoor:
+            return list(self._buildings)
+        return [b for b in self._buildings if b != OUTDOOR]
+
+    def _set_exclude_outdoor(self, on: bool):
+        self._exclude_outdoor = on
+        self._settings.setValue(SETTING_EXCLUDE_OUTDOOR, on)
+        if not self._cards:
+            return
+        if on and self._current_building == OUTDOOR:
+            self._current_building = -1
+        self._rebuild_filterbar()
+        self._filter_building(self._current_building)
+        self._filter_state_set(self._filter_state)
+        if not on and self._deferred_tasks:
+            tasks, self._deferred_tasks = self._deferred_tasks, []
+            self._fetch_images(tasks)
+        elif not self._img_workers:
+            self._show_done_status()
 
     # ── グリッド制御 ──────────────────────────────────────────────────────────
 
@@ -886,7 +951,7 @@ class MainWindow(QMainWindow):
             return True
 
         cards = [
-            c for c in self._cards.values()
+            c for c in self._active_cards()
             if (self._current_building == -1 or c.building == self._current_building)
             and match_state(c)
         ]
@@ -934,7 +999,8 @@ class MainWindow(QMainWindow):
     # ── テキスト出力 ──────────────────────────────────────────────────────────
 
     def _open_export_dialog(self):
-        dlg = ExportDialog(self._cards, self._buildings, parent=self)
+        cards = {c.key: c for c in self._active_cards()}
+        dlg = ExportDialog(cards, self._shown_buildings(), parent=self)
         dlg.exec()
 
     # ── ユーティリティ ────────────────────────────────────────────────────────
@@ -947,8 +1013,9 @@ class MainWindow(QMainWindow):
         if not hasattr(self, "_count_lbl"):
             return
 
-        total   = len(self._cards)
-        ok, missing, unreg, not_required = _count_states(self._cards.values())
+        active  = self._active_cards()
+        total   = len(active)
+        ok, missing, unreg, not_required = _count_states(active)
         loading = total - ok - missing - unreg - not_required
         visible = len(self._visible_cards())
 
@@ -958,7 +1025,7 @@ class MainWindow(QMainWindow):
         parts += [f"✔ {ok}", f"✕ 欠損 {missing}", f"— 未登録 {unreg}", f"◎ AR区間 {not_required}"]
 
         if self._current_building != -1:
-            bldg_cards = [c for c in self._cards.values() if c.building == self._current_building]
+            bldg_cards = [c for c in active if c.building == self._current_building]
             bldg_total = len(bldg_cards)
             bldg_ok, bldg_miss, bldg_unreg, bldg_notreq = _count_states(bldg_cards)
             bldg_name  = _bldg_label(self._current_building)
@@ -968,6 +1035,10 @@ class MainWindow(QMainWindow):
             )
         else:
             parts.append(f"[表示 {visible}]")
+        if self._exclude_outdoor:
+            n_out = sum(1 for c in self._cards.values() if c.building == OUTDOOR)
+            if n_out:
+                parts.append(f"（屋外 {n_out} は除外）")
 
         color = COL_ERR if (missing or unreg) else (TXT_SUB if loading else COL_OK)
         self._count_lbl.setText("  ".join(parts))
