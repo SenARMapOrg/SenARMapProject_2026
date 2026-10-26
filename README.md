@@ -33,6 +33,21 @@ cd programs/timetables && npm ci && npm run typecheck && npm test
 
 push / Pull Request のたびに GitHub Actions（`.github/workflows/test.yml`）が同じものを実行し、
 `main` への push では通った場合だけ本番 Docker イメージがビルドされる。
+
+### データの確認
+
+スプレッドシートから Push された `data/` に事故が無いかは、`programs/3D_Graph/check_data.py` で調べる。
+CI の「データの確認」でも、PR やブランチへの push のたびに main のデータと比べて動き、結果は実行の Summary に表で出る。
+
+```bash
+cd programs/3D_Graph
+python check_data.py                          # 今の data/ を調べる
+python check_data.py --base /path/to/data     # 別の data/（main など）と比べる
+```
+
+- **失敗にするもの**: 経路写真（`edge_image.csv`）の同じ区間の重複・id の重複・ファイル名の形の間違い、基準の教室（10号館 10101）との間で行き・帰りの経路が引けない教室
+- **main より悪くなったら失敗にするもの**: 写真があった区間の写真が無くなった（行の消しすぎ）、ほかとつながっていないノードが増えた
+- **知らせるだけのもの**: 建物ごとの写真が無い区間の数、今の経路に無い区間の写真、ほかとつながっていないノード
 詳しくは `docs/PROJECT_BIBLE.md` の 8.4 節を参照。
 
 ## 技術スタック
