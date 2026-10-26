@@ -87,8 +87,9 @@ Anaconda や別の Qt が残した `QT_PLUGIN_PATH` などの設定は、自動�
 | 人物ぼかし | `human_remover` | YOLOv8 で経路写真の人物を検出し、ぼかし・モザイクで匿名化する | `programs/Human_Remover` |
 | SVG座標取得 | `svg_pointer` | SVGをクリックして座標を取得し、クリップボードにコピーする。既存の点の x・y の近くをクリックするとぴったり合わせる（吸着。Alt/option+クリックで解除）ほか、一覧で選んだ点を縦・横にそろえられる | `programs/SVG_Pointer`（PyQt5 から移植） |
 
-ルート検証・画像チェックは経路探索API（`programs/3D_Graph`、既定は `http://localhost:5001`）を使うので、
-先に `cd programs/3D_Graph && python app.py` で起動しておく。
+ルート検証・画像チェックは経路探索APIを使う。既定は本番の `https://api.iku-navi.net` なので、そのまま使える。
+手元で編集した `data/` を確かめたいときは、`cd programs/3D_Graph && python app.py` で起動し、
+画面の API の欄を `http://localhost:5001` に書き換える。
 
 ## 使い勝手について
 
