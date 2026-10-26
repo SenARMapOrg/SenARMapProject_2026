@@ -1,0 +1,783 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#f5f8ff" />
+    <title>鳳祭ナビ</title>
+    <style>
+      :root {
+        --ink: #17251b;
+        --muted: #68756a;
+        --blue: #287344;
+        --purple: #287344;
+        --line: #ead9c8;
+        --surface: rgba(255, 255, 255, 0.96);
+        --bg: #fff8ef;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background-color: #fff8ef;
+        background-image:
+          linear-gradient(rgba(229, 157, 103, 0.2) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(229, 157, 103, 0.2) 1px, transparent 1px);
+        background-size: 20px 20px;
+        color: var(--ink);
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans JP",
+          sans-serif;
+      }
+      button,
+      input {
+        font: inherit;
+      }
+      .hero {
+        position: relative;
+        overflow: hidden;
+        padding: 34px max(5vw, 22px) 26px;
+        background: linear-gradient(
+          115deg,
+          rgba(255, 248, 239, 0.97),
+          rgba(255, 255, 255, 0.87)
+        );
+        border-bottom: 1px solid #ead9c8;
+      }
+      .hero:before,
+      .hero:after {
+        content: "";
+        position: absolute;
+        border-radius: 50%;
+        pointer-events: none;
+      }
+      .hero:before {
+        width: 380px;
+        height: 380px;
+        right: 7%;
+        top: -245px;
+        background: radial-gradient(
+          circle,
+          #d8e7d4 0,
+          rgba(216, 231, 212, 0) 70%
+        );
+      }
+      .hero:after {
+        width: 280px;
+        height: 280px;
+        right: 22%;
+        bottom: -235px;
+        background: radial-gradient(
+          circle,
+          #f3ddc4 0,
+          rgba(243, 221, 196, 0) 70%
+        );
+      }
+      .hero-inner {
+        max-width: 1440px;
+        margin: auto;
+        position: relative;
+        z-index: 1;
+        text-align: center;
+      }
+      .eyebrow {
+        font-size: 11px;
+        letter-spacing: 4px;
+        font-weight: 800;
+        color: #34764b;
+      }
+      h1 {
+        font-size: clamp(30px, 4.4vw, 52px);
+        letter-spacing: -1.7px;
+        margin: 13px 0 8px;
+        line-height: 1.2;
+      }
+      h1 span {
+        color: var(--blue);
+      }
+      .subtitle {
+        margin: 0;
+        color: var(--muted);
+        font-size: 14px;
+        line-height: 1.8;
+      }
+      .hero-note {
+        position: absolute;
+        right: 2%;
+        top: 24px;
+        color: #3e8054;
+        font-size: 13px;
+        letter-spacing: 2px;
+        transform: rotate(5deg);
+      }
+      main {
+        max-width: 1440px;
+        width: 90%;
+        margin: 26px auto 64px;
+      }
+      .toolbar {
+        display: flex;
+        gap: 14px;
+        align-items: center;
+        justify-content: center;
+        flex-wrap: wrap;
+        margin-bottom: 18px;
+      }
+      .filters {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        justify-content: center;
+      }
+      .filter {
+        border: 1px solid #ead9c8;
+        background: #fffdf9;
+        color: #536453;
+        border-radius: 12px;
+        padding: 10px 15px;
+        cursor: pointer;
+        font-size: 12px;
+        font-weight: 700;
+        box-shadow: 0 3px 10px rgba(88, 65, 38, 0.04);
+        transition: 0.18s;
+      }
+      .filter:hover {
+        border-color: #8db79a;
+        color: var(--blue);
+      }
+      .filter.active {
+        background: #287344;
+        border-color: #287344;
+        color: white;
+        box-shadow: 0 6px 15px #28734435;
+      }
+      .search {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        background: white;
+        border: 1px solid #ead9c8;
+        border-radius: 13px;
+        padding: 0 14px;
+        min-width: min(310px, 100%);
+        height: 43px;
+        box-shadow: 0 3px 10px rgba(88, 65, 38, 0.04);
+      }
+      .search span {
+        font-size: 18px;
+        color: #7081a7;
+      }
+      .search input {
+        width: 100%;
+        border: 0;
+        outline: 0;
+        background: transparent;
+        color: var(--ink);
+        font-size: 13px;
+      }
+      .search input::placeholder {
+        color: #9ba7bc;
+      }
+      .summary {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin: 18px 3px 11px;
+        gap: 12px;
+      }
+      .summary strong {
+        font-size: 14px;
+      }
+      .summary small {
+        color: #8a96ad;
+        font-size: 11px;
+      }
+      .table-wrap {
+        background: var(--surface);
+        border: 1px solid #ead9c8;
+        border-radius: 21px;
+        overflow: hidden;
+        box-shadow:
+          7px 8px 0 #2d7048,
+          0 15px 42px rgba(89, 70, 48, 0.07);
+        backdrop-filter: blur(12px);
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      thead {
+        background: #f6f0e7;
+      }
+      th {
+        text-align: left;
+        font-size: 11px;
+        color: #5b6a5d;
+        letter-spacing: 0.5px;
+        font-weight: 800;
+        padding: 16px 18px;
+        white-space: nowrap;
+      }
+      td {
+        padding: 15px 18px;
+        border-top: 1px solid #f0e7dc;
+        vertical-align: middle;
+        font-size: 13px;
+      }
+      tbody tr {
+        transition: background 0.16s;
+      }
+      tbody tr:hover {
+        background: #fffaf3;
+      }
+      .event-cell {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        min-width: 270px;
+      }
+      .thumb {
+        width: 82px;
+        height: 62px;
+        flex-shrink: 0;
+        border-radius: 12px;
+        display: grid;
+        place-items: center;
+        font-size: 29px;
+        background: linear-gradient(135deg, #e3efdf, #c4dcc7);
+        box-shadow: inset 0 0 0 1px #ffffffaa;
+      }
+      .thumb.blue {
+        background: linear-gradient(135deg, #e3efdf, #c4dcc7);
+      }
+      .thumb.purple {
+        background: linear-gradient(135deg, #e0ebd9, #b9d2b7);
+      }
+      .thumb.green {
+        background: linear-gradient(135deg, #e5f0dd, #c0dcb8);
+      }
+      .thumb.pink {
+        background: linear-gradient(135deg, #f5e6d5, #e9c9aa);
+      }
+      .thumb.orange {
+        background: linear-gradient(135deg, #f7e8d3, #e8c59d);
+      }
+      .thumb.red {
+        background: linear-gradient(135deg, #e0eadc, #b7d0b5);
+      }
+      .event-name {
+        font-weight: 800;
+        font-size: 14px;
+        line-height: 1.55;
+        margin-bottom: 4px;
+      }
+      .event-desc {
+        font-size: 11px;
+        color: #8490a7;
+        line-height: 1.6;
+      }
+      .tag {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 8px 11px;
+        border-radius: 9px;
+        font-size: 11px;
+        font-weight: 800;
+        white-space: nowrap;
+      }
+      .tag.blue {
+        color: #287344;
+        background: #e7f2e4;
+      }
+      .tag.purple {
+        color: #34784a;
+        background: #e9f2e5;
+      }
+      .tag.green {
+        color: #287344;
+        background: #e7f2e4;
+      }
+      .tag.pink {
+        color: #8a603b;
+        background: #f6eadb;
+      }
+      .tag.orange {
+        color: #8a603b;
+        background: #f6eadb;
+      }
+      .tag.red {
+        color: #287344;
+        background: #e7f2e4;
+      }
+      .location {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: #526584;
+        white-space: nowrap;
+      }
+      .pin {
+        color: #287344;
+        font-size: 17px;
+      }
+      .nav-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 9px;
+        text-decoration: none;
+        color: white;
+        background: linear-gradient(110deg, #34824f, #21633b);
+        padding: 13px 20px;
+        border-radius: 11px;
+        min-width: 126px;
+        font-size: 12px;
+        font-weight: 800;
+        white-space: nowrap;
+        box-shadow: 0 5px 13px #28734430;
+        transition: 0.18s;
+      }
+      .nav-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 18px #28734440;
+      }
+      .nav-btn span {
+        font-size: 15px;
+      }
+      .empty {
+        padding: 45px 20px;
+        text-align: center;
+        color: #71806f;
+        display: none;
+      }
+      .empty strong {
+        display: block;
+        color: #344b39;
+        margin-bottom: 7px;
+      }
+      .footer {
+        text-align: center;
+        color: #9b8d7d;
+        font-size: 10px;
+        letter-spacing: 2px;
+        margin: 28px 0 0;
+      }
+      @media (max-width: 980px) {
+        main {
+          width: 94%;
+        }
+        .hero-note {
+          display: none;
+        }
+      }
+      @media (max-width: 700px) {
+        .hero {
+          padding: 25px 18px 22px;
+        }
+        h1 {
+          font-size: clamp(27px, 7.5vw, 39px);
+          letter-spacing: -1.2px;
+        }
+        .subtitle {
+          font-size: 12px;
+        }
+        main {
+          width: calc(100% - 24px);
+          margin-top: 17px;
+        }
+        .toolbar {
+          align-items: stretch;
+          gap: 12px;
+        }
+        .filters {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 7px;
+          width: 100%;
+          justify-content: center;
+        }
+        .filter {
+          padding: 10px 7px;
+          font-size: 11px;
+          white-space: normal;
+          line-height: 1.35;
+          text-align: center;
+        }
+        .filter:first-child {
+          grid-column: span 2;
+        }
+        .search {
+          width: 100%;
+          min-width: 0;
+        }
+        .summary {
+          align-items: flex-start;
+          flex-direction: column;
+          gap: 4px;
+          margin: 15px 2px 10px;
+        }
+        .table-wrap {
+          overflow: visible;
+          border-radius: 17px;
+        }
+        table,
+        tbody,
+        tr,
+        td {
+          display: block;
+          width: 100%;
+        }
+        thead {
+          display: none;
+        }
+        tbody tr {
+          padding: 14px;
+          border-top: 1px solid #eee2d4;
+        }
+        tbody tr:first-child {
+          border-top: 0;
+        }
+        td {
+          padding: 0;
+          border: 0;
+        }
+        td:nth-child(1) {
+          margin-bottom: 12px;
+        }
+        .event-cell {
+          min-width: 0;
+          gap: 11px;
+          align-items: center;
+        }
+        .thumb {
+          width: 64px;
+          height: 58px;
+          border-radius: 11px;
+          font-size: 25px;
+        }
+        .event-name {
+          font-size: 14px;
+          line-height: 1.45;
+        }
+        .event-desc {
+          font-size: 11px;
+        }
+        td:nth-child(2) {
+          display: inline-block;
+          width: auto;
+          max-width: 100%;
+          margin: 0 0 11px;
+        }
+        .tag {
+          white-space: normal;
+          line-height: 1.35;
+          padding: 6px 9px;
+        }
+        td:nth-child(3) {
+          margin-bottom: 13px;
+        }
+        .location {
+          white-space: normal;
+          font-size: 12px;
+        }
+        td:nth-child(4) {
+          display: block;
+        }
+        .nav-btn {
+          width: 100%;
+          min-width: 0;
+          min-height: 45px;
+          padding: 11px 14px;
+        }
+        .empty {
+          padding: 35px 14px;
+        }
+        .footer {
+          font-size: 9px;
+          letter-spacing: 1px;
+        }
+      }
+      @media (min-width: 701px) and (max-width: 980px) {
+        .table-wrap {
+          overflow-x: visible;
+        }
+        table {
+          min-width: 0;
+        }
+        th,
+        td {
+          padding: 12px 10px;
+        }
+        .event-cell {
+          min-width: 220px;
+          gap: 10px;
+        }
+        .thumb {
+          width: 62px;
+          height: 54px;
+        }
+        .nav-btn {
+          min-width: 100px;
+          padding: 11px 12px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="hero">
+      <div class="hero-inner">
+        <div class="eyebrow">OHTORI FESTIVAL · CAMPUS GUIDE</div>
+        <h1>鳳祭<span>出店・イベントナビ</span> ↗</h1>
+        <p class="subtitle">気になる出店を見つけて、ナビで会場まで行こう。</p>
+        <div class="hero-note">FIND YOUR NEXT EXPERIENCE ✳</div>
+      </div>
+    </header>
+    <main>
+      <div class="toolbar">
+        <div class="filters" id="filters" aria-label="ジャンルで絞り込み">
+          <button class="filter active" data-category="すべて">すべて</button>
+          <button class="filter" data-category="展示">展示</button>
+          <button class="filter" data-category="体験・ワークショップ">
+            体験・ワークショップ
+          </button>
+          <button class="filter" data-category="研究発表">研究発表</button>
+          <button class="filter" data-category="ゲーム・エンタメ">
+            ゲーム・エンタメ
+          </button>
+          <button class="filter" data-category="飲食">飲食</button>
+          <button class="filter" data-category="ステージ・発表">
+            ステージ・発表
+          </button>
+          <button class="filter" data-category="その他">その他</button>
+        </div>
+        <label class="search"
+          ><span>⌕</span
+          ><input
+            id="searchInput"
+            type="search"
+            placeholder="イベント名や教室で検索..."
+            aria-label="イベント名や教室で検索"
+        /></label>
+      </div>
+
+      <div class="summary">
+        <strong
+          >イベント一覧
+          <span style="color: #287344" id="resultCount">7</span></strong
+        >
+        <small>気になるイベントの「ナビする」から会場へ</small>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th style="width: 42%">イベント</th>
+              <th>ジャンル</th>
+              <th>開催場所・教室</th>
+              <th style="text-align: center">ナビゲーション</th>
+            </tr>
+          </thead>
+          <tbody id="eventRows">
+            <!-- イベントの追加・変更は、下の JavaScript の events 配列を編集してください -->
+          </tbody>
+        </table>
+        <div class="empty" id="emptyState">
+          <strong>イベントが見つかりませんでした</strong
+          >検索ワードやジャンルを変更してみてください。
+        </div>
+      </div>
+    </main>
+    <script>
+      /*
+  イベント情報の編集方法：
+  name = イベント名
+  description = 短い説明
+  category = ジャンル（上のフィルター名と同じ表記）
+  room = 教室・開催場所
+  url = ナビプロジェクトのURL
+*/
+      const categoryStyles = {
+        展示: { color: "purple", icon: "🎨" },
+        "体験・ワークショップ": { color: "blue", icon: "🧩" },
+        研究発表: { color: "green", icon: "📊" },
+        "ゲーム・エンタメ": { color: "pink", icon: "🎮" },
+        飲食: { color: "orange", icon: "🍴" },
+        "ステージ・発表": { color: "red", icon: "🎵" },
+        その他: { color: "blue", icon: "📍" },
+      };
+
+      let events = [];
+      function parseCSV(text) {
+        // CSVの先頭にBOMがあれば削除する
+        text = text.replace(/^\uFEFF/, "");
+
+        const rows = [];
+        let row = [];
+        let field = "";
+        let inQuotes = false;
+
+        for (let i = 0; i < text.length; i++) {
+          const char = text[i];
+
+          if (inQuotes) {
+            if (char === '"') {
+              if (text[i + 1] === '"') {
+                // "" は " として扱う
+                field += '"';
+                i++;
+              } else {
+                inQuotes = false;
+              }
+            } else {
+              field += char;
+            }
+          } else {
+            if (char === '"' && field === "") {
+              inQuotes = true;
+            } else if (char === ",") {
+              row.push(field);
+              field = "";
+            } else if (char === "\n" || char === "\r") {
+              // Windows形式の改行（CRLF）にも対応
+              if (char === "\r" && text[i + 1] === "\n") {
+                i++;
+              }
+
+              row.push(field);
+
+              // 空行は無視する
+              if (row.some((value) => value.trim() !== "")) {
+                rows.push(row);
+              }
+
+              row = [];
+              field = "";
+            } else {
+              field += char;
+            }
+          }
+        }
+
+        // ファイル末尾のデータを処理する
+        row.push(field);
+        if (row.some((value) => value.trim() !== "")) {
+          rows.push(row);
+        }
+
+        if (rows.length === 0) {
+          return [];
+        }
+
+        const headers = rows.shift().map((header) => header.trim());
+
+        // CSVの各行をオブジェクトに変換する
+        return rows.map((values) => {
+          const event = {};
+
+          headers.forEach((header, index) => {
+            event[header] = (values[index] ?? "").trim();
+          });
+
+          return event;
+        });
+      }
+
+      async function loadEvents() {
+        try {
+          const response = await fetch("./ohtori_events.csv");
+
+          if (!response.ok) {
+            throw new Error("CSVファイルを読み込めませんでした");
+          }
+
+          const csvText = await response.text();
+
+          events = parseCSV(csvText);
+          renderEvents();
+        } catch (error) {
+          console.error(error);
+          document.querySelector("#eventRows").innerHTML =
+            `<tr><td colspan="4">イベント情報を読み込めませんでした。</td></tr>`;
+        }
+      }
+
+      const rows = document.getElementById("eventRows");
+      const searchInput = document.getElementById("searchInput");
+      const resultCount = document.getElementById("resultCount");
+      const emptyState = document.getElementById("emptyState");
+      let activeCategory = "すべて";
+
+      function escapeHTML(value) {
+        return String(value).replace(
+          /[&<>"']/g,
+          (ch) =>
+            ({
+              "&": "&amp;",
+              "<": "&lt;",
+              ">": "&gt;",
+              '"': "&quot;",
+              "'": "&#39;",
+            })[ch],
+        );
+      }
+      function safeURL(value) {
+        try {
+          const u = new URL(value);
+          return u.protocol === "https:" || u.protocol === "http:"
+            ? u.href
+            : "";
+        } catch {
+          return "";
+        }
+      }
+      function renderEvents() {
+        const query = searchInput.value.trim().toLocaleLowerCase("ja");
+        const filtered = events.filter((event) => {
+          const matchesCategory =
+            activeCategory === "すべて" || event.category === activeCategory;
+          const searchable =
+            `${event.name} ${event.description} ${event.category} ${event.room}`.toLocaleLowerCase(
+              "ja",
+            );
+          return matchesCategory && searchable.includes(query);
+        });
+        resultCount.textContent = filtered.length;
+        rows.innerHTML = filtered
+          .map((event) => {
+            const url = safeURL(event.url);
+            const style =
+              categoryStyles[event.category] || categoryStyles["その他"];
+            return `<tr>
+      <td><div class="event-cell">
+        <div class="thumb ${escapeHTML(style.color)}" aria-hidden="true">${escapeHTML(style.icon)}</div>
+        <div><div class="event-name">${escapeHTML(event.name)}</div><div class="event-desc">${escapeHTML(event.description)}</div></div>
+      </div></td>
+      <td><span class="tag ${escapeHTML(style.color)}">${escapeHTML(event.category)}</span></td>
+      <td><div class="location"><span class="pin">●</span><span>${escapeHTML(event.room)}</span></div></td>
+      <td style="text-align:center">${
+        url
+          ? `<a class="nav-btn" href="${escapeHTML(url)}" target="_blank" rel="noopener noreferrer"><span>➤</span> ナビする</a>`
+          : `<span style="font-size:11px;color:#9b9c8d">URL未設定</span>`
+      }</td>
+    </tr>`;
+          })
+          .join("");
+        emptyState.style.display = filtered.length ? "none" : "block";
+      }
+      document.getElementById("filters").addEventListener("click", (event) => {
+        const button = event.target.closest("button[data-category]");
+        if (!button) return;
+        activeCategory = button.dataset.category;
+        document
+          .querySelectorAll(".filter")
+          .forEach((b) => b.classList.toggle("active", b === button));
+        renderEvents();
+      });
+      searchInput.addEventListener("input", renderEvents);
+      loadEvents();
+    </script>
+  </body>
+</html>
