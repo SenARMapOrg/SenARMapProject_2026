@@ -353,7 +353,7 @@ button, select, input { color: inherit; }
 
 .fac-target-row select { height: 48px; border: 1.5px solid var(--line-strong); border-radius: 10px; font-size: 14px; font-weight: 600; background: var(--surface); padding: 0 8px; cursor: pointer; }
 #fac-category { width: 108px; flex-shrink: 0; }
-#fac-toilet-type, #fac-cafeteria-name { flex: 1; min-width: 0; }
+#fac-toilet-type, #fac-cafeteria-name, #fac-other-name { flex: 1; min-width: 0; }
 
 /* Elevator toggle */
 .ev-label {
@@ -700,6 +700,7 @@ button, select, input { color: inherit; }
                   <select id="fac-category" onchange="onFacCategoryChange()" aria-label="設備の種類">
                     <option value="toilet">トイレ</option>
                     <option value="cafeteria">食堂</option>
+                    <option value="other">その他</option>
                   </select>
                   <select id="fac-toilet-type" aria-label="トイレの種別">
                     <option value="all">全て</option>
@@ -710,6 +711,7 @@ button, select, input { color: inherit; }
                   <select id="fac-cafeteria-name" style="display:none" aria-label="食堂名">
                     <option value="all">全て</option>
                   </select>
+                  <select id="fac-other-name" style="display:none" aria-label="その他の設備"></select>
                 </div>
               </div>
 

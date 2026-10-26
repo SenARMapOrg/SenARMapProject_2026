@@ -1,4 +1,4 @@
-"""最寄り施設（トイレ・食堂）の検索。
+"""最寄り施設（トイレ・食堂・その他の設備）の検索。
 
 いずれも「出発点から一番近い候補エッジ」を全探索で選ぶ点は同じで、
 目的地の集め方とレスポンスに添える情報だけが違う。
@@ -121,5 +121,60 @@ def api_nearest_cafeteria():
     result["cafeteria_floor"]    = int(best_caf_row["floor"])
     result["cafeteria_edge"]     = edge_to_dict(best_caf_row)
     apply_dest_info(result, matched_caf)
+    from_spec.annotate(result, best_start_row)
+    return jsonify(result)
+
+
+@bp.route("/api/facilities")
+def api_facilities():
+    """facility.csv に登録したその他の設備（コンビニ・教務課など）の一覧"""
+    return jsonify(cache.get_facility_list())
+
+
+@bp.route("/api/nearest_facility")
+def api_nearest_facility():
+    """
+    その他の設備（facility.csv）のうち、指定した種類で一番近いものへの最短経路を返す。
+
+    出発点（いずれか）:
+      from_room=101A&from_building=10
+      from_node=100001
+      from_event=たこ焼き屋台
+
+    設備:
+      category=コンビニ  （必須。facility.csv の category。同じ種類が複数あれば一番近いもの）
+
+    条件:
+      use_elevator=0/1 (省略時 1)
+    """
+    category = request.args.get("category", "").strip()
+    if not category:
+        raise ApiError("category（設備の種類）を指定してください")
+    from_spec = FromSpec.from_request().require()
+
+    facilities = [f for f in cache.get_facility_list() if f["category"] == category]
+    if not facilities:
+        raise ApiError(f"「{category}」は facility.csv に登録されていません", 404)
+    by_name = {f["name"]: f for f in facilities}
+
+    G = cache.get_graph(use_elevator=use_elevator_param())
+    start_candidates = from_spec.candidates(G)
+
+    facility_edges = cache.edges_by_names(list(by_name))
+    if not facility_edges:
+        raise ApiError(f"「{category}」のエッジがデータ内に見つかりません", 404)
+
+    result, best_start_row, best_row = _route_to_facility(
+        G, start_candidates, facility_edges, f"「{category}」への経路が見つかりません")
+
+    matched = next((n for n in by_name if n in _names_in(best_row)), "")
+
+    result["facility_category"] = category
+    result["facility_name"]     = matched
+    result["facility_display"]  = by_name[matched]["display_name"] if matched else category
+    result["facility_building"] = int(best_row["building"])
+    result["facility_floor"]    = int(best_row["floor"])
+    result["facility_edge"]     = edge_to_dict(best_row)
+    apply_dest_info(result, matched)
     from_spec.annotate(result, best_start_row)
     return jsonify(result)

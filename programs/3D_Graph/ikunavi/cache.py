@@ -25,6 +25,7 @@ _event_index = None   # event.csv: {title: [(node_id, edge行|None), ...]}
 _events_list = None   # /api/events 用の整形済みイベント一覧
 _event_extra = None   # event.csv の位置(左右・何番目)とIDの索引（_build_event_index 参照）
 _cafeteria_list = None
+_facility_list = None  # facility.csv: その他の設備（コンビニ・教務課など）
 _edge_by_id = None    # {グローバルなエッジID: edge行}
 
 
@@ -374,10 +375,42 @@ def get_cafeteria_names():
     return [c["name"] for c in get_cafeteria_list()]
 
 
+def get_facility_list():
+    """
+    facility.csv のその他の設備（コンビニ・教務課など）の一覧（無ければ空リスト）。
+    category が同じ行は同じ種類の設備としてまとめ、検索ではその中で一番近いものへ案内する。
+    category が空の行は display_name（無ければ name）をそのまま種類にする。
+    """
+    global _facility_list
+    if _facility_list is None:
+        result = []
+        path = data_path("facility.csv")
+        if os.path.exists(path):
+            df = pd.read_csv(path, dtype=str).fillna("")
+            for _, row in df.iterrows():
+                name = row.get("name", "").strip()
+                if not name:
+                    continue
+                display = row.get("display_name", "").strip() or name
+                result.append({
+                    "category":     row.get("category", "").strip() or display,
+                    "name":         name,
+                    "building":     row.get("building", "").strip(),
+                    "display_name": display,
+                })
+        _facility_list = result
+    return _facility_list
+
+
+def get_facility_categories():
+    """facility.csv の設備の種類（ファイルに書かれた順、重複なし）"""
+    return list(dict.fromkeys(f["category"] for f in get_facility_list()))
+
+
 def clear_caches():
     global _nodes_df, _edges_df, _graph_with_ev, _graph_without_ev
     global _room_index, _rooms_list, _nodes_list, _node_xyz
-    global _event_index, _events_list, _event_extra, _cafeteria_list, _edge_by_id
+    global _event_index, _events_list, _event_extra, _cafeteria_list, _facility_list, _edge_by_id
     _edge_by_id = None
     _nodes_df = None
     _edges_df = None
@@ -391,3 +424,4 @@ def clear_caches():
     _events_list = None
     _event_extra = None
     _cafeteria_list = None
+    _facility_list = None

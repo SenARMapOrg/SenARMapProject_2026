@@ -237,7 +237,7 @@
     .building-select,
     #fac-category,
     #fac-toilet-type,
-    #fac-cafeteria-name {
+    #fac-cafeteria-name, #fac-other-name {
       height: 44px;
       width: 100%;
       border: 1px solid var(--border);
@@ -1186,6 +1186,7 @@
                 <option value="cafeteria">
                   食堂
                 </option>
+                <option value="other">その他</option>
 
               </select>
 
@@ -1219,6 +1220,8 @@
                 </option>
 
               </select>
+              <select id="fac-other-name"
+                      style="display:none" aria-label="その他の設備"></select>
 
             </div>
 

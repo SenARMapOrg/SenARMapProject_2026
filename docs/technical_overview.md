@@ -64,6 +64,8 @@ AR 領域にはエッジ間の経路写真（CDN 配信）を表示する。
 | `GET /api/nearest_toilet` | 最寄りトイレへの経路探索（M/F/C/ALL） |
 | `GET /api/nearest_cafeteria` | 最寄り食堂への経路探索（`name` 指定または全食堂から最短） |
 | `GET /api/cafeterias` | 登録済み食堂一覧（フロントの食堂ドロップダウン初期化用） |
+| `GET /api/nearest_facility` | その他の設備（`facility.csv`。コンビニ・教務課など）への経路探索（`category` の中で最短） |
+| `GET /api/facilities` | 登録済みのその他の設備一覧（フロントの「その他」ドロップダウン初期化用） |
 | `GET /api/shortest_path` | ノード ID 直指定の経路探索 |
 | `GET /api/graph` | 3D ビューア用全グラフデータ |
 | `GET /api/edge_images` | エッジ→画像 URL マッピング（CDN URL を返す） |
@@ -237,6 +239,17 @@ Z_global = Z_local + tz
 | カラム | 説明 |
 |--------|------|
 | `name` | 食堂の識別名（`edge.csv` の `name` フィールドと一致させる） |
+| `building` | 所属建物 ID |
+| `display_name` | UI 表示用の日本語名 |
+
+### facility.csv
+
+その他の設備（コンビニ・教務課など）。同じ `category` の行はまとめて扱い、検索ではその中で一番近いものへ案内する。
+
+| カラム | 説明 |
+|--------|------|
+| `category` | 設備の種類（例: `コンビニ`）。空なら `display_name` を種類にする |
+| `name` | 設備の識別名（`edge.csv` の `name` フィールドと一致させる） |
 | `building` | 所属建物 ID |
 | `display_name` | UI 表示用の日本語名 |
 

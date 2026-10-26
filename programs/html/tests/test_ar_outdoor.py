@@ -192,3 +192,154 @@ def test_建物の出口から出て最初の地点に着いたら進む():
 def test_ボタンで動かした直後は自動送りしない():
     out = auto_advance([(48, 0), (49, 0)], start_step=1, paused=True)
     assert out["step"] == 1
+
+
+# ---------------------------------------------------------------- 経路の線への吸着
+
+def snap(user_n, user_e, path, step):
+    lat, lng = offset(user_n, user_e)
+    user = {"lat": lat, "lng": lng, "accuracy": 8}
+    out = run_js(f"""
+      pathCoords = {json.dumps(path)};
+      arSnapToRoute({json.dumps(user)}, arRouteSegmentsNear({step}))
+    """)
+    if out["snapped"]:
+        # 結果を基準点からの北・東（m）に直して返す
+        import math
+        out["n"] = (out["lat"] - LAT0) * 111320
+        out["e"] = (out["lng"] - LNG0) * 111320 * math.cos(math.radians(LAT0))
+    return out
+
+
+# 屋外0m → 50m北 → 50m北・50m東（北へ歩いて右に曲がる）
+CORNER = [node(0, 0), node(50, 0), node(50, 50)]
+
+
+def test_区間の線から少しずれた位置は線の上に寄せる():
+    out = snap(20, 6, CORNER, 0)
+    assert out["snapped"] is True
+    assert out["n"] == pytest.approx(20, abs=0.01)
+    assert out["e"] == pytest.approx(0, abs=0.01)
+    assert out["bearing"] == pytest.approx(0, abs=0.01)    # 北向きの区間
+
+
+def test_曲がり角の先の区間にも寄せる():
+    # まだステップ0（北へ向かう区間）でも、曲がった先の区間に近ければそちらに寄せる
+    out = snap(54, 30, CORNER, 0)
+    assert out["snapped"] is True
+    assert out["n"] == pytest.approx(50, abs=0.01)
+    assert out["e"] == pytest.approx(30, abs=0.01)
+    assert out["bearing"] == pytest.approx(90, abs=0.01)   # 東向きの区間
+
+
+def test_区間の線から遠い位置は寄せない():
+    out = snap(20, 25, CORNER, 0)
+    assert out["snapped"] is False
+
+
+def test_屋内の地点を含む区間には寄せない():
+    path = [{"building": 10, "lat": None}, node(0, 0)]
+    assert snap(0, 1, path, 0)["snapped"] is False
+
+
+# ---------------------------------------------------------------- 歩いた向きでのコンパスの補正
+
+def heading_offset(points, cams, route_bearing):
+    """points: 北・東（m）の位置の列、cams: その時のカメラの方位（度）"""
+    track = [{"north": n, "east": e, "cam": c} for (n, e), c in zip(points, cams)]
+    return run_js(f"arEstimateHeadingOffset({json.dumps(track)}, {json.dumps(route_bearing)})")
+
+
+STRAIGHT_NORTH = [(0, 0), (4, 0.5), (8, -0.5), (12, 0), (16, 0)]
+
+
+def test_経路に沿ってまっすぐ歩いたらコンパスのずれを求める():
+    # 北へ歩いているのに、コンパスは 15度（東寄り）を指している → ずれは −15度
+    assert heading_offset(STRAIGHT_NORTH, [15, 14, 16, 15, 15], 0) == pytest.approx(-15, abs=0.5)
+    # 0度をまたぐ向き（350度前後）でも正しく平均する
+    assert heading_offset(STRAIGHT_NORTH, [350, 352, 348, 350, 350], 0) == pytest.approx(10, abs=0.5)
+
+
+def test_歩いた距離が短いときは求めない():
+    assert heading_offset([(0, 0), (3, 0), (6, 0)], [15, 15, 15], 0) is None
+
+
+def test_経路から外れているときは求めない():
+    assert heading_offset(STRAIGHT_NORTH, [15] * 5, None) is None
+
+
+def test_経路と違う向きに歩いているときは求めない():
+    # 経路は東向きなのに、北へ歩いている
+    assert heading_offset(STRAIGHT_NORTH, [0] * 5, 90) is None
+
+
+def test_横を見ながら歩いているときは求めない():
+    assert heading_offset(STRAIGHT_NORTH, [80] * 5, 0) is None
+
+
+def test_曲がる前の位置は捨てて_曲がった後のまっすぐな部分で求める():
+    # 東へ歩いてから北へ曲がった。曲がった後だけで12m以上あれば、その部分で求める
+    points = [(0, -20), (0, -10), (0, 0), (5, 0), (10, 0), (15, 0)]
+    cams = [90, 90, 5, 5, 5, 5]
+    assert heading_offset(points, cams, 0) == pytest.approx(-5, abs=0.5)
+
+
+# ---------------------------------------------------------------- 目印を出す範囲
+
+def visible(marker, user, step):
+    return run_js(f"arMarkerVisible({json.dumps(marker)}, {json.dumps(user)}, {step})")
+
+
+def test_近くの目印だけを出す():
+    me = {"x": 0, "z": 0}
+    assert visible({"type": "edge", "idx": 1, "x": 0, "z": -30}, me, 1) is True
+    assert visible({"type": "edge", "idx": 1, "x": 0, "z": -60}, me, 1) is False
+    assert visible({"type": "node", "idx": 3, "x": 0, "z": -80}, me, 1) is False
+
+
+def test_次の地点の目印は遠くても出す():
+    assert visible({"type": "node", "idx": 2, "x": 0, "z": -80}, {"x": 0, "z": 0}, 1) is True
+
+
+def test_位置がまだ分からないときは全部出す():
+    assert visible({"type": "edge", "idx": 1, "x": 0, "z": -500}, None, 1) is True
+
+
+def test_AR表示中に経路に沿って歩くとコンパスのずれを学んでいく():
+    # 北へ100mの経路を、カメラを前に向けて歩く。コンパス（真北に直した後の alpha）は 20度ずれている
+    # （方位で 20度東寄り＝alpha は 340度）。GPS の位置は経路から4m東にずれている
+    path = [node(0, 0), node(100, 0), node(100, 50)]
+    fixes = []
+    for i in range(0, 40):
+        lat, lng = offset(i * 1.5, 4)
+        fixes.append({"coords": {"latitude": lat, "longitude": lng, "accuracy": 5}, "timestamp": i * 1000})
+    out = run_js(f"""
+      pathCoords = {json.dumps(path)};
+      currentStep = 0;
+      arRunning = true;
+      arGOrient = {{ beta: 90 }};
+      arHeadingSmoothed = 340;
+      for (const f of {json.dumps(fixes)}) arOnGpsFix(f);
+      ({{ offset: arHeadingOffset, lng: arUserLng }})
+    """)
+    assert out["offset"] == pytest.approx(-20, abs=1)
+    # 表示に使う位置は経路の線の上（4m東ではなく）に寄っている
+    assert out["lng"] == pytest.approx(LNG0, abs=1e-7)
+
+
+def test_端末を立てて持っていないときはコンパスのずれを学ばない():
+    path = [node(0, 0), node(100, 0)]
+    fixes = []
+    for i in range(0, 20):
+        lat, lng = offset(i * 1.5, 0)
+        fixes.append({"coords": {"latitude": lat, "longitude": lng, "accuracy": 5}, "timestamp": i * 1000})
+    out = run_js(f"""
+      pathCoords = {json.dumps(path)};
+      currentStep = 0;
+      arRunning = true;
+      arGOrient = {{ beta: 10 }};   // 机に置くように寝かせている
+      arHeadingSmoothed = 340;
+      for (const f of {json.dumps(fixes)}) arOnGpsFix(f);
+      arHeadingOffset
+    """)
+    assert out == 0
