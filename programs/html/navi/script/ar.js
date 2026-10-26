@@ -24,6 +24,24 @@ const AR_GPS_MAX_ACCURACY = 35;
 const AR_GPS_WALK_VARIANCE = 2.0;
 // 予測から大きく外れた位置が何回続いたら、外れ値ではなく本当に移動したとみなすか
 const AR_GPS_MAX_OUTLIERS = 3;
+// なめらかにした位置が今の区間の線からこれ以内（m）なら、線の上に寄せて目印を置く（道から外れて見えないように）
+const AR_SNAP_MAX_M = 15;
+
+// --- 歩いた向きでのコンパスの補正 ---
+// コンパスは鉄骨の建物などの近くで10〜30度狂う。経路に沿ってまっすぐ歩いているときは、カメラも経路の向きを
+// 向いているはずなので、その差をコンパスのずれとして覚え、カメラの向きから引く。
+const AR_HEADING_MIN_WALK_M = 12;     // これだけまっすぐ歩いたら補正する
+const AR_HEADING_WINDOW_MS  = 20000;  // 何ミリ秒前までの位置を使うか
+const AR_HEADING_MAX_BEND_M = 3;      // 歩いた線からこれ以上外れた位置があれば、まっすぐではないとみなす
+const AR_HEADING_ROUTE_TOL  = 25;     // 歩いた向きと経路の向きの差がこれ以内（度）なら、経路に沿って歩いたとみなす
+const AR_HEADING_MAX_OFFSET = 45;     // これより大きいずれ（度）は、横を見ながら歩いていたとみなして使わない
+const AR_HEADING_LEARN      = 0.3;    // 新しく求めたずれをどれだけ取り入れるか
+
+// --- 目印を出す範囲 ---
+// 遠くの目印ほど、少しの向きのずれで横に大きくずれて見える（15度で50m先は約13m）ので、近くだけ出す
+const AR_VISIBLE_RANGE_M = 40;
+// 区間の線を何mごとに分けて置くか（長い区間でも、範囲の外の部分だけを隠せるように）
+const AR_EDGE_CHUNK_M = 5;
 
 // --- 屋外ステップの自動送り ---
 // 次の地点を「通過した」と判定された位置が何回続いたら次のステップへ進むか（1回だけの揺れで進まないように）
@@ -56,8 +74,10 @@ let arGpsFilter       = null;  // 位置のなめらか化の状態（arFilterGp
 let arHeadingSmoothed = null;  // なめらかにした向き（度、alpha と同じ向き）
 let arAutoConfirmed   = 0;     // 「通過した」と判定された位置が続いた回数
 let arAutoPausedUntil = 0;     // この時刻（ミリ秒）までは自動送りしない
+let arHeadingTrack    = [];    // 補正用に覚えておく最近の位置とカメラの向き（arLearnHeading 参照）
+let arHeadingOffset   = 0;     // コンパスのずれの推定（度。方位＝時計回りで「真の方位 − コンパスの方位」）
 
-let _arMeshes = [];   // { mesh, type: "node"|"edge", idx } — per-step color update
+let _arMeshes = [];   // { mesh, mat, type: "node"|"edge", idx, x, z } — ステップごとの色・範囲による表示の切り替え
 
 let _arZee, _arEuler, _arQ0, _arQ1;
 
@@ -245,6 +265,49 @@ function arFilteredPosition(state) {
 }
 
 // ================================================================
+// 経路の線への吸着
+// なめらかにしても位置は数mずれるので、今の区間（と前後の区間）の線から AR_SNAP_MAX_M 以内なら
+// 線の上の一番近い点に寄せる。目印の位置合わせにだけ使い、自動送りの判定には寄せる前の位置を使う。
+// ================================================================
+
+/** ステップ step の前後の屋外区間を [[a, b], ...] で返す */
+function arRouteSegmentsNear(step) {
+  const segs = [];
+  for (let i = Math.max(0, step - 1); i <= step + 1 && i < pathCoords.length - 1; i++) {
+    const a = pathCoords[i], b = pathCoords[i + 1];
+    if (a && b && a.building === 0 && b.building === 0 && a.lat != null && b.lat != null) segs.push([a, b]);
+  }
+  return segs;
+}
+
+/**
+ * user（{lat, lng, accuracy}）を区間の線に寄せた位置を返す。
+ * 寄せたときは snapped: true と、寄せた区間の向き bearing（度、北から時計回り）が付く。
+ */
+function arSnapToRoute(user, segments) {
+  let best = null;
+  for (const [a, b] of segments) {
+    const kx = AR_METERS_PER_DEG * Math.cos(a.lat * Math.PI / 180);
+    const bx = (b.lng - a.lng) * kx, by = (b.lat - a.lat) * AR_METERS_PER_DEG;
+    const ux = (user.lng - a.lng) * kx, uy = (user.lat - a.lat) * AR_METERS_PER_DEG;
+    const len2 = bx * bx + by * by;
+    if (len2 < 0.01) continue;
+    const t = Math.min(1, Math.max(0, (ux * bx + uy * by) / len2));
+    const dist = Math.hypot(ux - bx * t, uy - by * t);
+    if (!best || dist < best.dist) {
+      best = {
+        dist,
+        lat: a.lat + by * t / AR_METERS_PER_DEG,
+        lng: a.lng + bx * t / kx,
+        bearing: (Math.atan2(bx, by) * 180 / Math.PI + 360) % 360,
+      };
+    }
+  }
+  if (!best || best.dist > AR_SNAP_MAX_M) return { ...user, snapped: false };
+  return { lat: best.lat, lng: best.lng, accuracy: user.accuracy, snapped: true, bearing: best.bearing };
+}
+
+// ================================================================
 // 屋外ステップの自動送り
 // ステップ i は「地点 i から地点 i+1 へ向かう区間」なので、地点 i+1 を通過したらステップ i+1 に進める。
 // ================================================================
@@ -303,13 +366,17 @@ function arResetAutoAdvance() {
 
 function arOnGpsFix(pos) {
   const { latitude, longitude, accuracy } = pos.coords;
-  const result = arFilterGpsFix(arGpsFilter, latitude, longitude, accuracy, pos.timestamp || Date.now());
+  const timeMs = pos.timestamp || Date.now();
+  const result = arFilterGpsFix(arGpsFilter, latitude, longitude, accuracy, timeMs);
   arGpsFilter = result.state;
   if (!result.accepted) return;
-  const user = arFilteredPosition(arGpsFilter);
-  arUserLat = user.lat;
-  arUserLng = user.lng;
+  const user  = arFilteredPosition(arGpsFilter);
+  const shown = arSnapToRoute(user, arRouteSegmentsNear(currentStep));
+  arUserLat = shown.lat;
+  arUserLng = shown.lng;
   arUpdateWorldPosition(arUserLat, arUserLng);
+  arUpdateVisibility();
+  arLearnHeading(arGpsFilter, shown, timeMs);
   arCheckAutoAdvance(user);
 }
 
@@ -332,6 +399,80 @@ function arSmoothAngle(prevDeg, nextDeg, factor) {
   if (prevDeg == null) return nextDeg;
   const diff = ((nextDeg - prevDeg + 540) % 360) - 180;   // -180〜180 の最短の差
   return ((prevDeg + diff * factor) % 360 + 360) % 360;
+}
+
+/** to − from の最短の差（度、-180〜180） */
+function arAngleDiff(to, from) {
+  return ((to - from + 540) % 360) - 180;
+}
+
+/**
+ * 最近の位置とカメラの向き（track: [{east, north, cam}, ...]、古い順。cam は補正前のカメラの方位）から、
+ * コンパスのずれ（度、真の方位 − コンパスの方位）を求める。求められないときは null。
+ *   - routeBearing（寄せた区間の向き）が無い＝経路から外れているときは求めない
+ *   - 一番新しい位置まで、AR_HEADING_MIN_WALK_M 以上まっすぐ歩いた部分だけを使う（曲がる前の位置は捨てる）
+ *   - 歩いた向きが経路の向きと合っていれば、経路の向きを本当の向きとみなす（GPS の歩いた向きより正確なため）
+ */
+function arEstimateHeadingOffset(track, routeBearing) {
+  if (routeBearing == null) return null;
+  for (let s = 0; s <= track.length - 3; s++) {
+    const sub = track.slice(s);
+    const first = sub[0], last = sub[sub.length - 1];
+    const dx = last.east - first.east, dy = last.north - first.north;
+    const walked = Math.hypot(dx, dy);
+    if (walked < AR_HEADING_MIN_WALK_M) return null;
+    const straight = sub.every(p =>
+      Math.abs(dx * (p.north - first.north) - dy * (p.east - first.east)) / walked <= AR_HEADING_MAX_BEND_M);
+    if (!straight) continue;   // 曲がる前の位置が混じっている → 古い位置を1つ捨ててもう一度
+
+    const course = (Math.atan2(dx, dy) * 180 / Math.PI + 360) % 360;
+    if (Math.abs(arAngleDiff(routeBearing, course)) > AR_HEADING_ROUTE_TOL) return null;
+    // カメラの向きの平均（角度はそのまま平均できないので、向きのベクトルにして平均する）
+    let sx = 0, sy = 0;
+    for (const p of sub) { sx += Math.sin(p.cam * Math.PI / 180); sy += Math.cos(p.cam * Math.PI / 180); }
+    const cam = (Math.atan2(sx, sy) * 180 / Math.PI + 360) % 360;
+    const offset = arAngleDiff(routeBearing, cam);
+    return Math.abs(offset) <= AR_HEADING_MAX_OFFSET ? offset : null;
+  }
+  return null;
+}
+
+/**
+ * 位置が更新されるたびに、その位置とカメラの向きを覚え、コンパスのずれを少しずつ学ぶ。
+ * AR を見ていて、端末を立てて持っている（カメラが前を向いている）ときだけ使う。
+ */
+function arLearnHeading(filterState, shown, timeMs) {
+  const e = arGOrient;
+  if (!arRunning || !e || arHeadingSmoothed == null || !(e.beta >= 50 && e.beta <= 130)) {
+    arHeadingTrack = [];
+    return;
+  }
+  arHeadingTrack.push({ east: filterState.east, north: filterState.north, timeMs,
+                        cam: (360 - arHeadingSmoothed) % 360 });
+  arHeadingTrack = arHeadingTrack.filter(p => timeMs - p.timeMs <= AR_HEADING_WINDOW_MS);
+  const offset = arEstimateHeadingOffset(arHeadingTrack, shown.snapped ? shown.bearing : null);
+  if (offset != null) arHeadingOffset += AR_HEADING_LEARN * (offset - arHeadingOffset);
+}
+
+/**
+ * 目印 m（_arMeshes の要素）を出すか。user は自分の位置（arBuildRouteMarkers と同じ x・z）、無ければ全部出す。
+ * 次の地点（ステップ step の行き先）は、遠くてもどちらへ向かうか分かるように出す。
+ */
+function arMarkerVisible(m, user, step) {
+  if (!user) return true;
+  if (m.type === "node" && m.idx === step + 1) return true;
+  return Math.hypot(m.x - user.x, m.z - user.z) <= AR_VISIBLE_RANGE_M;
+}
+
+/** 自分の近くの目印だけを出す（位置が更新されたとき・ステップが変わったときに呼ぶ） */
+function arUpdateVisibility() {
+  if (arRefLat == null) return;
+  let user = null;
+  if (arUserLat != null) {
+    const { east, north } = arEnuFromRef(arUserLat, arUserLng);
+    user = { x: east, z: -north };
+  }
+  _arMeshes.forEach(m => { m.mesh.visible = arMarkerVisible(m, user, currentStep); });
 }
 
 // pathCoords から屋外区間のノード・エッジを Three.js シーンに配置する
@@ -360,7 +501,7 @@ function arBuildRouteMarkers() {
     const sphere = new THREE.Mesh(sphereGeo, mat);
     sphere.position.set(x, 0, z);
     arWorldGroup.add(sphere);
-    _arMeshes.push({ mesh: sphere, mat, type: "node", idx: globalIdx });
+    _arMeshes.push({ mesh: sphere, mat, type: "node", idx: globalIdx, x, z });
   });
 
   const up = new THREE.Vector3(0, 1, 0);
@@ -372,18 +513,25 @@ function arBuildRouteMarkers() {
     const dx = pb.x - pa.x, dz = pb.z - pa.z;
     const len = Math.hypot(dx, dz);
     if (len < 0.01) continue;
-    const geo = new THREE.CylinderGeometry(AR_EDGE_R, AR_EDGE_R, len, 12);
+    // AR_EDGE_CHUNK_M ごとに分けて置き、自分から遠い部分だけを隠せるようにする
+    const chunks = Math.max(1, Math.ceil(len / AR_EDGE_CHUNK_M));
+    const geo = new THREE.CylinderGeometry(AR_EDGE_R, AR_EDGE_R, len / chunks, 12);
     const mat = new THREE.MeshBasicMaterial({
       color: AR_EDGE_COLOR, transparent: true, opacity: 0.85
     });
-    const cyl = new THREE.Mesh(geo, mat);
-    cyl.position.set(pa.x + dx / 2, 0, pa.z + dz / 2);
-    cyl.quaternion.setFromUnitVectors(up, new THREE.Vector3(dx, 0, dz).normalize());
-    arWorldGroup.add(cyl);
-    _arMeshes.push({ mesh: cyl, mat, type: "edge", idx: i });
+    const dir = new THREE.Vector3(dx, 0, dz).normalize();
+    for (let k = 0; k < chunks; k++) {
+      const t = (k + 0.5) / chunks;
+      const cyl = new THREE.Mesh(geo, mat);
+      cyl.position.set(pa.x + dx * t, 0, pa.z + dz * t);
+      cyl.quaternion.setFromUnitVectors(up, dir);
+      arWorldGroup.add(cyl);
+      _arMeshes.push({ mesh: cyl, mat, type: "edge", idx: i, x: cyl.position.x, z: cyl.position.z });
+    }
   }
 
   if (arUserLat != null) arUpdateWorldPosition(arUserLat, arUserLng);
+  arUpdateVisibility();
   arMarkersBuilt = true;
 }
 
@@ -405,6 +553,7 @@ function arUpdateRouteColors(step) {
       mat.opacity = passed ? PASSED_OPACITY : AHEAD_OPACITY;
     }
   });
+  arUpdateVisibility();
 }
 
 function arScreenAngle() {
@@ -427,7 +576,8 @@ function arUpdateCameraOrientation() {
   }
   arHeadingSmoothed = arSmoothAngle(arHeadingSmoothed, arTrueNorthAlpha(headingDeg, absolute), AR_HEADING_SMOOTHING);
 
-  const alpha  = arHeadingSmoothed * Math.PI / 180;
+  // 歩いた向きで学んだコンパスのずれを引く（方位のずれを、反時計回りの alpha に直して引く）
+  const alpha  = (arHeadingSmoothed - arHeadingOffset) * Math.PI / 180;
   const beta   = ((e.beta  || 0) + AR_TILT_DEG) * Math.PI / 180;
   const gamma  = (e.gamma  || 0) * Math.PI / 180;
   const orient = arScreenAngle();
@@ -527,4 +677,5 @@ function arReleaseHardware() {
   // 次に屋外に出たときは、屋内にいた間の古い位置を引きずらないよう最初から始める
   arGpsFilter = null;
   arAutoConfirmed = 0;
+  arHeadingTrack = [];
 }
