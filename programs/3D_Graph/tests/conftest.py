@@ -70,6 +70,13 @@ FILES = {
     "building_name.csv": "building,display_name\n1,第一実験棟\n",
     "ignore.csv": "id\n102\n",
     "cafeteria_edge.csv": "name,building,display_name\nCafe,2,テスト食堂\n",
+    # 同じ種類「案内所」が1号館2階（M_Toilet の通路）と2号館（Cafe の通路）にある。種類が空の行は表示名が種類になる
+    "facility.csv": (
+        "category,name,building,display_name\n"
+        "案内所,M_Toilet,1,第一案内所\n"
+        "案内所,Cafe,2,第二案内所\n"
+        ",201,2,教務課\n"
+    ),
     # 展示A・展示B は 1号館の通路(エッジ1, n1→n2)の右側に、from 側から A・B の順に並ぶ
     "event.csv": (
         "id,title,building,room,node_id,edge_id,side,position\n"

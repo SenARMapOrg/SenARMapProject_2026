@@ -25,6 +25,7 @@ data/
 ├── connect_edge.csv         # （任意・存在すれば読込）建物間直接接続エッジ（グローバルIDで記述、屋外ノード不要の場合）
 ├── edge_image.csv           # エッジ→AR経路画像のマッピング（CDNファイル名）
 ├── cafeteria_edge.csv       # 食堂情報（name / building / display_name）
+├── facility.csv             # その他の設備（category / name / building / display_name）
 ├── buildings.json           # 各建物の座標変換パラメータ（手動設定・微調整用）
 ├── anchors.csv              # アンカーノード対応表（自動変換パラメータ計算用）
 └── name.csv / building_name.csv / ignore.csv / event.csv   # 表示名DB・イベントモード（`docs/NameDB_EventMode.md` 参照）

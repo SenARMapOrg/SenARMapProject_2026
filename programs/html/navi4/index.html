@@ -272,7 +272,7 @@
     }
 
     .building-select, .ac-wrap input,
-    #fac-toilet-type, #fac-cafeteria-name {
+    #fac-toilet-type, #fac-cafeteria-name, #fac-other-name {
       height: 38px;
       border: none;
       border-radius: 3px;
@@ -427,7 +427,7 @@
     }
 
     /* facility category row selects reuse dial-face style */
-    #fac-toilet-type, #fac-cafeteria-name {
+    #fac-toilet-type, #fac-cafeteria-name, #fac-other-name {
       flex: 1; font-size: 13px; padding: 0 8px; cursor: pointer;
       appearance: none; -webkit-appearance: none;
       background-image: linear-gradient(45deg, transparent 50%, var(--dial-ink) 50%),
@@ -912,6 +912,7 @@
             <select class="building-select" id="fac-category" onchange="onFacCategoryChange()">
               <option value="toilet">トイレ</option>
               <option value="cafeteria">食堂</option>
+              <option value="other">その他</option>
             </select>
             <select id="fac-toilet-type">
               <option value="all">全て</option>
@@ -922,6 +923,7 @@
             <select id="fac-cafeteria-name" style="display:none;">
               <option value="all">全て</option>
             </select>
+            <select id="fac-other-name" style="display:none;" aria-label="その他の設備"></select>
           </div>
 
           <div class="bottom-row">

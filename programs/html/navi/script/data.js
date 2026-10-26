@@ -1,6 +1,6 @@
 // ================================================================
 // data.js
-// 起動時のデータ取得（教室・ノード・画像・食堂・イベント）とURLパラメータによる検索プリセット。
+// 起動時のデータ取得（教室・ノード・画像・食堂・その他の設備・イベント）とURLパラメータによる検索プリセット。
 // ================================================================
 
 // ================================================================
@@ -9,10 +9,11 @@
 async function loadAllData() {
   prefetchArrowImages(); // ページ読み込み時に矢印画像を事前取得（fire-and-forget）
   try {
-    const [dataRes, imgRes, cafRes, evRes] = await Promise.all([
+    const [dataRes, imgRes, cafRes, facRes, evRes] = await Promise.all([
       fetch(`${API_BASE}/api/all`),
       fetch(`${API_BASE}/api/edge_images`),
       fetch(`${API_BASE}/api/cafeterias`),
+      fetch(`${API_BASE}/api/facilities`).catch(() => null),
       EVENT_MODE ? fetch(`${API_BASE}/api/events`) : Promise.resolve(null),
     ]);
     if (dataRes.ok) {
@@ -41,10 +42,29 @@ async function loadAllData() {
         sel.appendChild(opt);
       });
     }
+    initOtherFacilities(facRes && facRes.ok ? await facRes.json() : []);
   } catch {
     console.warn("API unavailable — room autocomplete disabled");
   }
   applyUrlParams();
+}
+
+// その他の設備（facility.csv。コンビニ・教務課など）の種類を「探す」の選択肢に入れる。
+// 同じ種類が複数あっても選択肢は1つ（検索ではその中で一番近いものへ案内する）。
+// 1件も登録されていなければ「その他」自体を出さない。
+function initOtherFacilities(facilities) {
+  const categories = [...new Set(facilities.map(f => f.category).filter(Boolean))];
+  if (!categories.length) {
+    document.querySelector('#fac-category option[value="other"]')?.remove();
+    return;
+  }
+  const sel = document.getElementById("fac-other-name");
+  categories.forEach(c => {
+    const opt = document.createElement("option");
+    opt.value       = c;
+    opt.textContent = c;
+    sel.appendChild(opt);
+  });
 }
 
 // Google Maps の読み込み完了（initMap）を待たず、ページ読み込み直後に教室一覧を取得する。

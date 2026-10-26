@@ -11,6 +11,7 @@ from ikunavi.cache import (
     get_data,
     get_graph,
     get_event_index,
+    get_facility_list,
     get_room_index,
 )
 from ikunavi.naming import TOILET_NAMES
@@ -61,6 +62,16 @@ def test_食堂の名前がエッジに存在する(real_data):
     assert not missing, f"cafeteria_edge.csv にあるがエッジに無い食堂: {missing}"
 
 
+def test_その他の設備の名前がその号館のエッジに存在する(real_data):
+    index, _ = get_room_index()
+    missing = [
+        (f["category"], f["name"], f["building"]) for f in get_facility_list()
+        if not any(name == f["name"] and (not f["building"] or str(bldg) == f["building"])
+                   for name, bldg in index)
+    ]
+    assert not missing, f"facility.csv にあるが、その号館のエッジに無い設備（種類・名前・号館）: {missing}"
+
+
 def test_トイレがどこかに登録されている(real_data):
     index, _ = get_room_index()
     registered = {name for name, _bldg in index}
@@ -85,7 +96,7 @@ def test_イベントの行がすべて解決できる(real_data):
 
 def test_主要なAPIが応答する(real_client):
     for path in ["/api/all", "/api/rooms", "/api/graph", "/api/cafeterias",
-                 "/api/events", "/api/edge_images"]:
+                 "/api/facilities", "/api/events", "/api/edge_images"]:
         res = real_client.get(path)
         assert res.status_code == 200, f"{path} が {res.status_code}"
         json.loads(res.data)

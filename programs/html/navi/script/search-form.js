@@ -184,7 +184,7 @@ function resolveFacFromParams(params) {
   return "現在地";
 }
 
-// 検索APIを叩いてルート表示まで行う共通処理（doSearch / doToiletSearch / doCafeteriaSearch で共用）
+// 検索APIを叩いてルート表示まで行う共通処理（doSearch / doToiletSearch / doCafeteriaSearch / doOtherFacilitySearch で共用）
 // 経路描画は屋外区間があると google.maps.Polyline/Marker を使うため、地図の初期化を待つ。
 // fromLabel・toLabel は鳳祭の案内人数集計（track.js）に記録する出発地・目的地の表示名。
 // レスポンスの dest_display は「目的地が最終区間の左右一覧に載っている場合」だけ入るため使わず、
@@ -232,12 +232,28 @@ function onFacCategoryChange() {
   const cat = document.getElementById("fac-category").value;
   document.getElementById("fac-toilet-type").style.display    = cat === "toilet"    ? "" : "none";
   document.getElementById("fac-cafeteria-name").style.display = cat === "cafeteria" ? "" : "none";
+  document.getElementById("fac-other-name").style.display     = cat === "other"     ? "" : "none";
 }
 
 function doFacSearch() {
   const cat = document.getElementById("fac-category").value;
   if (cat === "cafeteria") doCafeteriaSearch();
+  else if (cat === "other") doOtherFacilitySearch();
   else doToiletSearch();
+}
+
+// その他の設備（コンビニ・教務課など）。選んだ種類のうち一番近いものへ案内する
+async function doOtherFacilitySearch() {
+  arRequestPermissionsEarly();
+  const category = document.getElementById("fac-other-name").value;
+  if (!category) { alert("探す設備を選んでください。"); return; }
+  const params = new URLSearchParams({
+    use_elevator: document.getElementById("fac-use-elevator").checked ? "1" : "0",
+    category,
+  });
+  const fromLabel = resolveFacFromParams(params);
+  if (!fromLabel) return;
+  await fetchRouteAndNavigate(`${API_BASE}/api/nearest_facility?${params}`, fromLabel, `最寄りの${category}`);
 }
 
 async function doCafeteriaSearch() {
