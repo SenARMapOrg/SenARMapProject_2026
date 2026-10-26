@@ -1,6 +1,6 @@
-"""フロアマップの矢印の向き（navi/script/floormap.js の elevatorExitAngle）。
+"""フロアマップの矢印の向き（navi/script/floormap.js の floorChangeExitAngle）。
 
-エレベーターに乗る階・途中の階では、降りた階で次に進む向きを矢印に使う。
+エレベーター・階段・エスカレーターで階を移る前の階・途中の階では、降りた階で次に進む向きを矢印に使う。
 floormap.js はブラウザで普通のスクリプトとして読み込むファイルなので、Node の vm でそのまま読み込み、
 関数を呼んで確かめる。読み込み時に initSvgPan() が document を触るので、何もしない代わりを渡す。
 Node が無い環境ではスキップする。
@@ -22,7 +22,7 @@ vm.createContext(ctx);
 vm.runInContext(fs.readFileSync(process.argv[1], "utf8"), ctx);
 const data = JSON.parse(process.argv[2]);
 vm.runInContext(`var pathCoords = ${JSON.stringify(data.coords)}; var pathEdges = ${JSON.stringify(data.edges)};`, ctx);
-const out = data.steps.map(s => vm.runInContext(`elevatorExitAngle(${s})`, ctx));
+const out = data.steps.map(s => vm.runInContext(`floorChangeExitAngle(${s})`, ctx));
 process.stdout.write(JSON.stringify(out));
 """
 
@@ -55,7 +55,13 @@ def test_乗る階と途中の階では降りた階の次に進む向きを向�
     assert exit_angles(ROUTE, EDGES, [1, 2]) == [90, 90]
 
 
-def test_エレベーター以外のステップでは使わない():
+def test_階段やエスカレーターでも同じように降りた階の次に進む向きを向く():
+    # 区間の種類ではなく、同じ号館の別の階へ移るかどうかで決める
+    stairs = [{"type": "1"}, {"type": "2"}, {"type": "5"}, {"type": "1"}]
+    assert exit_angles(ROUTE, stairs, [1, 2]) == [90, 90]
+
+
+def test_階を移らないステップでは使わない():
     # 歩いている途中・降りた階では、今までどおり次のノードへの向きを使う
     assert exit_angles(ROUTE, EDGES, [0, 3, 4]) == [None, None, None]
 

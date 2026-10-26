@@ -193,10 +193,10 @@ function renderSvgStep(step) {
       angle = Math.atan2(-dx, dy) * 180 / Math.PI;
     }
   }
-  // エレベーターに乗る階・途中の階では、降りた階で次に進む向きに矢印を向ける
-  // （乗る階のままだと「エレベーターに入る向き」になり、途中の階は上のワールド座標からの推定が
+  // エレベーター・階段・エスカレーターで階を移る前の階・途中の階では、降りた階で次に進む向きに矢印を向ける
+  // （移る前の階のままだと「エレベーターや階段に入る向き」になり、途中の階は上のワールド座標からの推定が
   //   10号館以外ではフロアマップの向きと合わず、変な方向を向く）
-  const exitAngle = elevatorExitAngle(step);
+  const exitAngle = floorChangeExitAngle(step);
   if (exitAngle != null) angle = exitAngle;
 
   // 最終到達点では方向矢印を出さない（現在地ハローのみ中心に表示）
@@ -226,17 +226,23 @@ function renderSvgStep(step) {
   if (svgOrigViewBox) panSvgTo(curNode.svg_x, curNode.svg_y);
 }
 
+/** pathCoords[i] → [i+1] が同じ号館の中で階を移る区間（エレベーター・階段・エスカレーター）か */
+function changesFloor(i) {
+  const a = pathCoords[i], b = pathCoords[i + 1];
+  return !!(a && b && a.building === b.building && a.floor !== b.floor);
+}
+
 /**
- * pathCoords[step] からエレベーターで移動する（乗る階・途中の階にいる）とき、
- * 降りた階で次に進む向きをSVG上の角度（度）で返す。エレベーターでないときや求められないときは null。
+ * pathCoords[step] から階を移る（移る前の階・途中の階にいる）とき、
+ * 降りた階で次に進む向きをSVG上の角度（度）で返す。階を移らないときや求められないときは null。
  * 同じ号館ならどの階もフロアマップの向きがそろっているので、降りた階のSVG座標の向きをそのまま使う。
  */
-function elevatorExitAngle(step) {
-  if (String(pathEdges[step]?.type ?? "") !== "4") return null;
+function floorChangeExitAngle(step) {
+  if (!changesFloor(step)) return null;
   let exit = step + 1;
-  while (exit < pathEdges.length && String(pathEdges[exit]?.type ?? "") === "4") exit++;
+  while (changesFloor(exit)) exit++;
   const exitNode = pathCoords[exit];
-  if (!exitNode || exitNode.svg_x == null || exitNode.building !== pathCoords[step].building) return null;
+  if (exitNode.svg_x == null) return null;
   for (let i = exit + 1; i < pathCoords.length; i++) {
     const n = pathCoords[i];
     if (n.building !== exitNode.building || n.floor !== exitNode.floor) break;
