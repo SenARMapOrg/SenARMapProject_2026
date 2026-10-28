@@ -3,25 +3,26 @@
 
 from __future__ import annotations
 
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import QSettings, Qt, QTimer
 from PyQt6.QtWidgets import (
-    QHBoxLayout, QLabel, QLineEdit, QListWidget, QListWidgetItem,
+    QApplication, QHBoxLayout, QLabel, QLineEdit, QListWidget, QListWidgetItem,
     QMainWindow, QMessageBox, QPushButton, QScrollArea, QSplitter,
     QVBoxLayout, QWidget,
 )
 
 from .data_store import (
-    EVENT_CSV, EventLocation, EventStore, KIND_ROOM, load_building_name_map, validate_event_id,
+    EVENT_CSV, EventLocation, EventStore, KIND_ROOM, event_url, event_url_lines,
+    load_building_name_map, normalize_ref_code, validate_event_id,
 )
 from .location_row import LocationRowWidget
 
 NEW_EVENT_TITLE = "新しいイベント"
-NAVI_EVENT_URL = "https://iku-navi.net/navi/?to_event={}"
+REF_CODE_SETTING = "events/ref_code"   # 最後に入れた案内係コード（次に開いたときも入っているように）
 
 
 class MainWindow(QMainWindow):
 
-    def __init__(self):
+    def __init__(self, settings: QSettings | None = None):
         super().__init__()
         self.setWindowTitle("イベント設定")
         self.resize(1100, 680)
@@ -31,6 +32,7 @@ class MainWindow(QMainWindow):
         self.refs_cache = {}   # {building: BuildingRefs} — LocationRowWidget 間で共有し、建物ごとに1回だけ読み込む
         self.current_entry = None
         self.location_rows = []  # 現在表示中の LocationRowWidget 一覧
+        self.settings = settings or QSettings("SenARMap", "IKU_NAVI_Tools")
 
         self._build_ui()
         self._reload_list()
@@ -51,7 +53,14 @@ class MainWindow(QMainWindow):
         reload_btn.clicked.connect(self._reload_from_disk)
         bar.addWidget(save_btn)
         bar.addWidget(reload_btn)
+        copy_all_btn = QPushButton("📋 全イベントのURLをコピー")
+        copy_all_btn.setToolTip("「名前,URL」を1行ずつコピーする。案内係コードを入れていれば、カウンター用のURLになる")
+        copy_all_btn.clicked.connect(self._copy_all_urls)
+        bar.addWidget(copy_all_btn)
         bar.addStretch(1)
+        self.copied_label = QLabel("")
+        self.copied_label.setStyleSheet("color:#047857;font-weight:bold;")
+        bar.addWidget(self.copied_label)
         self.dirty_label = QLabel("")
         self.dirty_label.setStyleSheet("color:#B45309;font-weight:bold;")
         bar.addWidget(self.dirty_label)
@@ -100,10 +109,35 @@ class MainWindow(QMainWindow):
         self.url_label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
         self.url_label.setStyleSheet("color:#444;font-size:11px;")
         id_row.addWidget(self.url_label, stretch=1)
+        self.copy_url_btn = QPushButton("📋 URLをコピー")
+        self.copy_url_btn.clicked.connect(lambda: self._copy_url(with_ref=False))
+        id_row.addWidget(self.copy_url_btn)
         right_v.addLayout(id_row)
         self.id_warn_label = QLabel("")
         self.id_warn_label.setStyleSheet("color:#B45309;font-size:11px;")
         right_v.addWidget(self.id_warn_label)
+
+        right_v.addWidget(QLabel(
+            "案内係コード（案内人数のカウンター用。集計の管理画面で案内係を追加すると出る8文字）"
+        ))
+        ref_row = QHBoxLayout()
+        self.ref_edit = QLineEdit()
+        self.ref_edit.setMaximumWidth(200)
+        self.ref_edit.setPlaceholderText("例: 7KQ2M9XA")
+        self.ref_edit.setText(str(self.settings.value(REF_CODE_SETTING, "") or ""))
+        self.ref_edit.textEdited.connect(self._on_ref_edited)
+        ref_row.addWidget(self.ref_edit)
+        self.counter_url_label = QLabel("")
+        self.counter_url_label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+        self.counter_url_label.setStyleSheet("color:#444;font-size:11px;")
+        ref_row.addWidget(self.counter_url_label, stretch=1)
+        self.copy_counter_btn = QPushButton("📋 カウンター用URLをコピー")
+        self.copy_counter_btn.clicked.connect(lambda: self._copy_url(with_ref=True))
+        ref_row.addWidget(self.copy_counter_btn)
+        right_v.addLayout(ref_row)
+        self.ref_warn_label = QLabel("")
+        self.ref_warn_label.setStyleSheet("color:#B45309;font-size:11px;")
+        right_v.addWidget(self.ref_warn_label)
 
         right_v.addWidget(QLabel(
             "場所（複数登録すると、検索時に最短で行ける候補が自動で選ばれます）"
@@ -247,14 +281,65 @@ class MainWindow(QMainWindow):
         self._mark_dirty()
 
     def _update_id_warning(self):
+        err = self._current_id_error()
         if self.current_entry is None:
             self.id_warn_label.setText("")
             self.url_label.setText("")
+        else:
+            self.id_warn_label.setText(f"⚠ {err}" if err else "")
+            self.url_label.setText(f"呼び出しURL: {event_url(self.current_entry.event_id)}" if not err else "")
+        self.copy_url_btn.setEnabled(self.current_entry is not None and not err)
+        self._update_counter_url()
+
+    def _current_id_error(self) -> str:
+        if self.current_entry is None:
+            return "イベントが選ばれていません"
+        return validate_event_id(self.current_entry.event_id, self.store.used_ids(exclude=self.current_entry))
+
+    # ------------------------------------------------------------------
+    # URLのコピー（案内係コードを付けるとカウンター用）
+    # ------------------------------------------------------------------
+    def _on_ref_edited(self, text: str):
+        code, _ = normalize_ref_code(text)
+        self.settings.setValue(REF_CODE_SETTING, code)
+        self._update_counter_url()
+
+    def _update_counter_url(self):
+        code, ref_err = normalize_ref_code(self.ref_edit.text())
+        id_err = self._current_id_error()
+        self.ref_warn_label.setText(f"⚠ {ref_err}" if ref_err else "")
+        ok = bool(code) and not ref_err and not id_err
+        self.counter_url_label.setText(
+            f"カウンター用URL: {event_url(self.current_entry.event_id, code)}" if ok else ""
+        )
+        self.copy_counter_btn.setEnabled(ok)
+
+    def _copy_url(self, with_ref: bool):
+        if self.current_entry is None or self._current_id_error():
             return
-        event_id = self.current_entry.event_id.strip()
-        err = validate_event_id(event_id, self.store.used_ids(exclude=self.current_entry))
-        self.id_warn_label.setText(f"⚠ {err}" if err else "")
-        self.url_label.setText(f"呼び出しURL: {NAVI_EVENT_URL.format(event_id)}" if not err else "")
+        code = ""
+        if with_ref:
+            code, ref_err = normalize_ref_code(self.ref_edit.text())
+            if not code or ref_err:
+                return
+        self._copy_text(event_url(self.current_entry.event_id, code),
+                        "カウンター用URLをコピーしました" if with_ref else "URLをコピーしました")
+
+    def _copy_all_urls(self):
+        code, ref_err = normalize_ref_code(self.ref_edit.text())
+        if ref_err:
+            QMessageBox.warning(self, "案内係コード", f"{ref_err}\n直すか空にしてからコピーしてください。")
+            return
+        text = event_url_lines(self.store.entries, code)
+        if not text:
+            return
+        n = text.count("\n") + 1
+        self._copy_text(text, f"{n} 件のカウンター用URLをコピーしました" if code else f"{n} 件のURLをコピーしました")
+
+    def _copy_text(self, text: str, message: str):
+        QApplication.clipboard().setText(text)
+        self.copied_label.setText(f"✓ {message}")
+        QTimer.singleShot(3000, lambda: self.copied_label.setText(""))
 
     def _update_title_warning(self):
         if self.current_entry is None:

@@ -265,6 +265,8 @@ def _build_event_index():
         if not row["title"]:
             continue
 
+        if not (row["room"] or row["edge_id"] or row["node_id"]):
+            continue  # 場所がまだ決まっていない（IDだけ先に振った）イベント。ナビには出さない
         candidates, floor = _event_candidates_from_row(row, edges_df, node_floor)
         if not candidates:
             print(f"[event.csv] 位置を解決できない行をスキップ: title={row['title']}")

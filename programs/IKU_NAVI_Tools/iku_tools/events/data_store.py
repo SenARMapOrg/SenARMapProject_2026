@@ -53,6 +53,38 @@ def validate_event_id(event_id: str, others: list) -> str:
     return ""
 
 
+# ナビのURL。to_event でイベントモードも自動で有効になる
+NAVI_EVENT_URL = "https://iku-navi.net/navi/?to_event={}"
+
+# 案内人数集計（programs/event_guide_counter）の案内係コード。管理画面で案内係を追加すると出る8文字
+# （functions/api/_lib/track-guard.ts の REF_CODE_PATTERN と同じ。違う形式のコードは記録されない）
+REF_CODE_PATTERN = re.compile(r"^[23456789ABCDEFGHJKLMNPQRSTUVWXYZ]{8}$")
+
+
+def normalize_ref_code(text: str) -> tuple:
+    """(コード, エラー)。空なら ("", "")。小文字で入れても大文字に直す"""
+    code = (text or "").strip().upper()
+    if not code:
+        return "", ""
+    if not REF_CODE_PATTERN.match(code):
+        return code, "案内係コードは集計の管理画面で出る8文字（数字の2〜9と、I・Oを除く英大文字）です"
+    return code, ""
+
+
+def event_url(event_id: str, ref_code: str = "") -> str:
+    """イベントを目的地にしてナビを開くURL。ref_code を付けると案内人数の集計に記録される"""
+    url = NAVI_EVENT_URL.format(event_id.strip())
+    return f"{url}&ref={ref_code}" if ref_code else url
+
+
+def event_url_lines(entries: list, ref_code: str = "") -> str:
+    """「名前,URL」を1行ずつ。IDが無い・名前が空のイベントは飛ばす"""
+    return "\n".join(
+        f"{e.title.strip()},{event_url(e.event_id, ref_code)}"
+        for e in entries if e.title.strip() and e.event_id.strip()
+    )
+
+
 def next_event_id(used: list) -> str:
     """まだ使われていない一番小さい番号のID（1, 2, 3, ...）"""
     n = 1
@@ -189,6 +221,7 @@ class EventEntry:
     def __init__(self, title: str = "", event_id: str = ""):
         self.title = title
         self.event_id = event_id
+        self.building = 0    # 場所がまだ無いイベントを保存するときの号館
         self.locations = []  # [EventLocation, ...]
 
 
@@ -227,15 +260,19 @@ class EventStore:
                 elif edge_id:
                     kind, value = KIND_EDGE, edge_id
                 else:
-                    continue
+                    kind, value = None, ""
 
                 entry = by_title.get(title)
                 if entry is None:
                     entry = EventEntry(title, event_id)
+                    entry.building = building
                     by_title[title] = entry
                     self.entries.append(entry)
                 elif not entry.event_id:
                     entry.event_id = event_id
+                if kind is None:
+                    # 場所が決まっていない（IDだけ先に振った）イベント。消さずに残す
+                    continue
                 if kind != KIND_EDGE:
                     side, position = "", None
                 entry.locations.append(EventLocation(building, kind, value, side, position))
@@ -261,6 +298,7 @@ class EventStore:
             title = entry.title.strip()
             if not title:
                 continue
+            n_rows = len(rows)
             for loc in entry.locations:
                 value = (loc.value or "").strip()
                 if not value:
@@ -272,6 +310,10 @@ class EventStore:
                     row["side"] = loc.side
                     row["position"] = loc.position or ""
                 rows.append(row)
+            if len(rows) == n_rows:
+                # 場所が1つも無くても、IDを残すために場所の列が空の行を書く
+                rows.append({"id": entry.event_id.strip(), "title": title, "building": entry.building,
+                             "room": "", "node_id": "", "edge_id": "", "side": "", "position": ""})
         with open(EVENT_CSV, "w", newline="", encoding="utf-8") as f:
             w = csv.DictWriter(f, fieldnames=EVENT_COLS)
             w.writeheader()

@@ -89,7 +89,10 @@ def test_イベントの行がすべて解決できる(real_data):
     if not os.path.exists(path):
         return
     with open(path, encoding="utf-8") as f:
-        titles = {row["title"].strip() for row in csv.DictReader(f) if row.get("title", "").strip()}
+        # 場所の列が全部空の行は、IDだけ先に振ったもの（ナビには出さない）なので数えない
+        titles = {row["title"].strip() for row in csv.DictReader(f)
+                  if row.get("title", "").strip()
+                  and any(row.get(c, "").strip() for c in ("room", "node_id", "edge_id"))}
     index, _ = get_event_index()
     assert titles == set(index), f"位置を解決できないイベント: {sorted(titles - set(index))}"
 
