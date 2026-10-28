@@ -189,6 +189,7 @@ class EventEntry:
     def __init__(self, title: str = "", event_id: str = ""):
         self.title = title
         self.event_id = event_id
+        self.building = 0    # 場所がまだ無いイベントを保存するときの号館
         self.locations = []  # [EventLocation, ...]
 
 
@@ -227,15 +228,19 @@ class EventStore:
                 elif edge_id:
                     kind, value = KIND_EDGE, edge_id
                 else:
-                    continue
+                    kind, value = None, ""
 
                 entry = by_title.get(title)
                 if entry is None:
                     entry = EventEntry(title, event_id)
+                    entry.building = building
                     by_title[title] = entry
                     self.entries.append(entry)
                 elif not entry.event_id:
                     entry.event_id = event_id
+                if kind is None:
+                    # 場所が決まっていない（IDだけ先に振った）イベント。消さずに残す
+                    continue
                 if kind != KIND_EDGE:
                     side, position = "", None
                 entry.locations.append(EventLocation(building, kind, value, side, position))
@@ -261,6 +266,7 @@ class EventStore:
             title = entry.title.strip()
             if not title:
                 continue
+            n_rows = len(rows)
             for loc in entry.locations:
                 value = (loc.value or "").strip()
                 if not value:
@@ -272,6 +278,10 @@ class EventStore:
                     row["side"] = loc.side
                     row["position"] = loc.position or ""
                 rows.append(row)
+            if len(rows) == n_rows:
+                # 場所が1つも無くても、IDを残すために場所の列が空の行を書く
+                rows.append({"id": entry.event_id.strip(), "title": title, "building": entry.building,
+                             "room": "", "node_id": "", "edge_id": "", "side": "", "position": ""})
         with open(EVENT_CSV, "w", newline="", encoding="utf-8") as f:
             w = csv.DictWriter(f, fieldnames=EVENT_COLS)
             w.writeheader()
