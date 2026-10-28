@@ -16,7 +16,9 @@ services:
     networks:
       - app_net
     deploy:
-      replicas: 2           # 平常時: manager/worker に1つずつ
+      # 台数は .env の PYTHON_REPLICAS（未設定なら2）。docker stack deploy（update.sh）は
+      # この値に台数を戻すので、イベント中は docker service scale ではなく .env で増やす
+      replicas: ${PYTHON_REPLICAS:-2}
       placement:
         preferences:
           - spread: node.id # ノードに均等分散
@@ -73,7 +75,7 @@ services:
     networks:
       - app_net
     deploy:
-      replicas: 2
+      replicas: ${COUNTER_REPLICAS:-2}  # .env の COUNTER_REPLICAS（未設定なら2）
       placement:
         preferences:
           - spread: node.id

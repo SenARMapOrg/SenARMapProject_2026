@@ -297,13 +297,24 @@ cadvisor は `mode: global` のため、ワーカー参加と同時に自動で�
 
 ### 手順5. python / counter をスケールアップ
 
+台数は `.env` の `PYTHON_REPLICAS` / `COUNTER_REPLICAS` で決める（未設定なら2）。
+`docker stack deploy` は台数を compose の値に戻すため、`docker service scale` だけで増やすと、
+cron の `update.sh`（30分ごと）で2台に戻ってしまう。
+
 ```bash
-# イベント規模に応じて調整（例: 各4レプリカ）
-docker service scale iku_python=4 iku_counter=4
+# マネージャーで実行。イベント規模に応じて調整（例: 各4レプリカ）
+cd <リポジトリ>/deploy_env
+vim .env    # PYTHON_REPLICAS=4 と COUNTER_REPLICAS=4 を書く
+
+set -a && . .env && set +a
+docker stack deploy --with-registry-auth -c docker-compose.yml iku
 
 # 分散状況を確認
-docker service ps iku_python
+docker service ps iku_python --filter desired-state=running
 ```
+
+> **ノードごとの数は指定できない:** `spread: node.id` で均等に分けるだけ（4台なら2:2）。
+> マネージャーを `pause` してから増やせば片方に寄せられるが、次の `update.sh` で均等に戻る。
 
 > **workers の調整:** 平常時は `gunicorn -w 4` を使っているが、
 > スケールアップ後は 4レプリカ × 4workers = 16並列になる。
@@ -325,8 +336,13 @@ watch docker stack ps iku
 
 ### 手順2. サービスを平常時のレプリカ数に戻す
 
+`.env` の `PYTHON_REPLICAS` / `COUNTER_REPLICAS` を消す（または 2 にする）。
+`docker service scale` で減らしただけだと、次の `update.sh` で `.env` の台数に戻ってしまう。
+
 ```bash
-docker service scale iku_python=2 iku_counter=2
+vim .env    # PYTHON_REPLICAS / COUNTER_REPLICAS を消す
+set -a && . .env && set +a
+docker stack deploy --with-registry-auth -c docker-compose.yml iku
 ```
 
 ### 手順3. ワーカーを Swarm から離脱させる
