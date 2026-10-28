@@ -391,6 +391,49 @@
 
 ---
 
+## 10-2. その他の設備一覧取得
+**エンドポイント:** `GET /api/facilities`
+**概要:** `data/facility.csv` に登録したその他の設備（コンビニ・教務課など）の一覧を返します。ナビ画面の設備検索で「その他」を選んだときの、種類のドロップダウンの初期化に使用します（1件も無ければ「その他」自体を出しません）。facility.csv が無い・空の場合は `[]` を返します。
+**facility.csv の列:**
+- `category`: 設備の種類（「コンビニ」「教務課」など）。**同じ種類の行はまとめて扱い、検索ではその中で一番近いものへ案内します**。空なら `display_name` を種類にします
+- `name`: edge.csv の `name`（通路の左右の `right`・`left`）に書いた名前。トイレ・食堂と同じ
+- `building`: 号館
+- `display_name`: 表示名（空なら `name`）
+**クエリパラメータ:** なし
+**レスポンス例:**
+```json
+[
+  { "category": "コンビニ", "name": "Lawson_10",    "building": "10", "display_name": "ローソン" },
+  { "category": "コンビニ", "name": "FamilyMart_1", "building": "1",  "display_name": "ファミリーマート" },
+  { "category": "教務課",   "name": "Kyomu",        "building": "1",  "display_name": "教務課" }
+]
+```
+
+---
+
+## 10-3. 最寄りのその他の設備検索
+**エンドポイント:** `GET /api/nearest_facility`
+**概要:** 出発点から、指定した種類の設備のうち一番近いものへの最短経路を計算して返します。経路の延長などの扱いは最寄り食堂検索（10章）と同じです。
+**クエリパラメータ:**
+- **出発地:** 最寄り食堂検索（10章）と同じ（`from_room` & `from_building`・`from_node`・`from_event` のいずれか）
+- **設備指定:**
+  - `category` (必須, string): 設備の種類（`/api/facilities` の `category`）。未指定なら 400、登録されていない種類なら 404。
+- **オプション:**
+  - `use_elevator` (任意, string): `"0"` でエレベーター除外。省略時 `"1"`。
+**レスポンス:** 経路の項目（`path`・`total_weight`・`path_coords`・`path_edges`・`dest_*`・`from_*`）は最寄り食堂検索と同じで、`cafeteria_*` の代わりに次が付きます。
+```json
+{
+  "facility_category": "コンビニ",
+  "facility_name": "Lawson_10",
+  "facility_display": "ローソン",
+  "facility_building": 10,
+  "facility_floor": 1,
+  "facility_edge": { "id": 1000020, "name": "Lawson_10", "from": 1000009, "to": 1000010 }
+}
+```
+
+---
+
 ## 11. イベント一覧取得
 **エンドポイント:** `GET /api/events`
 **概要:** `data/event.csv` に登録されたイベント（屋台など）の一覧を返します。ナビ画面はイベントモード（`navi/?event=1`、または `navi/?to_event=<id>`）のときだけこのAPIを呼び、イベント名を検索候補に加えます。event.csv が無い・空の場合は `[]` を返します。`id` は event.csv の `id` 列（未設定なら `""`）。

@@ -341,11 +341,11 @@
     #btn-search:hover, #btn-fac-search:hover { background: var(--signal-dark); }
 
     /* 設備セレクト（トイレ種別・食堂名）— 目的行の続き */
-    #fac-toilet-type, #fac-cafeteria-name {
+    #fac-toilet-type, #fac-cafeteria-name, #fac-other-name {
       flex: 1; height: 38px; border: 1px solid var(--line-strong); border-radius: 2px;
       font-size: 13px; background: var(--surface); padding: 0 8px; cursor: pointer; min-width: 0;
     }
-    #fac-cafeteria-name { display: none; }
+    #fac-cafeteria-name, #fac-other-name { display: none; }
 
     /* ==================================================================
        地図 / SVGフロアマップ
@@ -708,6 +708,7 @@
                 <select class="building-select" id="fac-category" onchange="onFacCategoryChange()">
                   <option value="toilet">トイレ</option>
                   <option value="cafeteria">食堂</option>
+                  <option value="other">その他</option>
                 </select>
                 <select id="fac-toilet-type">
                   <option value="all">全て</option>
@@ -718,6 +719,7 @@
                 <select id="fac-cafeteria-name">
                   <option value="all">全て</option>
                 </select>
+                <select id="fac-other-name" aria-label="その他の設備" style="display:none"></select>
               </div>
             </div>
 

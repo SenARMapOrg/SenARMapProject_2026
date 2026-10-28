@@ -9,7 +9,9 @@ import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
-DEFAULT_API = "http://localhost:5001"
+# 既定は本番の API。手元で編集した data/ を確かめたいときは、画面の API の欄を
+# http://localhost:5001（programs/3D_Graph で python app.py）に書き換える
+DEFAULT_API = "https://api.iku-navi.net"
 
 JSON_HEADERS = {"Accept": "application/json"}
 

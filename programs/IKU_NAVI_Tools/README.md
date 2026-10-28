@@ -82,13 +82,14 @@ Anaconda や別の Qt が残した `QT_PLUGIN_PATH` などの設定は、自動�
 | ID一覧 | `id_viewer` | 建物・階ごとに、今のノードとエッジを描き、ノードIDとエッジIDをクリックせずにすべて地図の上に表示する。階段・エレベーターなどほかの階へつながる線は、ノードの下に「番号 種類↑行き先の階」で出す。フロアマップ（SVG）は位置を合わせられる階だけ背景に重ね、svg_x・svg_y が無い建物は座標（x・y）と5mの方眼で描く。全体ID（建物番号×100000＋番号）への切り替え、番号での検索（`e12` でエッジ）、表での一覧、PNG での保存ができる。読み取りだけで CSV は変更しない | （新規） |
 | イベント設定 | `events` | イベントモードの検索候補（`data/event.csv`）を編集する（[詳しい使い方](iku_tools/events/README.md)） | `programs/events` |
 | ルート検証 | `route_checker` | 全教室ペア間のルートを経路探索APIから取得し、異常を検出する | `programs/Route_Checker` |
-| 画像チェック | `image_checker` | CDN 上の経路写真がエッジごとに揃っているかを確認する | `programs/Image_Checker` |
+| 画像チェック | `image_checker` | CDN 上の経路写真がエッジごとに揃っているかを確認する。屋外は別の AR で案内するので、「屋外を除く」（既定でオン）で確認から外せる | `programs/Image_Checker` |
 | 画像リネーム | `image_renamer` | 経路写真を一括でリネーム・リサイズする（リサイズは裏で進み、下のステータスバーに進み具合と中止ボタンが出る） | `programs/Image_Renamer` |
 | 人物ぼかし | `human_remover` | YOLOv8 で経路写真の人物を検出し、ぼかし・モザイクで匿名化する | `programs/Human_Remover` |
 | SVG座標取得 | `svg_pointer` | SVGをクリックして座標を取得し、クリップボードにコピーする。既存の点の x・y の近くをクリックするとぴったり合わせる（吸着。Alt/option+クリックで解除）ほか、一覧で選んだ点を縦・横にそろえられる | `programs/SVG_Pointer`（PyQt5 から移植） |
 
-ルート検証・画像チェックは経路探索API（`programs/3D_Graph`、既定は `http://localhost:5001`）を使うので、
-先に `cd programs/3D_Graph && python app.py` で起動しておく。
+ルート検証・画像チェックは経路探索APIを使う。既定は本番の `https://api.iku-navi.net` なので、そのまま使える。
+手元で編集した `data/` を確かめたいときは、`cd programs/3D_Graph && python app.py` で起動し、
+画面の API の欄を `http://localhost:5001` に書き換える。
 
 ## 使い勝手について
 

@@ -49,7 +49,7 @@
       <a id="btn-home" href="../index.html" aria-label="トップページに戻る"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11.5L12 5l8 6.5M6.5 9.8V19h11V9.8"/></svg></a>
       <div class="category-tabs">
         <button class="category-tab active" id="cat-room"     onclick="setCategory('room')">教室</button>
-        <button class="category-tab"        id="cat-facility" onclick="setCategory('facility')">トイレ・食堂</button>
+        <button class="category-tab"        id="cat-facility" onclick="setCategory('facility')">設備</button>
       </div>
       <span id="event-badge">&#127914; イベント</span>
       <button id="search-toggle" onclick="toggleSearchPanel()" aria-label="検索パネルを開閉">
@@ -163,6 +163,7 @@
             <select class="building-select" id="fac-category" onchange="onFacCategoryChange()" aria-label="探す設備">
               <option value="toilet">トイレ</option>
               <option value="cafeteria">食堂</option>
+              <option value="other">その他</option>
             </select>
             <select class="fac-select" id="fac-toilet-type" aria-label="トイレの種類">
               <option value="all">全て</option>
@@ -173,6 +174,7 @@
             <select class="fac-select" id="fac-cafeteria-name" aria-label="食堂" style="display:none">
               <option value="all">全て</option>
             </select>
+            <select class="fac-select" id="fac-other-name" aria-label="その他の設備" style="display:none"></select>
           </div>
 
           <div class="bottom-row">

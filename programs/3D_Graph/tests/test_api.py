@@ -230,6 +230,52 @@ def test_最寄り食堂(client):
     assert data["cafeteria_edge"]["id"] == 200003
 
 
+# ------------------------------------------------------------------ その他の設備（facility.csv）
+
+def test_その他の設備の一覧(client):
+    status, data = get(client, "/api/facilities")
+    assert status == 200
+    assert data == [
+        {"category": "案内所", "name": "M_Toilet", "building": "1", "display_name": "第一案内所"},
+        {"category": "案内所", "name": "Cafe", "building": "2", "display_name": "第二案内所"},
+        {"category": "教務課", "name": "201", "building": "2", "display_name": "教務課"},
+    ]
+
+
+def test_同じ種類の設備のうち一番近いものへ案内する(client):
+    # 1号館の101からは、同じ号館の2階（階段で4m）の方が、屋外を通る2号館より近い
+    status, data = get(client, "/api/nearest_facility?category=案内所&from_room=101&from_building=1")
+    assert status == 200
+    assert data["facility_category"] == "案内所"
+    assert data["facility_name"] == "M_Toilet"
+    assert data["facility_display"] == "第一案内所"
+    assert (data["facility_building"], data["facility_floor"]) == (1, 2)
+    # 2号館の201からは、同じ号館の方へ
+    status, data = get(client, "/api/nearest_facility?category=案内所&from_room=201&from_building=2")
+    assert status == 200
+    assert data["facility_display"] == "第二案内所"
+    assert data["facility_building"] == 2
+
+
+def test_種類が空の設備は表示名が種類になる(client):
+    status, data = get(client, "/api/nearest_facility?category=教務課&from_room=101&from_building=1")
+    assert status == 200
+    assert data["facility_name"] == "201"
+    assert data["facility_building"] == 2
+
+
+def test_登録されていない種類は404(client):
+    status, data = get(client, "/api/nearest_facility?category=コンビニ&from_room=101&from_building=1")
+    assert status == 404
+    assert "登録されていません" in data["error"]
+
+
+def test_設備の種類を指定しないとエラー(client):
+    status, data = get(client, "/api/nearest_facility?from_room=101&from_building=1")
+    assert status == 400
+    assert "category" in data["error"]
+
+
 # ------------------------------------------------------------------ イベントモード
 
 def test_イベント一覧(client):
