@@ -1,7 +1,9 @@
 // 管理画面の表示用の整形処理
 import { describe, expect, it } from "vitest";
 
-import { auditEventLabel, buildGuideUrl, formatDbTime } from "../src/admin-format";
+import {
+  auditEventLabel, buildGuideUrl, formatDbTime, formatWaiting, waitingLevel, waitingMinutes,
+} from "../src/admin-format";
 
 describe("formatDbTime", () => {
   it("UTC の時刻を日本時間で表示する", () => {
@@ -35,5 +37,26 @@ describe("buildGuideUrl", () => {
 
   it("ref_codeはURLエンコードする", () => {
     expect(buildGuideUrl("https://iku-navi.net", "A B")).toBe("https://iku-navi.net/navi/?event=1&ref=A%20B");
+  });
+});
+
+describe("返事の待ち時間", () => {
+  it("D1 の時刻とサーバーの今の時刻（ISO）の差を、分で切り捨てて出す", () => {
+    expect(waitingMinutes("2026-10-29 03:00:00", "2026-10-29T03:05:59.000Z")).toBe(5);
+    expect(waitingMinutes("2026-10-29 03:00:00", "2026-10-29T03:00:30.000Z")).toBe(0);
+  });
+
+  it("待っていない・読めない時刻なら null、時計が逆転していたら 0", () => {
+    expect(waitingMinutes(null, "2026-10-29T03:00:00Z")).toBeNull();
+    expect(waitingMinutes("not a date", "2026-10-29T03:00:00Z")).toBeNull();
+    expect(waitingMinutes("2026-10-29 03:01:00", "2026-10-29T03:00:00Z")).toBe(0);
+  });
+
+  it("表示と色分け", () => {
+    expect(formatWaiting(0)).toBe("1分未満");
+    expect(formatWaiting(5)).toBe("5分");
+    expect(formatWaiting(60)).toBe("1時間");
+    expect(formatWaiting(80)).toBe("1時間20分");
+    expect([2, 3, 9, 10].map(waitingLevel)).toEqual(["ok", "warn", "warn", "alert"]);
   });
 });
