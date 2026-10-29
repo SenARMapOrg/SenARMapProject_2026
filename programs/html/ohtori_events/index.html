@@ -157,6 +157,13 @@
         box-shadow: 0 3px 10px rgba(88, 65, 38, 0.04);
         transition: 0.18s;
       }
+      .filter-heading {
+        width: 100%;
+        margin: 0 0 8px;
+        font-size: 14px;
+        font-weight: 800;
+        color: #344b39;
+      }
       .filter:hover {
         border-color: #8db79a;
         color: var(--blue);
@@ -420,6 +427,9 @@
           line-height: 1.35;
           text-align: center;
         }
+        .date-filters {
+          grid-template-columns: repeat(4, minmax(0, 1fr));
+        }
         .search {
           width: 100%;
           min-width: 0;
@@ -543,7 +553,8 @@
         <div class="eyebrow">OHTORI FESTIVAL · CAMPUS GUIDE</div>
         <h1>鳳祭<span>出店・イベントナビ</span></h1>
         <p class="subtitle">気になる出店を見つけて、ナビで会場まで行こう！</p>
-        <p class="pamphlet-note">こちらはナビがメインのサイトになっていますので、<br>
+        <p class="pamphlet-note">
+          こちらはナビがメインのサイトになっていますので、<br />
           <a
             href="https://www.ohtori-senshu.com/pamphlet.html"
             target="_blank"
@@ -557,6 +568,26 @@
     </header>
     <main>
       <div class="toolbar">
+        <h2 class="filter-heading">開催日で絞り込む</h2>
+        <div
+          class="filters date-filters"
+          id="dateFilters"
+          aria-label="開催日で絞り込み"
+        >
+          <button class="filter date-filter active" data-date="すべて">
+            すべての日
+          </button>
+          <button class="filter date-filter" data-date="11/6">
+            11/6（金）
+          </button>
+          <button class="filter date-filter" data-date="11/7">
+            11/7（土）
+          </button>
+          <button class="filter date-filter" data-date="11/8">
+            11/8（日）
+          </button>
+        </div>
+        <h2 class="filter-heading">カテゴリで絞り込む</h2>
         <div class="filters" id="filters" aria-label="ジャンルで絞り込み">
           <button class="filter active" data-category="すべて">すべて</button>
           <button class="filter" data-category="ライブ">ライブ</button>
@@ -730,6 +761,7 @@
       const resultCount = document.getElementById("resultCount");
       const emptyState = document.getElementById("emptyState");
       let activeCategory = "すべて";
+      let activeDate = "すべて";
 
       function escapeHTML(value) {
         return String(value).replace(
@@ -759,11 +791,14 @@
         const filtered = events.filter((event) => {
           const matchesCategory =
             activeCategory === "すべて" || event.category === activeCategory;
+          const dates = (event.dates || "").split(";");
+          const matchesDate =
+            activeDate === "すべて" || dates.includes(activeDate);
           const searchable =
             `${event.name} ${event.description} ${event.category} ${event.room}`.toLocaleLowerCase(
               "ja",
             );
-          return matchesCategory && searchable.includes(query);
+          return matchesCategory && matchesDate && searchable.includes(query);
         });
         resultCount.textContent = filtered.length;
         rows.innerHTML = filtered
@@ -793,10 +828,21 @@
         if (!button) return;
         activeCategory = button.dataset.category;
         document
-          .querySelectorAll(".filter")
+          .querySelectorAll("#filters .filter")
           .forEach((b) => b.classList.toggle("active", b === button));
         renderEvents();
       });
+      document
+        .getElementById("dateFilters")
+        .addEventListener("click", (event) => {
+          const button = event.target.closest("button[data-date]");
+          if (!button) return;
+          activeDate = button.dataset.date;
+          document
+            .querySelectorAll("#dateFilters .date-filter")
+            .forEach((b) => b.classList.toggle("active", b === button));
+          renderEvents();
+        });
       searchInput.addEventListener("input", renderEvents);
       loadEvents();
     </script>
