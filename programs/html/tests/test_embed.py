@@ -197,6 +197,9 @@ def test_表示範囲は地図からはみ出さない():
 def test_IKU_NAVIで開くURL():
     assert run_js('fullNaviUrl(parseEmbedParams("?from=10301&to_event=b&elevator=0"))') == \
         "https://iku-navi.net/navi/?from=10301&to_event=b&elevator=0"
+    # ナビの「エレベーターを使う」ははじめオフなので、使う場合は elevator=1 を付けて開く
+    assert run_js('fullNaviUrl(parseEmbedParams("?from=10301&to_event=b"))') == \
+        "https://iku-navi.net/navi/?from=10301&to_event=b&elevator=1"
     assert run_js('fullNaviUrl(parseEmbedParams("?room=131&bldg=1"))') == "https://iku-navi.net/navi/?to=131&to_bldg=1"
     assert run_js('fullNaviUrl(parseEmbedParams("?bldg=10&floor=3"))') == "https://iku-navi.net/campus/10/#floor-3"
     # ナビ画面は通路・地点で呼び出せないので、建物の教室一覧かナビ画面のトップを開く

@@ -110,6 +110,8 @@ function applyUrlParams() {
   };
 
   setCategory("room");
+  // 「エレベーターを使う」ははじめはオフ。?elevator=1 でオンにして開ける（?elevator=0 は前と同じくオフ）
+  if (q.get("elevator") === "1") document.getElementById("use-elevator").checked = true;
   if (q.get("elevator") === "0") document.getElementById("use-elevator").checked = false;
 
   // 現在地(屋外)モード: 目的地だけ埋めて GPS 取得はユーザー操作に任せる
