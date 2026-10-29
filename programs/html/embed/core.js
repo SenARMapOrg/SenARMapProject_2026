@@ -230,7 +230,8 @@ function fullNaviUrl(p) {
       if (pl.event) q.set(`${side}_event`, pl.event);
       else { q.set(side, pl.room); if (pl.bldg != null) q.set(`${side}_bldg`, pl.bldg); }
     }
-    if (!p.elevator) q.set("elevator", "0");
+    // ナビの「エレベーターを使う」ははじめオフなので、どちらの場合もはっきり渡す
+    q.set("elevator", p.elevator ? "1" : "0");
     return `${EMBED_SITE}/navi/?${q}`;
   }
   if (p.view === "place" && byName(p.place)) {
