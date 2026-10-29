@@ -1,6 +1,6 @@
 // 管理画面の表示用の整形処理（DOMに触れないのでテストから直接呼べる）
 
-import type { AuditEvent } from "./api";
+import type { AuditEvent, SupportStatus } from "./api";
 
 const AUDIT_EVENT_LABELS: Record<AuditEvent, string> = {
   admin_access: "閲覧",
@@ -27,4 +27,15 @@ export function formatDbTime(value: string | null): string {
 export function buildGuideUrl(naviBaseUrl: string, refCode: string): string {
   const base = naviBaseUrl.replace(/\/+$/, "");
   return `${base}/navi/?event=1&ref=${encodeURIComponent(refCode)}`;
+}
+
+const SUPPORT_STATUS_LABELS: Record<SupportStatus, string> = {
+  waiting: "返事待ち",
+  open: "対応中",
+  closed: "終了",
+};
+
+/** 相談の状態の表示名。想定外の値はそのまま出す */
+export function supportStatusLabel(status: string): string {
+  return SUPPORT_STATUS_LABELS[status as SupportStatus] ?? status;
 }

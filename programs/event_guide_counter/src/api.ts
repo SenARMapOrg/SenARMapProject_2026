@@ -42,6 +42,35 @@ export interface AuditLogEntry {
   created_at: string;
 }
 
+export type SupportStatus = "waiting" | "open" | "closed";
+export type SupportSender = "user" | "operator" | "system";
+
+export interface SupportConversation {
+  id: number;
+  status: SupportStatus;
+  context: string;
+  user_unread: number;
+  created_at: string;
+  updated_at: string;
+  closed_at: string | null;
+  last_body?: string | null;
+  last_sender?: SupportSender | null;
+}
+
+export interface SupportMessage {
+  id: number;
+  sender: SupportSender;
+  body: string;
+  created_at: string;
+}
+
+export interface SupportState {
+  accepting: boolean;
+  accepting_operators: number;
+  conversations: SupportConversation[];
+  open: { conversation: SupportConversation; messages: SupportMessage[] } | null;
+}
+
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(path, {
     credentials: "same-origin",
@@ -88,5 +117,22 @@ export const api = {
 
   listAuditLog(): Promise<{ entries: AuditLogEntry[] }> {
     return apiFetch("/api/admin/audit-log");
+  },
+
+  supportState(openId: number | null, afterId: number): Promise<SupportState> {
+    const q = openId ? `?open=${openId}&after=${afterId}` : "";
+    return apiFetch(`/api/admin/support/state${q}`);
+  },
+
+  setSupportAccepting(accepting: boolean): Promise<void> {
+    return apiFetch("/api/admin/support/accepting", { method: "POST", body: JSON.stringify({ accepting }) });
+  },
+
+  sendSupportMessage(id: number, text: string): Promise<void> {
+    return apiFetch(`/api/admin/support/conversations/${id}/messages`, { method: "POST", body: JSON.stringify({ text }) });
+  },
+
+  closeSupportConversation(id: number): Promise<void> {
+    return apiFetch(`/api/admin/support/conversations/${id}/close`, { method: "POST" });
   },
 };

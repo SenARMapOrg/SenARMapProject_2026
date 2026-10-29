@@ -16,6 +16,7 @@ import {
   listSearchesForGuide, resetGuideRecords,
 } from "../db";
 import { readSessionToken } from "../session";
+import { adminSupportRoutes } from "./admin-support";
 import type { AppEnv } from "../types";
 
 export const adminRoutes = new Hono<AppEnv>();
@@ -116,6 +117,8 @@ adminRoutes.get("/guides/:id/searches", async (c) => {
 adminRoutes.get("/audit-log", async (c) => {
   return c.json({ entries: await listRecentAuditLog(c.env.DB, AUDIT_LOG_LIMIT) });
 });
+
+adminRoutes.route("/support", adminSupportRoutes);
 
 // 管理者向けの未知のパスも、一般向けと同じ 404 にそろえる
 adminRoutes.all("*", (c) => c.json(NOT_FOUND, 404));

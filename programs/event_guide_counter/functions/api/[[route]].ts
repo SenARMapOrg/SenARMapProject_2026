@@ -3,6 +3,7 @@ import { handle } from "hono/cloudflare-pages";
 
 import { adminRoutes } from "./_lib/routes/admin";
 import { authRoutes } from "./_lib/routes/auth";
+import { supportRoutes } from "./_lib/routes/support";
 import { trackRoutes } from "./_lib/routes/track";
 import type { AppEnv } from "./_lib/types";
 
@@ -11,6 +12,7 @@ const app = new Hono<AppEnv>().basePath("/api");
 app.route("/auth", authRoutes);
 app.route("/admin", adminRoutes);
 app.route("/track", trackRoutes);
+app.route("/support", supportRoutes);
 
 app.notFound((c) => c.json({ error: "Not Found" }, 404));
 app.onError((err, c) => {

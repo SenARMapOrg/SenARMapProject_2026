@@ -9,6 +9,7 @@ import { auditEventLabel, buildGuideUrl, formatDbTime } from "./admin-format";
 import {
   api, ApiError, type AuditLogEntry, type Guide, type SearchLogEntry,
 } from "./api";
+import { createSupportPanel } from "./support-panel";
 
 const LOGIN_URL = "/api/auth/login?next=/admin";
 
@@ -205,11 +206,16 @@ function renderAuditLog(entries: AuditLogEntry[]): HTMLElement {
   return section;
 }
 
+// 相談窓口は、案内係の一覧を描き直しても作り直さない（開いている相談や書きかけの返事を残すため）
+let supportPanel: HTMLElement | null = null;
+
 async function renderDashboard(): Promise<void> {
   const [guidesRes, auditRes] = await Promise.all([api.listGuides(), api.listAuditLog()]);
   userBox.hidden = false;
   userNameEl.textContent = guidesRes.admin_email;
+  supportPanel ??= createSupportPanel((err) => { void handleBootError(err); });
   appRoot.replaceChildren(
+    supportPanel,
     renderGuides(guidesRes.guides, guidesRes.navi_base_url, () => { void renderDashboard(); }),
     renderAuditLog(auditRes.entries),
   );
@@ -235,21 +241,25 @@ async function boot(): Promise<void> {
   try {
     await renderDashboard();
   } catch (err) {
-    if (err instanceof ApiError && err.status === 503) {
-      showMessagePanel("表示できません", err.message);
-      return;
-    }
-    if (err instanceof ApiError && err.status === 401) {
-      showMessagePanel(
-        "再ログインが必要です",
-        "管理画面は、ログインしてから12時間以内のみ表示できます。もう一度ログインしてください。",
-        { label: "再ログイン", href: LOGIN_URL },
-      );
-      return;
-    }
-    // 未ログイン・管理者でない場合も含め、理由は区別せずに同じ表示にする
-    showMessagePanel("鳳祭 案内人数集計 管理画面", "Googleアカウントでログインしてください。", { label: "Googleでログイン", href: LOGIN_URL });
+    handleBootError(err);
   }
+}
+
+function handleBootError(err: unknown): void {
+  if (err instanceof ApiError && err.status === 503) {
+    showMessagePanel("表示できません", err.message);
+    return;
+  }
+  if (err instanceof ApiError && err.status === 401) {
+    showMessagePanel(
+      "再ログインが必要です",
+      "管理画面は、ログインしてから12時間以内のみ表示できます。もう一度ログインしてください。",
+      { label: "再ログイン", href: LOGIN_URL },
+    );
+    return;
+  }
+  // 未ログイン・管理者でない場合も含め、理由は区別せずに同じ表示にする
+  showMessagePanel("鳳祭 案内人数集計 管理画面", "Googleアカウントでログインしてください。", { label: "Googleでログイン", href: LOGIN_URL });
 }
 
 void boot();
