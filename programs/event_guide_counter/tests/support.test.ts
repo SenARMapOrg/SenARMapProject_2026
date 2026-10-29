@@ -52,10 +52,10 @@ describe("受付の状態", () => {
     expect(await res.json()).toMatchObject({ code: "unavailable" });
   });
 
-  it("受け付けていても、確認が30秒以上止まっているオペレーターは数えない", async () => {
+  it("受け付けていても、確認が1分半以上止まっているオペレーターは数えない", async () => {
     await acceptOperator();
     expect(await countAcceptingOperators(t.db)).toBe(1);
-    t.exec("UPDATE support_operators SET last_seen = datetime('now', '-31 seconds')");
+    t.exec("UPDATE support_operators SET last_seen = datetime('now', '-91 seconds')");
     expect(await countAcceptingOperators(t.db)).toBe(0);
   });
 

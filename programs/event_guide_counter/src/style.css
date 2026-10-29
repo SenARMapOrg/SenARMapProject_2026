@@ -114,6 +114,8 @@ body {
 .search-log-row td { background: var(--paper); }
 
 /* ---- 相談窓口（src/support-panel.ts） ---- */
+/* .btn などの display 指定より、hidden（隠す）を優先する */
+[hidden] { display: none !important; }
 .support-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
 .support-head h1 { margin-bottom: 0; }
 .support-status { margin-bottom: 0; }
@@ -157,6 +159,7 @@ body {
 .support-msg-body { white-space: pre-wrap; overflow-wrap: anywhere; }
 .support-msg-time { font-size: 11px; opacity: 0.7; margin-top: 2px; }
 .support-form { display: flex; gap: 8px; align-items: flex-end; }
+.support-close { align-self: flex-end; }
 .support-input {
   flex: 1; font: inherit; font-size: 14px; padding: 8px 10px; resize: vertical;
   border: 1px solid var(--line-strong); border-radius: 4px;

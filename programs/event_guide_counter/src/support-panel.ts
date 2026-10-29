@@ -1,8 +1,9 @@
 // 管理画面の「相談窓口」。IKU NAVI の利用者（ナビ画面の「？」→「オペレーターにつなぐ」）とチャットする。
 //
 // SUPPORT_POLL_MS ごとに /api/admin/support/state を呼び、相談の一覧と、開いている相談の新しいメッセージを受け取る。
-// この確認がオペレーターが画面を開いている合図にもなる（止まって30秒たつと、利用者の画面からつなげなくなる）。
-// タブが裏に回っている間は確認を止める。
+// この確認がオペレーターが画面を開いている合図にもなる（止まって1分半たつと、利用者の画面からつなげなくなる）。
+// オペレーターがほかの作業をしながら待てるよう、タブが裏に回っていても確認を続け、相談が来たら音で知らせる
+// （裏のタブではブラウザが確認の間隔を最大1分ほどに延ばすので、受付中とみなす時間を1分半にしている）。
 
 import { formatDbTime, supportStatusLabel } from "./admin-format";
 import { api, ApiError, type SupportConversation, type SupportMessage, type SupportState } from "./api";
@@ -55,8 +56,9 @@ export function createSupportPanel(onAuthError: (err: ApiError) => void): HTMLEl
     head,
     el("p", {
       className: "hint",
-      text: "「受け付ける」にしている間は、IKU NAVI の「？」からオペレーターにつなげるようになります。"
-        + "この画面を閉じる・別のタブにすると、30秒ほどで受け付けが止まります。利用者の名前などの個人情報は聞かないでください。",
+      text: "「受け付ける」にしている間は、IKU NAVI の「？」で AI に質問した人が、オペレーターにつなげるようになります。"
+        + "別のタブにしていても受け付けは続き、相談が来ると音が鳴ります。この画面を閉じると、1分半ほどで受け付けが止まります。"
+        + "利用者の名前などの個人情報は聞かないでください。",
     }),
     body,
   );
@@ -71,7 +73,7 @@ export function createSupportPanel(onAuthError: (err: ApiError) => void): HTMLEl
   replyInput.maxLength = MAX_REPLY_CHARS;
   replyInput.placeholder = "返事を書く（Ctrl+Enter / ⌘+Enter で送る）";
   const sendBtn = el("button", { className: "btn btn-primary", text: "送る" });
-  const closeBtn = el("button", { className: "btn btn-ghost", text: "相談を終える" });
+  const closeBtn = el("button", { className: "btn btn-ghost support-close", text: "相談を終える" });
   const contextBox = el("details", { className: "support-context" });
   const detailTitle = el("h2");
   const replyForm = el("form", { className: "support-form" });
@@ -198,8 +200,9 @@ export function createSupportPanel(onAuthError: (err: ApiError) => void): HTMLEl
     timer = null;
   }
 
+  // 裏のタブから戻ったら、待たずにすぐ確かめ直す
   document.addEventListener("visibilitychange", () => {
-    if (document.hidden) stop(); else start();
+    if (!document.hidden) void refresh();
   });
 
   acceptBtn.addEventListener("click", async () => {
@@ -242,6 +245,6 @@ export function createSupportPanel(onAuthError: (err: ApiError) => void): HTMLEl
   });
 
   renderDetailEmpty();
-  if (!document.hidden) start();
+  start();
   return section;
 }
