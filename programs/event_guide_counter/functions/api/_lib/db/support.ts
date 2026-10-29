@@ -26,8 +26,11 @@ export interface SupportMessageRow {
   created_at: string;
 }
 
-/** オペレーターが「受け付けている」とみなす、最後の確認からの時間 */
-export const OPERATOR_FRESH_SECONDS = 30;
+/**
+ * オペレーターが「受け付けている」とみなす、最後の確認からの時間。
+ * 管理画面は4秒ごとに確認するが、裏のタブではブラウザが間隔を最大1分ほどに延ばすので、それより長くする
+ */
+export const OPERATOR_FRESH_SECONDS = 90;
 /** 終了した相談を残しておく日数。これより古いものは、オペレーターが一覧を開いたときに消す */
 export const SUPPORT_RETENTION_DAYS = 14;
 
