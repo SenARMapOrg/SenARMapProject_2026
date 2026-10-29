@@ -102,6 +102,21 @@
         font-size: 14px;
         line-height: 1.8;
       }
+      .pamphlet-note {
+        margin: 12px 0 0;
+        font-size: 13px;
+        color: #68756a;
+        line-height: 1.8;
+      }
+      .pamphlet-note a {
+        color: #287344;
+        font-weight: 700;
+        text-decoration: underline;
+        text-underline-offset: 3px;
+      }
+      .pamphlet-note a:hover {
+        color: #174d2c;
+      }
       .hero-note {
         position: absolute;
         right: 2%;
@@ -393,7 +408,7 @@
         }
         .filters {
           display: grid;
-          grid-template-columns: repeat(2, minmax(0, 1fr));
+          grid-template-columns: repeat(3, minmax(0, 1fr));
           gap: 7px;
           width: 100%;
           justify-content: center;
@@ -404,9 +419,6 @@
           white-space: normal;
           line-height: 1.35;
           text-align: center;
-        }
-        .filter:first-child {
-          grid-column: span 2;
         }
         .search {
           width: 100%;
@@ -529,8 +541,17 @@
     <header class="hero">
       <div class="hero-inner">
         <div class="eyebrow">OHTORI FESTIVAL · CAMPUS GUIDE</div>
-        <h1>鳳祭<span>出店・イベントナビ</span> ↗</h1>
-        <p class="subtitle">気になる出店を見つけて、ナビで会場まで行こう。</p>
+        <h1>鳳祭<span>出店・イベントナビ</span></h1>
+        <p class="subtitle">気になる出店を見つけて、ナビで会場まで行こう！</p>
+        <p class="pamphlet-note">こちらはナビがメインのサイトになっていますので、<br>
+          <a
+            href="https://www.ohtori-senshu.com/pamphlet.html"
+            target="_blank"
+            rel="noopener noreferrer"
+            >イベントの詳細は鳳祭パンフレットをご覧ください↗︎</a
+          >
+        </p>
+
         <div class="hero-note">FIND YOUR NEXT EXPERIENCE ✳</div>
       </div>
     </header>
@@ -538,18 +559,15 @@
       <div class="toolbar">
         <div class="filters" id="filters" aria-label="ジャンルで絞り込み">
           <button class="filter active" data-category="すべて">すべて</button>
-          <button class="filter" data-category="展示">展示</button>
-          <button class="filter" data-category="体験・ワークショップ">
-            体験・ワークショップ
-          </button>
-          <button class="filter" data-category="研究発表">研究発表</button>
-          <button class="filter" data-category="ゲーム・エンタメ">
-            ゲーム・エンタメ
-          </button>
+          <button class="filter" data-category="ライブ">ライブ</button>
+          <button class="filter" data-category="特別企画">特別企画</button>
           <button class="filter" data-category="飲食">飲食</button>
-          <button class="filter" data-category="ステージ・発表">
-            ステージ・発表
-          </button>
+          <button class="filter" data-category="物販">物販</button>
+          <button class="filter" data-category="展示">展示</button>
+          <button class="filter" data-category="体験">体験</button>
+          <button class="filter" data-category="音楽">音楽</button>
+          <button class="filter" data-category="出店">出店</button>
+          <button class="filter" data-category="企画">企画</button>
           <button class="filter" data-category="その他">その他</button>
         </div>
         <label class="search"
@@ -600,12 +618,15 @@
   url = ナビプロジェクトのURL
 */
       const categoryStyles = {
-        展示: { color: "purple", icon: "🎨" },
-        "体験・ワークショップ": { color: "blue", icon: "🧩" },
-        研究発表: { color: "green", icon: "📊" },
-        "ゲーム・エンタメ": { color: "pink", icon: "🎮" },
-        飲食: { color: "orange", icon: "🍴" },
-        "ステージ・発表": { color: "red", icon: "🎵" },
+        ライブ: { color: "red", icon: "🎤" },
+        特別企画: { color: "purple", icon: "✨" },
+        飲食: { color: "orange", icon: "🍜" },
+        物販: { color: "pink", icon: "🛍️" },
+        展示: { color: "blue", icon: "🎨" },
+        体験: { color: "green", icon: "🎲" },
+        音楽: { color: "purple", icon: "🎶" },
+        出店: { color: "blue", icon: "🏪" },
+        企画: { color: "pink", icon: "🧩" },
         その他: { color: "blue", icon: "📍" },
       };
 
