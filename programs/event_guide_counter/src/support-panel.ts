@@ -46,6 +46,18 @@ export function createSupportPanel(onAuthError: (err: ApiError) => void): HTMLEl
   const statusText = el("span", { className: "hint support-status" });
   const head = el("div", { className: "support-head" });
   head.append(el("h1", { text: "相談窓口" }), acceptBtn, statusText);
+  const errorText = el("p", { className: "support-error" });
+  errorText.hidden = true;
+
+  /** うまくいかなかったことを画面に出す（サーバーのエラーは、DBの表が無いなど設定の漏れのことが多い） */
+  function showError(what: string, err: unknown): void {
+    const detail = err instanceof ApiError ? `（${err.status}: ${err.message}）` : "（通信できませんでした）";
+    const hint = err instanceof ApiError && err.status >= 500
+      ? " 本番のDBに相談窓口の表が無い可能性があります。docs/help_chat.md の「使えるようにする手順」を確かめてください。"
+      : "";
+    errorText.textContent = `${what}${detail}${hint}`;
+    errorText.hidden = false;
+  }
 
   const list = el("div", { className: "support-list" });
   const detail = el("div", { className: "support-detail" });
@@ -54,6 +66,7 @@ export function createSupportPanel(onAuthError: (err: ApiError) => void): HTMLEl
 
   section.append(
     head,
+    errorText,
     el("p", {
       className: "hint",
       text: "「受け付ける」にしている間は、IKU NAVI の「？」で AI に質問した人が、オペレーターにつなげるようになります。"
@@ -179,11 +192,14 @@ export function createSupportPanel(onAuthError: (err: ApiError) => void): HTMLEl
         if (hadMessages && s.open.messages.some((m) => m.sender === "user")) beep();
       }
       renderList(s.conversations);
+      errorText.hidden = true;
     } catch (err) {
       if (err instanceof ApiError && (err.status === 401 || err.status === 404 || err.status === 503)) {
         stop();
         onAuthError(err);
+        return;
       }
+      showError("相談窓口の状態を確かめられませんでした", err);
     } finally {
       busy = false;
     }
@@ -210,6 +226,8 @@ export function createSupportPanel(onAuthError: (err: ApiError) => void): HTMLEl
     try {
       await api.setSupportAccepting(!(state?.accepting ?? false));
       await refresh();
+    } catch (err) {
+      showError("受け付けを切り替えられませんでした", err);
     } finally {
       acceptBtn.disabled = false;
     }

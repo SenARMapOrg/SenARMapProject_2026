@@ -164,3 +164,7 @@ body {
   flex: 1; font: inherit; font-size: 14px; padding: 8px 10px; resize: vertical;
   border: 1px solid var(--line-strong); border-radius: 4px;
 }
+.support-error {
+  font-size: 13px; line-height: 1.6; color: var(--danger); background: #FBEAE9;
+  border: 1px solid var(--danger); border-radius: 4px; padding: 8px 10px; margin-bottom: 10px;
+}
