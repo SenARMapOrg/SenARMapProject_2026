@@ -9,6 +9,7 @@ REPO_DIR = HTML_DIR.parents[1]
 FAQ = HTML_DIR / "navi" / "faq.json"
 HELP_JS = HTML_DIR / "navi" / "script" / "help.js"
 CHAT_FN = REPO_DIR / "functions" / "api" / "help-chat.js"
+SUPPORT_GUARD = REPO_DIR / "programs" / "event_guide_counter" / "functions" / "api" / "_lib" / "support-guard.ts"
 
 
 def test_よくある質問の形が正しい():
@@ -37,3 +38,9 @@ def test_画面とサーバーで上限の値が同じ():
         text = path.read_text(encoding="utf-8")
         return {name: int(re.search(rf"const {name} = (\d+);", text).group(1)) for name in ("MAX_CHARS", "MAX_TURNS")}
     assert consts(HELP_JS) == consts(CHAT_FN)
+
+
+def test_オペレーターへのメッセージの上限が集計システムと同じ():
+    front = re.search(r"const SUPPORT_MAX_CHARS = (\d+);", HELP_JS.read_text(encoding="utf-8")).group(1)
+    server = re.search(r"export const MAX_SUPPORT_MESSAGE_CHARS = (\d+);", SUPPORT_GUARD.read_text(encoding="utf-8")).group(1)
+    assert front == server

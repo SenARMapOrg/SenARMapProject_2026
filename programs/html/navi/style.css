@@ -773,3 +773,20 @@
       .help-backdrop { align-items: center; }
       .help-panel { width: 520px; max-height: 80vh; border-radius: 14px; }
     }
+    /* オペレーターとの相談 */
+    .help-body [hidden] { display: none !important; }
+    .help-msg.operator { align-self: flex-start; background: #fff; border: 1px solid var(--go); }
+    .help-msg.operator::before { content: "オペレーター"; display: block; font-size: 11px; font-weight: 700; color: var(--go); }
+    .help-msg.system { align-self: center; max-width: 100%; font-size: 12px; color: var(--ink-soft); text-align: center; padding: 2px 8px; }
+    .help-operator-offer { margin-top: 10px; padding: 10px 12px; background: #fff; border: 1px solid var(--line); border-radius: 8px; }
+    .help-operator-btn, .help-end-btn {
+      width: 100%; padding: 10px; border-radius: 8px; font-size: 14px; font-weight: 700; cursor: pointer;
+      background: #fff; color: var(--go); border: 1px solid var(--go);
+    }
+    .help-end-btn { margin-top: 8px; color: var(--ink-soft); border-color: var(--line-strong); font-weight: 400; }
+    /* オペレーターから返事が来たのにパネルを閉じているとき */
+    #help-btn.has-reply { position: relative; }
+    #help-btn.has-reply::after {
+      content: ""; position: absolute; top: -3px; right: -3px;
+      width: 10px; height: 10px; border-radius: 50%; background: var(--accent); border: 2px solid #fff;
+    }
