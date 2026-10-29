@@ -17,6 +17,11 @@ export interface SupportConversationRow {
 export interface SupportConversationSummary extends SupportConversationRow {
   last_body: string | null;
   last_sender: SupportSender | null;
+  /**
+   * 利用者が返事を待ち始めた時刻（オペレーターの最後の返事より後の、利用者の最初のメッセージ）。
+   * 返事をし終えている・終わった相談は null
+   */
+  waiting_since: string | null;
 }
 
 export interface SupportMessageRow {
@@ -153,7 +158,12 @@ export async function listConversations(
   const select = `
     SELECT c.id, c.status, c.context, c.user_unread, c.created_at, c.updated_at, c.closed_at,
       (SELECT body   FROM support_messages m WHERE m.conversation_id = c.id ORDER BY m.id DESC LIMIT 1) AS last_body,
-      (SELECT sender FROM support_messages m WHERE m.conversation_id = c.id ORDER BY m.id DESC LIMIT 1) AS last_sender
+      (SELECT sender FROM support_messages m WHERE m.conversation_id = c.id ORDER BY m.id DESC LIMIT 1) AS last_sender,
+      CASE WHEN c.status = 'closed' THEN NULL ELSE (
+        SELECT MIN(m.created_at) FROM support_messages m
+        WHERE m.conversation_id = c.id AND m.sender = 'user' AND m.id > COALESCE(
+          (SELECT MAX(o.id) FROM support_messages o WHERE o.conversation_id = c.id AND o.sender = 'operator'), 0)
+      ) END AS waiting_since
     FROM support_conversations c`;
   const [active, closed] = await db.batch<SupportConversationSummary>([
     db.prepare(`${select} WHERE c.status != 'closed' ORDER BY c.updated_at DESC`),

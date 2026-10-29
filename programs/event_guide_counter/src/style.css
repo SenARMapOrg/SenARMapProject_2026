@@ -168,3 +168,9 @@ body {
   font-size: 13px; line-height: 1.6; color: var(--danger); background: #FBEAE9;
   border: 1px solid var(--danger); border-radius: 4px; padding: 8px 10px; margin-bottom: 10px;
 }
+.support-waiting {
+  display: inline-block; margin-top: 4px; font-size: 12px; font-weight: 700;
+  padding: 1px 6px; border-radius: 3px; color: var(--ink-soft); background: var(--paper);
+}
+.support-waiting.warn { color: #8A5A00; background: #FFF4D6; }
+.support-waiting.alert { color: #fff; background: var(--danger); }

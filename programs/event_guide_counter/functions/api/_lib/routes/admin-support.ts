@@ -49,7 +49,8 @@ adminSupportRoutes.get("/state", async (c) => {
       open = { conversation, messages };
     }
   }
-  return c.json({ accepting, accepting_operators: operators, conversations, open });
+  // 待ち時間は、端末の時計のずれに左右されないよう、サーバーの今の時刻との差で出す
+  return c.json({ accepting, accepting_operators: operators, conversations, open, now: new Date().toISOString() });
 });
 
 adminSupportRoutes.post("/accepting", async (c) => {

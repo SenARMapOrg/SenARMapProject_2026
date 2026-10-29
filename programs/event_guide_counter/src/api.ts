@@ -55,6 +55,7 @@ export interface SupportConversation {
   closed_at: string | null;
   last_body?: string | null;
   last_sender?: SupportSender | null;
+  waiting_since?: string | null;
 }
 
 export interface SupportMessage {
@@ -69,6 +70,7 @@ export interface SupportState {
   accepting_operators: number;
   conversations: SupportConversation[];
   open: { conversation: SupportConversation; messages: SupportMessage[] } | null;
+  now: string;
 }
 
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {

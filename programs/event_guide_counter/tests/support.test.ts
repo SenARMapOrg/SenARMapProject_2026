@@ -172,6 +172,29 @@ describe("相談のDB（オペレーター）", () => {
     expect(list.map((c) => [c.status, c.last_body])).toEqual([["waiting", "次の相談"], ["closed", "終了しました"]]);
   });
 
+  it("待ち始めた時刻は、オペレーターの最後の返事より後の、利用者の最初のメッセージ", async () => {
+    const id = await createConversation(t.db, "w", "", "1通目");
+    t.exec("UPDATE support_messages SET created_at = '2026-10-29 03:00:00'");
+    let [c] = await listConversations(t.db);
+    expect(c.waiting_since).toBe("2026-10-29 03:00:00");
+
+    // 返事をしたら待っていない
+    await addOperatorMessage(t.db, id, "op@example.jp", "どうしましたか");
+    [c] = await listConversations(t.db);
+    expect(c.waiting_since).toBeNull();
+
+    // 返事のあとに利用者が2通送ったら、その1通目から待っている
+    t.exec(`INSERT INTO support_messages (conversation_id, sender, body, created_at) VALUES
+      (${id}, 'user', '2通目', '2026-10-29 03:10:00'), (${id}, 'user', '3通目', '2026-10-29 03:12:00')`);
+    [c] = await listConversations(t.db);
+    expect(c.waiting_since).toBe("2026-10-29 03:10:00");
+
+    // 終わった相談は待っていない
+    await closeConversation(t.db, id, "終了");
+    [c] = await listConversations(t.db);
+    expect(c.waiting_since).toBeNull();
+  });
+
   it("終わってから14日を過ぎた相談だけを消す", async () => {
     const old = await createConversation(t.db, "old", "", "古い");
     const recent = await createConversation(t.db, "recent", "", "新しい");

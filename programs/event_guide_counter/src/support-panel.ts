@@ -5,7 +5,7 @@
 // オペレーターがほかの作業をしながら待てるよう、タブが裏に回っていても確認を続け、相談が来たら音で知らせる
 // （裏のタブではブラウザが確認の間隔を最大1分ほどに延ばすので、受付中とみなす時間を1分半にしている）。
 
-import { formatDbTime, supportStatusLabel } from "./admin-format";
+import { formatDbTime, formatWaiting, supportStatusLabel, waitingLevel, waitingMinutes } from "./admin-format";
 import { api, ApiError, type SupportConversation, type SupportMessage, type SupportState } from "./api";
 
 const SUPPORT_POLL_MS = 4000;
@@ -119,8 +119,19 @@ export function createSupportPanel(onAuthError: (err: ApiError) => void): HTMLEl
     if (messages.length) messageLog.scrollTop = messageLog.scrollHeight;
   }
 
-  function renderOpen(conversation: SupportConversation, messages: SupportMessage[]): void {
-    detailTitle.textContent = `相談 #${conversation.id}（${supportStatusLabel(conversation.status)}）`;
+  /** 待ち時間の表示（「⏱ 5分待ち」）。返事を待っていなければ null */
+  function waitingBadge(c: SupportConversation | undefined, now: string): HTMLElement | null {
+    const minutes = waitingMinutes(c?.waiting_since, now);
+    if (minutes === null) return null;
+    return el("span", { className: `support-waiting ${waitingLevel(minutes)}`, text: `⏱ ${formatWaiting(minutes)}待ち` });
+  }
+
+  function renderOpen(
+    conversation: SupportConversation, messages: SupportMessage[], summary: SupportConversation | undefined, now: string,
+  ): void {
+    detailTitle.replaceChildren(`相談 #${conversation.id}（${supportStatusLabel(conversation.status)}）`);
+    const badge = waitingBadge(summary, now);
+    if (badge) detailTitle.append(" ", badge);
     if (conversation.context && !contextBox.childElementCount) {
       contextBox.append(
         el("summary", { text: "つなぐ前の AI とのやりとり" }),
@@ -136,12 +147,19 @@ export function createSupportPanel(onAuthError: (err: ApiError) => void): HTMLEl
   }
 
   // ---- 一覧 ----
-  function renderList(conversations: SupportConversation[]): void {
+  /** 返事を待っている相談を、長く待っている順に上へ。それ以外はサーバーの順（新しく動いた順）のまま */
+  function sortForReply(conversations: SupportConversation[]): SupportConversation[] {
+    const waiting = conversations.filter((c) => c.waiting_since)
+      .sort((a, b) => (a.waiting_since! < b.waiting_since! ? -1 : a.waiting_since! > b.waiting_since! ? 1 : 0));
+    return [...waiting, ...conversations.filter((c) => !c.waiting_since)];
+  }
+
+  function renderList(conversations: SupportConversation[], now: string): void {
     if (!conversations.length) {
       list.replaceChildren(el("p", { className: "hint", text: "相談はまだありません。" }));
       return;
     }
-    list.replaceChildren(...conversations.map((c) => {
+    list.replaceChildren(...sortForReply(conversations).map((c) => {
       const item = el("button", { className: `support-item ${c.status}${c.id === openId ? " selected" : ""}` });
       item.type = "button";
       const top = el("div", { className: "support-item-top" });
@@ -152,6 +170,8 @@ export function createSupportPanel(onAuthError: (err: ApiError) => void): HTMLEl
       );
       if (c.user_unread > 0) top.appendChild(el("span", { className: "support-unread", text: String(c.user_unread) }));
       item.append(top, el("div", { className: "support-item-last", text: c.last_body ?? "" }));
+      const badge = waitingBadge(c, now);
+      if (badge) item.appendChild(badge);
       item.addEventListener("click", () => openConversation(c.id));
       return item;
     }));
@@ -188,10 +208,11 @@ export function createSupportPanel(onAuthError: (err: ApiError) => void): HTMLEl
       // 一覧を描き直す前に確認し直した相談を選び直す（ほかのタブで相談を開き直したとき用）
       if (s.open && requestedId === openId) {
         const hadMessages = lastMessageId;
-        renderOpen(s.open.conversation, s.open.messages);
+        const summary = s.conversations.find((c) => c.id === s.open!.conversation.id);
+        renderOpen(s.open.conversation, s.open.messages, summary, s.now);
         if (hadMessages && s.open.messages.some((m) => m.sender === "user")) beep();
       }
-      renderList(s.conversations);
+      renderList(s.conversations, s.now);
       errorText.hidden = true;
     } catch (err) {
       if (err instanceof ApiError && (err.status === 401 || err.status === 404 || err.status === 503)) {
