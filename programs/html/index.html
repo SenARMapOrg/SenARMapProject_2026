@@ -103,6 +103,24 @@
 </head>
 <body>
 
+  <!-- 鳳祭の期間（11/5〜11/9、日本時間）だけ出す。期間は下のスクリプトで判定し、普段は hidden のまま -->
+  <a class="event-banner" id="ohtori-banner" href="/ohtori_events/" hidden>
+    <span class="event-banner-tag">鳳祭</span>
+    <span class="event-banner-text">展示・ライブ・出店の一覧と、会場までのナビはこちら</span>
+    <span class="event-banner-arrow" aria-hidden="true">→</span>
+  </a>
+  <script>
+    (function () {
+      // 日本時間で 2026-11-05 0:00 〜 2026-11-09 24:00。端末のタイムゾーンに関係なく判定する
+      var start = Date.parse("2026-11-05T00:00:00+09:00");
+      var end   = Date.parse("2026-11-10T00:00:00+09:00");
+      var now = Date.now();
+      // 期間外でも、?ohtori=1 を付けると表示を確かめられる
+      var preview = /[?&]ohtori=1(&|$)/.test(location.search);
+      if (preview || (now >= start && now < end)) document.getElementById("ohtori-banner").hidden = false;
+    })();
+  </script>
+
   <main class="page">
 
     <header class="hero">
