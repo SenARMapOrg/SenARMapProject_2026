@@ -442,6 +442,22 @@ button, select, input { color: inherit; }
   box-shadow: var(--shadow-float);
 }
 
+    /* 屋外ARで GPS が取れなくなったときの案内（../navi/script/ar.js の arUpdateGpsLostNotice） */
+    #ar-gps-lost {
+      position: absolute;
+      left: 50%; top: 78%;
+      transform: translate(-50%, -50%);
+      width: max-content;
+      max-width: calc(100% - 120px);
+      background: rgba(20,24,31,0.86); color: #fff;
+      font-size: 15px; font-weight: 700; line-height: 1.5;
+      text-align: center;
+      padding: 10px 16px; border-radius: 8px;
+      pointer-events: none;
+      z-index: 10;
+    }
+    #ar-gps-lost[hidden] { display: none; }
+
 #step-info {
   position: absolute; top: 0; left: 0; right: 0;
   padding: calc(env(safe-area-inset-top, 0px) + 12px) 16px 12px;
@@ -743,6 +759,7 @@ button, select, input { color: inherit; }
         <div id="ar-label">進行方向</div>
         <img id="direction-arrow" src="" alt="進む方向を示す矢印">
         <div id="near-goal-badge">この通路沿いが目的地周辺です</div>
+        <div id="ar-gps-lost" role="status" hidden>GPSで現在地を取得できなくなりました。<br>右の矢印ボタンで手順を進めてください。</div>
 
         <div id="step-info">
           <div id="step-label" aria-live="polite">まずは出発地と目的地を選んでください</div>

@@ -130,6 +130,22 @@
       #ui-layer { flex-direction: row; padding: 24px; }
       #nav-controls { margin: 0; justify-content: flex-end; }
     }
+
+    /* 屋外ARで GPS が取れなくなったときの案内（../navi/script/ar.js の arUpdateGpsLostNotice） */
+    #ar-gps-lost {
+      position: absolute;
+      left: 50%; top: 78%;
+      transform: translate(-50%, -50%);
+      width: max-content;
+      max-width: calc(100% - 120px);
+      background: rgba(20,24,31,0.86); color: #fff;
+      font-size: 15px; font-weight: 700; line-height: 1.5;
+      text-align: center;
+      padding: 10px 16px; border-radius: 8px;
+      pointer-events: none;
+      z-index: 10;
+    }
+    #ar-gps-lost[hidden] { display: none; }
   </style>
 </head>
 <body>
@@ -145,6 +161,7 @@
     <div id="ar-area">
       <video id="ar-bg-video" autoplay playsinline muted></video>
       <canvas id="ar-gl-canvas"></canvas>
+      <div id="ar-gps-lost" role="status" hidden>GPSで現在地を取得できなくなりました。<br>右の矢印ボタンで手順を進めてください。</div>
       <div id="ar-cache"></div>
       <div id="ar-placeholder">
         <div class="ph-text">AR / CAMERA</div>
