@@ -343,3 +343,23 @@ def test_端末を立てて持っていないときはコンパスのずれを�
       arHeadingOffset
     """)
     assert out == 0
+
+
+# ---------------------------------------------------------------- GPS が取れなくなったときの案内
+
+def test_GPSが取れない時間が続いたら案内を出す():
+    # ARを出してから使える位置が一度も来ないまま15秒を過ぎたら出す
+    assert run_js("arGpsLost(14000, 0, 0, false)") is False
+    assert run_js("arGpsLost(16000, 0, 0, false)") is True
+    # 使える位置が届いていれば、そこから15秒は出さない
+    assert run_js("arGpsLost(30000, 0, 20000, false)") is False
+    assert run_js("arGpsLost(36000, 0, 20000, false)") is True
+
+
+def test_ARを出し直したらしばらくは案内を出さない():
+    # 屋内から屋外に戻ったときなど、前の位置が古くても、出し直してから15秒は待つ
+    assert run_js("arGpsLost(100000, 95000, 1000, false)") is False
+
+
+def test_位置情報が許可されていなければすぐ案内を出す():
+    assert run_js("arGpsLost(1000, 0, 1000, true)") is True

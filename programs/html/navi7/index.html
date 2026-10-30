@@ -55,6 +55,22 @@
     #direction-arrow { width: 100px; height: 100px; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.4)); }
     #ar-label { margin-top: 8px; background: var(--surface); padding: 4px 12px; border-radius: 12px; font-weight: bold; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
     #near-goal-badge { background: var(--brand); color: #fff; padding: 8px 16px; border-radius: 20px; font-weight: bold; margin-bottom: 12px; display: none; box-shadow: 0 4px 12px rgba(230,57,70,0.4); }
+
+    /* 屋外ARで GPS が取れなくなったときの案内（../navi/script/ar.js の arUpdateGpsLostNotice） */
+    #ar-gps-lost {
+      position: absolute;
+      left: 50%; top: 78%;
+      transform: translate(-50%, -50%);
+      width: max-content;
+      max-width: calc(100% - 120px);
+      background: rgba(20,24,31,0.86); color: #fff;
+      font-size: 15px; font-weight: 700; line-height: 1.5;
+      text-align: center;
+      padding: 10px 16px; border-radius: 8px;
+      pointer-events: none;
+      z-index: 10;
+    }
+    #ar-gps-lost[hidden] { display: none; }
     
     #floor-badge { position: absolute; bottom: 16px; right: 16px; background: var(--text); color: #fff; padding: 6px 12px; border-radius: 8px; font-weight: bold; z-index: 10; }
     #event-badge { display: none; }
@@ -151,6 +167,7 @@
     
     <div id="floor-badge"></div>
     <div id="event-badge"></div>
+    <div id="ar-gps-lost" role="status" hidden>GPSで現在地を取得できなくなりました。<br>右の矢印ボタンで手順を進めてください。</div>
   </div>
 
   <!-- 下部：ボトムシート -->

@@ -49,6 +49,11 @@ const AR_AUTO_CONFIRM = 2;
 // ボタンで手動でステップを動かしたあと、自動送りを止めておく時間（戻した直後に勝手に進み直さないように）
 const AR_MANUAL_PAUSE_MS = 15000;
 
+// --- GPS が取れなくなったときの案内 ---
+// 屋外ARを出してから、使える位置（精度 AR_GPS_MAX_ACCURACY 以内）がこの時間（ミリ秒）届かなければ、
+// 自動送りでは進めないので、右の矢印で手順を進めるよう画面に出す
+const AR_GPS_LOST_MS = 15000;
+
 let arPermissionsRequested = false;
 let arCamWanted      = false;  // カメラストリームを保持してよいか（解放後の遅延取得を防ぐ）
 let arCamRequesting  = false;  // getUserMedia 実行中フラグ（二重取得を防ぐ）
@@ -76,6 +81,11 @@ let arAutoConfirmed   = 0;     // 「通過した」と判定された位置が�
 let arAutoPausedUntil = 0;     // この時刻（ミリ秒）までは自動送りしない
 let arHeadingTrack    = [];    // 補正用に覚えておく最近の位置とカメラの向き（arLearnHeading 参照）
 let arHeadingOffset   = 0;     // コンパスのずれの推定（度。方位＝時計回りで「真の方位 − コンパスの方位」）
+let arViewActive      = false; // 屋外のステップでARを出しているか（arShowView〜arHideView）
+let arViewShownAt     = 0;     // ARを出した時刻（ミリ秒）
+let arGoodFixAt       = 0;     // 最後に使える位置が届いた時刻（ミリ秒）
+let arGpsDenied       = false; // 位置情報の利用が許可されていない
+let arGpsLostTimer    = null;
 
 let _arMeshes = [];   // { mesh, mat, type: "node"|"edge", idx, x, z } — ステップごとの色・範囲による表示の切り替え
 
@@ -364,12 +374,33 @@ function arResetAutoAdvance() {
   arAutoPausedUntil = 0;
 }
 
+// ================================================================
+// GPS が取れなくなったときの案内
+// 建物のそばなどで精度が悪い位置しか届かなくなると、自動送りが止まって最後まで進めなくなる。
+// そのときは、右の矢印（＞）で手順を進めるよう、AR の画面に出す。使える位置がまた届いたら消す。
+// ================================================================
+
+/** GPS が取れなくなったとみなすか。shownAtMs: ARを出した時刻、goodFixAtMs: 最後に使える位置が届いた時刻 */
+function arGpsLost(nowMs, shownAtMs, goodFixAtMs, denied) {
+  if (denied) return true;
+  return nowMs - Math.max(shownAtMs, goodFixAtMs) > AR_GPS_LOST_MS;
+}
+
+function arUpdateGpsLostNotice() {
+  const el = typeof document !== "undefined" && document.getElementById("ar-gps-lost");
+  if (!el) return;
+  el.hidden = !(arViewActive && arGpsLost(Date.now(), arViewShownAt, arGoodFixAt, arGpsDenied));
+}
+
 function arOnGpsFix(pos) {
   const { latitude, longitude, accuracy } = pos.coords;
   const timeMs = pos.timestamp || Date.now();
   const result = arFilterGpsFix(arGpsFilter, latitude, longitude, accuracy, timeMs);
   arGpsFilter = result.state;
+  arGpsDenied = false;
   if (!result.accepted) return;
+  arGoodFixAt = Date.now();
+  arUpdateGpsLostNotice();
   const user  = arFilteredPosition(arGpsFilter);
   const shown = arSnapToRoute(user, arRouteSegmentsNear(currentStep));
   arUserLat = shown.lat;
@@ -602,13 +633,22 @@ function arStartGpsWatch() {
   if (arGpsWatchId != null || !navigator.geolocation) return;
   arGpsWatchId = navigator.geolocation.watchPosition(
     arOnGpsFix,
-    () => {},
+    (err) => {
+      // 許可されていないときはすぐ案内を出す（時間切れなどは、AR_GPS_LOST_MS たてば出る）
+      if (err && err.code === 1) { arGpsDenied = true; arUpdateGpsLostNotice(); }
+    },
     { enableHighAccuracy: true, maximumAge: 0, timeout: 27000 }
   );
 }
 
 async function arShowView() {
   arStartGpsWatch();
+  if (!arViewActive) {
+    arViewActive = true;
+    arViewShownAt = Date.now();
+    arGpsLostTimer = setInterval(arUpdateGpsLostNotice, 1000);
+  }
+  arUpdateGpsLostNotice();
   if (arRunning || arBooting) return;
   arCamWanted = true;
   arBooting = true;
@@ -652,6 +692,9 @@ async function arShowView() {
 }
 
 function arHideView() {
+  arViewActive = false;
+  if (arGpsLostTimer != null) { clearInterval(arGpsLostTimer); arGpsLostTimer = null; }
+  arUpdateGpsLostNotice();
   arBooting = false;
   if (!arRunning) return;
   arRunning = false;
@@ -678,4 +721,6 @@ function arReleaseHardware() {
   arGpsFilter = null;
   arAutoConfirmed = 0;
   arHeadingTrack = [];
+  arGoodFixAt = 0;
+  arGpsDenied = false;
 }
