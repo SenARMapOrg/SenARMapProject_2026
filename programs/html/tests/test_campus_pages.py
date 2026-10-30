@@ -27,6 +27,7 @@ def test_建物ページと一覧とサイトマップができる(tmp_path):
         assert f'href="/campus/{b}/"' in index
         assert f"https://iku-navi.net/campus/{b}/" in sitemap
     assert "https://iku-navi.net/navi/" in sitemap
+    assert "https://iku-navi.net/ohtori_events/" in sitemap
 
 
 def test_各ページに検索結果用の情報がある(tmp_path):
