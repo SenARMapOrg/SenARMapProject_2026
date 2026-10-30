@@ -101,6 +101,26 @@ function buildNearGoalText(edge) {
  * 階段/エレベータ/エスカレータは複数の区間にまたがることがあるため、同種の区間が連続する
  * 最初のステップでのみ「○階まで」を案内し、続きのステップでは何も言わない。
  */
+/**
+ * 階段・エレベーター・エスカレーターのステップで、どの階まで行くかの案内（「エレベーターで6階まで上がってください」）。
+ * 同じ種類の区間が続く間（エレベーターで何階も上がるときなど）をまとめて、その行き先の階を言う。該当しなければ ""。
+ */
+function buildVerticalMoveText(step) {
+  const type = String(pathEdges[step]?.type ?? "1");
+  const label = VERTICAL_LABELS[type];
+  if (!label) return "";
+  let start = step;
+  while (start > 0 && String(pathEdges[start - 1]?.type ?? "") === type) start -= 1;
+  let end = step;
+  while (end + 1 < pathEdges.length && String(pathEdges[end + 1]?.type ?? "") === type) end += 1;
+  const fromFloor = pathCoords[start]?.floor;
+  const toFloor   = pathCoords[end + 1]?.floor;
+  if (fromFloor == null || toFloor == null || fromFloor === toFloor) return `${label}で移動します`;
+  return toFloor > fromFloor
+    ? `${label}で${floorLabel(toFloor)}まで上がってください`
+    : `${label}で${floorLabel(toFloor)}まで下りてください`;
+}
+
 function buildStepAnnouncement(step) {
   const edge = pathEdges[step];
   if (!edge) return "";
@@ -110,16 +130,7 @@ function buildStepAnnouncement(step) {
   if (VERTICAL_LABELS[type]) {
     const prevType = step > 0 ? String(pathEdges[step - 1]?.type ?? "") : null;
     if (prevType === type) return ""; // 同じ階段/EV/ESCの続き番目のステップ：繰り返さない
-
-    let end = step;
-    while (end + 1 < pathEdges.length && String(pathEdges[end + 1]?.type ?? "") === type) end += 1;
-    const fromFloor = pathCoords[step]?.floor;
-    const toFloor   = pathCoords[end + 1]?.floor;
-    const label = VERTICAL_LABELS[type];
-    if (fromFloor == null || toFloor == null || fromFloor === toFloor) return `${label}で移動します`;
-    return toFloor > fromFloor
-      ? `${label}で${floorLabel(toFloor)}まで上がってください`
-      : `${label}で${floorLabel(toFloor)}まで下りてください`;
+    return buildVerticalMoveText(step);
   }
 
   // 最終区間（目的地エッジ上を歩く「この辺です」区間）

@@ -124,11 +124,15 @@ function updateDirectionArrow(step) {
   // 最終区間（目的地エッジを歩く区間）は矢印だと「まだ先へ進む」と誤解されるため、
   // 矢印の代わりに「目的地周辺です」バッジを表示する
   const isFinalSegment = step === pathCoords.length - 2;
+  // エレベーターの中では、何階へ行くかを矢印の代わりに出す（何階か続けて乗るときも、降りる階を出す）
+  const isElevator = !isFinalSegment && String(pathEdges[step]?.type ?? "") === "4";
   if (nearEl) {
-    nearEl.style.display = isFinalSegment ? "block" : "none";
+    nearEl.style.display = isFinalSegment || isElevator ? "block" : "none";
+    nearEl.classList.toggle("floor-move", isElevator);
     if (isFinalSegment) nearEl.textContent = buildNearGoalText(pathEdges[step]);
+    if (isElevator) nearEl.textContent = buildVerticalMoveText(step);
   }
-  if (isFinalSegment) {
+  if (isFinalSegment || isElevator) {
     arrowEl.style.display = "none";
     return;
   }

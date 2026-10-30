@@ -286,23 +286,22 @@ def test_曲がる前の位置は捨てて_曲がった後のまっすぐな部�
 
 # ---------------------------------------------------------------- 目印を出す範囲
 
-def visible(marker, user, step):
-    return run_js(f"arMarkerVisible({json.dumps(marker)}, {json.dumps(user)}, {step})")
+def visible(marker, step):
+    return run_js(f"arMarkerVisible({json.dumps(marker)}, {step})")
 
 
-def test_近くの目印だけを出す():
-    me = {"x": 0, "z": 0}
-    assert visible({"type": "edge", "idx": 1, "x": 0, "z": -30}, me, 1) is True
-    assert visible({"type": "edge", "idx": 1, "x": 0, "z": -60}, me, 1) is False
-    assert visible({"type": "node", "idx": 3, "x": 0, "z": -80}, me, 1) is False
+def test_今のステップから5区間先までの経路を出す():
+    # ステップ 1 にいるとき、区間は 1〜5、地点は 1〜6 を出す（遠くても出す）
+    assert visible({"type": "edge", "idx": 1, "x": 0, "z": -500}, 1) is True
+    assert visible({"type": "edge", "idx": 5}, 1) is True
+    assert visible({"type": "edge", "idx": 6}, 1) is False
+    assert visible({"type": "node", "idx": 6}, 1) is True
+    assert visible({"type": "node", "idx": 7}, 1) is False
 
 
-def test_次の地点の目印は遠くても出す():
-    assert visible({"type": "node", "idx": 2, "x": 0, "z": -80}, {"x": 0, "z": 0}, 1) is True
-
-
-def test_位置がまだ分からないときは全部出す():
-    assert visible({"type": "edge", "idx": 1, "x": 0, "z": -500}, None, 1) is True
+def test_通り過ぎた経路は出さない():
+    assert visible({"type": "edge", "idx": 0}, 1) is False
+    assert visible({"type": "node", "idx": 0}, 1) is False
 
 
 def test_AR表示中に経路に沿って歩くとコンパスのずれを学んでいく():
