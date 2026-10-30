@@ -29,7 +29,8 @@ CAMPUS = "専修大学 生田キャンパス"
 
 TOILET_LABEL = {"M_Toilet": "男子トイレ", "F_Toilet": "女子トイレ", "C_Toilet": "多目的トイレ"}
 # サイトマップに必ず載せるページ（建物ページはこのあとに足す）
-STATIC_PAGES = [("/", "1.00"), ("/navi/", "0.90"), ("/map3d/", "0.80"), ("/campus/", "0.80"), ("/embed/builder/", "0.50")]
+STATIC_PAGES = [("/", "1.00"), ("/navi/", "0.90"), ("/map3d/", "0.80"), ("/campus/", "0.80"),
+                ("/ohtori_events/", "0.80"), ("/embed/builder/", "0.50")]
 
 
 def read_csv(path):
