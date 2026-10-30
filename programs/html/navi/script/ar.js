@@ -38,8 +38,8 @@ const AR_HEADING_MAX_OFFSET = 45;     // これより大きいずれ（度）は
 const AR_HEADING_LEARN      = 0.3;    // 新しく求めたずれをどれだけ取り入れるか
 
 // --- 目印を出す範囲 ---
-// 遠くの目印ほど、少しの向きのずれで横に大きくずれて見える（15度で50m先は約13m）ので、近くだけ出す
-const AR_VISIBLE_RANGE_M = 40;
+// 今のステップから何区間先までの経路を出すか（距離で絞ると、地点の間が長い屋外では1区間しか出なくなるため、区間の数で決める）
+const AR_VISIBLE_STEPS = 5;
 // 区間の線を何mごとに分けて置くか（長い区間でも、範囲の外の部分だけを隠せるように）
 const AR_EDGE_CHUNK_M = 5;
 
@@ -141,7 +141,7 @@ function arRequestPermissionsEarly() {
   }
 }
 
-// ルートに屋外AR区間が含まれる場合のみカメラを先取りしてストリームを温める。
+// ルートに屋外AR区間が含まれる場合のみ、GPS の取得を始め、カメラを先取りしてストリームを温める。
 // 屋内のみのルートではカメラを一切起動しない。initRoute() から呼ばれる。
 function arPrefetchCameraIfNeeded() {
   let hasOutdoorAR = false;
@@ -151,6 +151,8 @@ function arPrefetchCameraIfNeeded() {
   }
   if (!hasOutdoorAR) return;
 
+  // GPS は、つかみ始めの位置の精度が悪いので、屋外に出る前（経路を出した時点）から取り続けておく
+  arStartGpsWatch();
   arCamWanted = true;
   if (arStream || arCamRequesting) return;
   if (!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia)) return;
@@ -486,24 +488,18 @@ function arLearnHeading(filterState, shown, timeMs) {
 }
 
 /**
- * 目印 m（_arMeshes の要素）を出すか。user は自分の位置（arBuildRouteMarkers と同じ x・z）、無ければ全部出す。
- * 次の地点（ステップ step の行き先）は、遠くてもどちらへ向かうか分かるように出す。
+ * 目印 m（_arMeshes の要素）を出すか。今のステップ step から AR_VISIBLE_STEPS 区間先までを出し、通り過ぎた所は出さない。
+ *   - 区間（edge）: idx が step 〜 step + AR_VISIBLE_STEPS - 1
+ *   - 地点（node）: idx が step 〜 step + AR_VISIBLE_STEPS（その区間の両端）
  */
-function arMarkerVisible(m, user, step) {
-  if (!user) return true;
-  if (m.type === "node" && m.idx === step + 1) return true;
-  return Math.hypot(m.x - user.x, m.z - user.z) <= AR_VISIBLE_RANGE_M;
+function arMarkerVisible(m, step) {
+  const last = m.type === "node" ? step + AR_VISIBLE_STEPS : step + AR_VISIBLE_STEPS - 1;
+  return m.idx >= step && m.idx <= last;
 }
 
-/** 自分の近くの目印だけを出す（位置が更新されたとき・ステップが変わったときに呼ぶ） */
+/** 今のステップの先の目印だけを出す（ステップが変わったときなどに呼ぶ） */
 function arUpdateVisibility() {
-  if (arRefLat == null) return;
-  let user = null;
-  if (arUserLat != null) {
-    const { east, north } = arEnuFromRef(arUserLat, arUserLng);
-    user = { x: east, z: -north };
-  }
-  _arMeshes.forEach(m => { m.mesh.visible = arMarkerVisible(m, user, currentStep); });
+  _arMeshes.forEach(m => { m.mesh.visible = arMarkerVisible(m, currentStep); });
 }
 
 // pathCoords から屋外区間のノード・エッジを Three.js シーンに配置する

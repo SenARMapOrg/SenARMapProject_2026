@@ -582,6 +582,9 @@
       box-shadow: 0 4px 14px rgba(0,0,0,0.4);
     }
 
+    /* エレベーターの中で、何階へ行くかを出すとき（photo.js の updateDirectionArrow） */
+    #near-goal-badge.floor-move { background: var(--transit-blue); font-size: 18px; }
+
     /* 屋外ARで GPS が取れなくなったときの案内（ar.js の arUpdateGpsLostNotice） */
     #ar-gps-lost {
       position: absolute;
