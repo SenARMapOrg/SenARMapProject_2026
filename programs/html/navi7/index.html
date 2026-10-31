@@ -71,6 +71,33 @@
       z-index: 10;
     }
     #ar-gps-lost[hidden] { display: none; }
+
+    /* 屋外の経路で、カメラ・位置情報・向きの許可をお願いする画面（../navi/script/ar.js の arAskPermissions） */
+    #ar-permission-modal {
+      position: fixed; inset: 0; z-index: 2000;
+      display: flex; align-items: center; justify-content: center;
+      padding: 20px;
+      background: rgba(20,24,31,0.6);
+    }
+    #ar-permission-modal[hidden] { display: none; }
+    .ar-permission-box {
+      background: #fff; color: #17181c;
+      border-radius: 12px;
+      padding: 24px 22px 18px;
+      max-width: 360px; width: 100%;
+      box-shadow: 0 24px 64px rgba(20,24,31,0.3);
+      text-align: left;
+    }
+    .ar-permission-title { font-size: 18px; font-weight: 700; line-height: 1.4; margin: 0 0 10px; }
+    .ar-permission-desc { font-size: 14px; line-height: 1.7; color: #4a4f57; margin: 0 0 10px; }
+    .ar-permission-list { margin: 0 0 12px; padding-left: 1.4em; font-size: 15px; font-weight: 700; line-height: 1.8; }
+    .ar-permission-ok {
+      width: 100%; height: 48px; margin-top: 6px;
+      border: none; border-radius: 8px;
+      background: #1f6feb; color: #fff;
+      font-size: 16px; font-weight: 700;
+      cursor: pointer;
+    }
     
     #floor-badge { position: absolute; bottom: 16px; right: 16px; background: var(--text); color: #fff; padding: 6px 12px; border-radius: 8px; font-weight: bold; z-index: 10; }
     #event-badge { display: none; }
@@ -335,6 +362,22 @@
       <div style="font-size:1.2rem; font-weight:bold; color:var(--brand);">経路を探索中...</div>
     </div>
   </div>
+
+<!-- 屋外の経路で、カメラ・位置情報・向きの許可をお願いする画面（../navi/script/ar.js の arAskPermissions）。
+     「OK」を押すと、続けてブラウザの許可の確認が出る -->
+<div id="ar-permission-modal" role="dialog" aria-modal="true" aria-labelledby="ar-permission-title" hidden>
+  <div class="ar-permission-box">
+    <h2 class="ar-permission-title" id="ar-permission-title">カメラと位置情報の利用を許可してください</h2>
+    <p class="ar-permission-desc">この経路は屋外を通ります。屋外では、カメラの映像に道順を重ねて案内し、現在地に合わせて手順を進めます。</p>
+    <ul class="ar-permission-list">
+      <li>カメラ</li>
+      <li>位置情報</li>
+      <li>動きと向き（スマホの向き）</li>
+    </ul>
+    <p class="ar-permission-desc">正確に案内するため、このあと出る確認で「許可」を押してください。</p>
+    <button type="button" class="ar-permission-ok" onclick="arAcceptPermissions()">OK</button>
+  </div>
+</div>
 
   <script src="../navi/script/state.js"></script>
   <script src="../navi/script/track.js"></script>

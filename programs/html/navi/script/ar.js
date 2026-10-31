@@ -54,7 +54,9 @@ const AR_MANUAL_PAUSE_MS = 15000;
 // 自動送りでは進めないので、右の矢印で手順を進めるよう画面に出す
 const AR_GPS_LOST_MS = 15000;
 
-let arPermissionsRequested = false;
+// 屋外の経路で使うカメラ・位置情報・向きの許可。"none"＝まだ聞いていない / "asking"＝お願いの画面を出している /
+// "done"＝OKが押された（またはすでに許可されていた）。ページを開いている間は一度聞けば聞き直さない
+let arPermissionState = "none";
 let arCamWanted      = false;  // カメラストリームを保持してよいか（解放後の遅延取得を防ぐ）
 let arCamRequesting  = false;  // getUserMedia 実行中フラグ（二重取得を防ぐ）
 let arOrientAttached = false;
@@ -118,19 +120,59 @@ function arAttachOrientation() {
   window.addEventListener("deviceorientation",         onRelative);
 }
 
-// 検索ボタン押下（ユーザー操作コンテキスト）で呼ぶ。
-// iOS の DeviceOrientationEvent.requestPermission は同期的に
-// ユーザー操作内で呼ばないと許可ダイアログが出ないため、ここで先取りする。
-// カメラはこの時点では取得しない（ルート確定後、屋外AR区間がある場合のみ
-// arPrefetchCameraIfNeeded() で取得する）。
-function arRequestPermissionsEarly() {
-  if (arPermissionsRequested) return;
-  arPermissionsRequested = true;
-
-  // Three.js を並行ロード（画面切り替え時のもたつきを減らす）
+// 検索ボタン押下で呼ぶ。Three.js を並行ロードして、屋外ARへの切り替え時のもたつきを減らす。
+// 許可はここでは求めない（経路が決まり、屋外を通るときだけ arAskPermissions() で求める）。
+function arPreloadThree() {
   arLoadThree().catch(() => {});
+}
 
-  // iOS 向け向きセンサー許可（ユーザー操作コンテキスト内で同期呼び出し必須）
+/** 経路に屋外AR区間があるか（最終ステップは到着画面なのでAR不要） */
+function arRouteHasOutdoor() {
+  for (let i = 0; i < pathCoords.length - 1; i++) {
+    const n = pathCoords[i];
+    if (n && n.building === 0 && n.lat != null) return true;
+  }
+  return false;
+}
+
+// ルートに屋外AR区間が含まれる場合のみ、GPS の取得を始め、カメラを先取りしてストリームを温める。
+// 屋内のみのルートではカメラを一切起動しない（向きも屋外ARでしか使わないので、許可も求めない）。
+// initRoute() から呼ばれる。まだ許可を聞いていなければ、先にお願いの画面を出す。
+function arPrefetchCameraIfNeeded() {
+  if (!arRouteHasOutdoor()) return;
+  if (arPermissionState === "done") arStartHardware();
+  else if (arPermissionState === "none") arAskPermissions();
+}
+
+// iOS では、向きの許可（DeviceOrientationEvent.requestPermission）は画面のボタンを押した処理の中で
+// 呼ばないと許可ダイアログが出ない。経路の取得を待ったあとではボタンを押した扱いが切れているので、
+// 先に自前の画面で理由を伝え、その「OK」を押した処理の中でブラウザの許可ダイアログを出す。
+// カメラ・位置情報がすでに許可されていて、向きの許可も要らない端末（Android など）では画面を出さない。
+async function arAskPermissions() {
+  arPermissionState = "asking";
+  if (await arAlreadyAllowed()) { arAcceptPermissions(); return; }
+  document.getElementById("ar-permission-modal").hidden = false;
+}
+
+/** カメラ・位置情報が許可済みで、向きの許可も要らないか（Permissions API が無い・読めない端末では false） */
+async function arAlreadyAllowed() {
+  if (typeof DeviceOrientationEvent !== "undefined" &&
+      typeof DeviceOrientationEvent.requestPermission === "function") return false;  // iOS: 向きは毎回OKが要る
+  try {
+    const state = name => navigator.permissions.query({ name }).then(r => r.state);
+    const [camera, geolocation] = await Promise.all([state("camera"), state("geolocation")]);
+    return camera === "granted" && geolocation === "granted";
+  } catch {
+    return false;
+  }
+}
+
+// お願いの画面の「OK」。ここから同期的に向き・カメラ・位置情報の許可を求める。
+function arAcceptPermissions() {
+  document.getElementById("ar-permission-modal").hidden = true;
+  arPermissionState = "done";
+
+  // iOS 向け向きセンサー許可（ユーザー操作コンテキスト内で同期呼び出し必須なので最初に呼ぶ）
   if (typeof DeviceOrientationEvent !== "undefined" &&
       typeof DeviceOrientationEvent.requestPermission === "function") {
     DeviceOrientationEvent.requestPermission()
@@ -139,18 +181,15 @@ function arRequestPermissionsEarly() {
   } else {
     arAttachOrientation();
   }
+
+  if (!arRouteHasOutdoor()) return;
+  arStartHardware();
+  // 画面を出している間に屋外のステップに来ていたら、止めていたARをここで出す
+  updateRouteImage(currentStep);
 }
 
-// ルートに屋外AR区間が含まれる場合のみ、GPS の取得を始め、カメラを先取りしてストリームを温める。
-// 屋内のみのルートではカメラを一切起動しない。initRoute() から呼ばれる。
-function arPrefetchCameraIfNeeded() {
-  let hasOutdoorAR = false;
-  for (let i = 0; i < pathCoords.length - 1; i++) {  // 最終ステップは到着画面なのでAR不要
-    const n = pathCoords[i];
-    if (n && n.building === 0 && n.lat != null) { hasOutdoorAR = true; break; }
-  }
-  if (!hasOutdoorAR) return;
-
+// GPS の取得を始め、カメラを先取りしてストリームを温める
+function arStartHardware() {
   // GPS は、つかみ始めの位置の精度が悪いので、屋外に出る前（経路を出した時点）から取り続けておく
   arStartGpsWatch();
   arCamWanted = true;
@@ -638,6 +677,9 @@ function arStartGpsWatch() {
 }
 
 async function arShowView() {
+  // お願いの画面を出している間は、ブラウザの許可ダイアログが先に出ないようカメラ・GPSに触らない
+  // （OK が押されたら arAcceptPermissions() がもう一度ここを呼ぶ）
+  if (arPermissionState !== "done") return;
   arStartGpsWatch();
   if (!arViewActive) {
     arViewActive = true;
