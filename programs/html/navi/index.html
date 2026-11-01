@@ -244,6 +244,22 @@
 
 <div id="loading"><div id="loading-box"><span class="spinner" aria-hidden="true"></span>道順を探しています</div></div>
 
+<!-- 屋外の経路で、カメラ・位置情報・向きの許可をお願いする画面（../navi/script/ar.js の arAskPermissions）。
+     「OK」を押すと、続けてブラウザの許可の確認が出る -->
+<div id="ar-permission-modal" role="dialog" aria-modal="true" aria-labelledby="ar-permission-title" hidden>
+  <div class="ar-permission-box">
+    <h2 class="ar-permission-title" id="ar-permission-title">カメラと位置情報の利用を許可してください</h2>
+    <p class="ar-permission-desc">この経路は屋外を通ります。屋外では、カメラの映像に道順を重ねて案内し、現在地に合わせて手順を進めます。</p>
+    <ul class="ar-permission-list">
+      <li>カメラ</li>
+      <li>位置情報</li>
+      <li>動きと向き（スマホの向き）</li>
+    </ul>
+    <p class="ar-permission-desc">正確に案内するため、このあと出る確認で「許可」を押してください。</p>
+    <button type="button" class="ar-permission-ok" onclick="arAcceptPermissions()">OK</button>
+  </div>
+</div>
+
 <script src="script/state.js"></script>
 <script src="script/track.js"></script>
 <script src="script/data.js"></script>

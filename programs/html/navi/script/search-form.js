@@ -217,7 +217,7 @@ function selectedOptionLabel(selectId) {
 }
 
 async function doToiletSearch() {
-  arRequestPermissionsEarly();
+  arPreloadThree();
   const params = new URLSearchParams({
     type:         document.getElementById("fac-toilet-type").value,
     use_elevator: document.getElementById("fac-use-elevator").checked ? "1" : "0",
@@ -244,7 +244,7 @@ function doFacSearch() {
 
 // その他の設備（コンビニ・教務課など）。選んだ種類のうち一番近いものへ案内する
 async function doOtherFacilitySearch() {
-  arRequestPermissionsEarly();
+  arPreloadThree();
   const category = document.getElementById("fac-other-name").value;
   if (!category) { alert("探す設備を選んでください。"); return; }
   const params = new URLSearchParams({
@@ -257,7 +257,7 @@ async function doOtherFacilitySearch() {
 }
 
 async function doCafeteriaSearch() {
-  arRequestPermissionsEarly();
+  arPreloadThree();
   const params = new URLSearchParams({
     use_elevator: document.getElementById("fac-use-elevator").checked ? "1" : "0",
     name:         document.getElementById("fac-cafeteria-name").value,

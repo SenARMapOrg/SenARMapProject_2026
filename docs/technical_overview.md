@@ -506,7 +506,7 @@ q.multiply(_q0.setFromAxisAngle(_zee, -orient));    // 画面の回転補正
 
 #### iOS 13+ のセンサー許可
 
-`DeviceOrientationEvent.requestPermission()` はユーザー操作コンテキスト（タップイベントのコールスタック内）でしか呼べない。`navi/index.html` では検索ボタン押下時の `arRequestPermissionsEarly()` で先取りリクエストし、実際に屋外 AR が起動するタイミングでのダイアログをなくしている。
+`DeviceOrientationEvent.requestPermission()` はユーザー操作コンテキスト（タップイベントのコールスタック内）でしか呼べない。経路の取得を待ったあとではタップの扱いが切れているので、経路が屋外を通るときだけ自前の画面（`#ar-permission-modal`）で「カメラ・位置情報・動きと向き」を許可してほしい理由を伝え、その「OK」を押した処理（`arAcceptPermissions()`）の中で向き→カメラ→位置情報の順に許可を求めている。カメラ・位置情報が許可済みで向きの許可も要らない端末（Android など）では画面を出さない。屋内だけの経路では何も求めない。
 
 ---
 

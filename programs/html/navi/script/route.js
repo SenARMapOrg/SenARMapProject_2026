@@ -7,7 +7,7 @@
 // Search
 // ================================================================
 async function doSearch() {
-  arRequestPermissionsEarly();
+  arPreloadThree();
   const params = new URLSearchParams();
   params.set("use_elevator", document.getElementById("use-elevator").checked ? "1" : "0");
   // 鳳祭の案内人数集計に記録する出発地・目的地の表示名（track.js 参照）
