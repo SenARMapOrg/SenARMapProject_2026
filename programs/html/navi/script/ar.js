@@ -55,7 +55,8 @@ const AR_MANUAL_PAUSE_MS = 15000;
 const AR_GPS_LOST_MS = 15000;
 
 // 屋外の経路で使うカメラ・位置情報・向きの許可。"none"＝まだ聞いていない / "asking"＝お願いの画面を出している /
-// "done"＝OKが押された（またはすでに許可されていた）。ページを開いている間は一度聞けば聞き直さない
+// "requesting"＝OKが押され、ブラウザの許可ダイアログを順に出している /
+// "done"＝聞き終わった（またはすでに許可されていた）。ページを開いている間は一度聞けば聞き直さない
 let arPermissionState = "none";
 let arCamWanted      = false;  // カメラストリームを保持してよいか（解放後の遅延取得を防ぐ）
 let arCamRequesting  = false;  // getUserMedia 実行中フラグ（二重取得を防ぐ）
@@ -167,36 +168,48 @@ async function arAlreadyAllowed() {
   }
 }
 
-// お願いの画面の「OK」。ここから同期的に向き・カメラ・位置情報の許可を求める。
+// お願いの画面の「OK」。向き → カメラ → 位置情報の順に、前の答えを待ってから次の許可を求める。
+// iOS の Safari は許可ダイアログを一度に1つしか出せず、同時に求めると後のもの（位置情報）が出ないことがある
 function arAcceptPermissions() {
   document.getElementById("ar-permission-modal").hidden = true;
-  arPermissionState = "done";
-
-  // iOS 向け向きセンサー許可（ユーザー操作コンテキスト内で同期呼び出し必須なので最初に呼ぶ）
-  if (typeof DeviceOrientationEvent !== "undefined" &&
-      typeof DeviceOrientationEvent.requestPermission === "function") {
-    DeviceOrientationEvent.requestPermission()
-      .then(state => { if (state === "granted") arAttachOrientation(); })
-      .catch(() => {});
-  } else {
-    arAttachOrientation();
-  }
-
-  if (!arRouteHasOutdoor()) return;
-  arStartHardware();
-  // 画面を出している間に屋外のステップに来ていたら、止めていたARをここで出す
-  updateRouteImage(currentStep);
+  arPermissionState = "requesting";
+  arRequestOrientation()
+    .then(() => (arRouteHasOutdoor() ? arPrefetchCamera() : null))
+    .then(() => {
+      arPermissionState = "done";
+      if (!arRouteHasOutdoor()) return;
+      arStartGpsWatch();
+      // ダイアログを出している間に屋外のステップに来ていたら、止めていたARをここで出す
+      updateRouteImage(currentStep);
+    });
 }
 
-// GPS の取得を始め、カメラを先取りしてストリームを温める
+// 向きセンサーを使い始める。iOS の許可（requestPermission）はボタンを押した処理の中で同期的に呼ぶ必要がある
+function arRequestOrientation() {
+  if (typeof DeviceOrientationEvent !== "undefined" &&
+      typeof DeviceOrientationEvent.requestPermission === "function") {
+    return DeviceOrientationEvent.requestPermission()
+      .then(state => { if (state === "granted") arAttachOrientation(); })
+      .catch(() => {});
+  }
+  arAttachOrientation();
+  return Promise.resolve();
+}
+
+// GPS の取得を始め、カメラを先取りしてストリームを温める（許可を聞き終わったあとの経路で使う）
 function arStartHardware() {
   // GPS は、つかみ始めの位置の精度が悪いので、屋外に出る前（経路を出した時点）から取り続けておく
   arStartGpsWatch();
+  arPrefetchCamera();
+}
+
+/** カメラを先取りする。許可ダイアログに答えるまで待つ Promise を返す（失敗しても resolve する） */
+function arPrefetchCamera() {
   arCamWanted = true;
-  if (arStream || arCamRequesting) return;
-  if (!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia)) return;
+  if (arStream || arCamRequesting) return Promise.resolve();
+  if (!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia)) return Promise.resolve();
   arCamRequesting = true;
-  navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
+  return navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
     .then(stream => {
       arCamRequesting = false;
       // 取得完了前に解放済みならすぐ止める
@@ -677,8 +690,8 @@ function arStartGpsWatch() {
 }
 
 async function arShowView() {
-  // お願いの画面を出している間は、ブラウザの許可ダイアログが先に出ないようカメラ・GPSに触らない
-  // （OK が押されたら arAcceptPermissions() がもう一度ここを呼ぶ）
+  // お願いの画面・許可ダイアログを出している間は、ダイアログが重ならないようカメラ・GPSに触らない
+  // （聞き終わったら arAcceptPermissions() がもう一度ここを呼ぶ）
   if (arPermissionState !== "done") return;
   arStartGpsWatch();
   if (!arViewActive) {

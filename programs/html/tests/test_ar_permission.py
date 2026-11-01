@@ -16,6 +16,7 @@ AR_JS = Path(__file__).resolve().parents[1] / "navi" / "script" / "ar.js"
 # calls に、ブラウザの許可ダイアログを出す API が呼ばれた順に名前を残す。
 # ios=true のときは iOS と同じく DeviceOrientationEvent.requestPermission がある。
 # granted は Permissions API が返す状態（カメラ・位置情報とも同じ値にする）。
+# camera_answers=false のときは、カメラの許可ダイアログに答えないまま（getUserMedia が終わらない）にする。
 RUNNER = r"""
 const vm = require("vm");
 const fs = require("fs");
@@ -30,7 +31,10 @@ const ctx = {
   navigator: {
     permissions: { query: ({ name }) => Promise.resolve({ state: opts.granted }) },
     geolocation: { watchPosition: () => { calls.push("geolocation"); return 1; }, clearWatch() {} },
-    mediaDevices: { getUserMedia: () => { calls.push("camera"); return new Promise(() => {}); } },
+    mediaDevices: { getUserMedia: () => {
+      calls.push("camera");
+      return opts.cameraAnswers ? Promise.resolve({ getTracks: () => [] }) : new Promise(() => {});
+    } },
   },
 };
 if (opts.ios) {
@@ -51,14 +55,14 @@ INDOOR = '[{"building":10,"lat":null},{"building":10,"lat":null},{"building":10,
 OUTDOOR = '[{"building":10,"lat":null},{"building":0,"lat":35.61},{"building":0,"lat":35.62},{"building":1,"lat":null}]'
 
 
-def run_js(script: str, ios=False, granted="prompt"):
+def run_js(script: str, ios=False, granted="prompt", camera_answers=True):
     """ar.js を読み込んだ環境で async 関数の本体を実行し、返した値を JSON で受け取る"""
     node = shutil.which("node")
     if not node:
         pytest.skip("Node が無い環境では実行しない")
     expr = f"(async () => {{ {script} }})()"
     result = subprocess.run(
-        [node, "-e", RUNNER, str(AR_JS), expr, json.dumps({"ios": ios, "granted": granted})],
+        [node, "-e", RUNNER, str(AR_JS), expr, json.dumps({"ios": ios, "granted": granted, "cameraAnswers": camera_answers})],
         capture_output=True, text=True, timeout=30, check=False,
     )
     assert result.returncode == 0, result.stderr
@@ -66,6 +70,8 @@ def run_js(script: str, ios=False, granted="prompt"):
 
 
 STATE = "({ state: arPermissionState, modalHidden: modal.hidden, calls, shownSteps })"
+TICK = "await new Promise(r => setTimeout(r, 0));"
+PERMISSION_CALLS = ("orientation", "camera", "geolocation")
 
 
 def test_屋内だけの経路では何も聞かない():
@@ -98,22 +104,49 @@ def test_お願いの画面を出している間はARを出してもカメラと
     assert out["calls"] == []
 
 
-def test_OKを押すと向きを最初に求めてからカメラと位置情報を求める():
+def test_OKを押すと向きをすぐ求める():
+    # iOS の向きの許可はボタンを押した処理の中で同期的に呼ぶ必要がある
+    out = run_js(f"""
+        pathCoords = {OUTDOOR};
+        arPrefetchCameraIfNeeded();
+        {TICK}
+        arAcceptPermissions();
+        const callsRightAfterOk = [...calls];
+        return {{ callsRightAfterOk }};
+    """, ios=True)
+    assert out["callsRightAfterOk"] == ["orientation"]
+
+
+def test_OKを押すと向き_カメラ_位置情報の順に1つずつ求める():
     out = run_js(f"""
         pathCoords = {OUTDOOR};
         currentStep = 1;
         arPrefetchCameraIfNeeded();
-        await new Promise(r => setTimeout(r, 0));
+        {TICK}
         arAcceptPermissions();
+        {TICK}
         return {STATE};
     """, ios=True)
     assert out["state"] == "done"
     assert out["modalHidden"] is True
-    # iOS の向きの許可はボタンを押した処理の中で同期的に呼ぶ必要があるので、最初に呼ばれていること
-    assert out["calls"][0] == "orientation"
-    assert "geolocation" in out["calls"] and "camera" in out["calls"]
-    # 画面を出している間に止めていた今のステップのARを出し直す
+    assert [c for c in out["calls"] if c in PERMISSION_CALLS] == ["orientation", "camera", "geolocation"]
+    # 聞いている間に止めていた今のステップのARを出し直す
     assert out["shownSteps"] == [1]
+
+
+def test_カメラの許可に答えるまで位置情報は求めない():
+    # iOS の Safari は許可ダイアログを一度に1つしか出せず、重ねると位置情報のダイアログが出なかった
+    out = run_js(f"""
+        pathCoords = {OUTDOOR};
+        arPrefetchCameraIfNeeded();
+        {TICK}
+        arAcceptPermissions();
+        {TICK}
+        await arShowView();
+        return {STATE};
+    """, ios=True, camera_answers=False)
+    assert out["state"] == "requesting"
+    assert [c for c in out["calls"] if c in PERMISSION_CALLS] == ["orientation", "camera"]
 
 
 def test_一度OKを押したら次の経路では聞き直さない():
