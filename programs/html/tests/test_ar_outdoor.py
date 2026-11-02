@@ -362,3 +362,21 @@ def test_ARを出し直したらしばらくは案内を出さない():
 
 def test_位置情報が許可されていなければすぐ案内を出す():
     assert run_js("arGpsLost(1000, 0, 1000, true)") is True
+
+
+# ---------------------------------------------------------------- 今歩いている区間の色
+
+def test_今のステップの区間だけ黄緑で_通過済みはグレー_これからは青():
+    out = run_js("""
+        var CURRENT_EDGE_COLOR = "#84CC16";
+        var arUpdateVisibility = () => {};
+        const mat = () => ({ hex: null, opacity: null, color: { setHex(h) { this.owner.hex = h; } } });
+        _arMeshes = [0, 1, 2].map(idx => { const m = mat(); m.color.owner = m; return { mat: m, type: "edge", idx }; });
+        arUpdateRouteColors(1);
+        _arMeshes.map(m => m.mat.hex)
+    """)
+    assert out == [0x9E9E9E, 0x84CC16, 0x3B82F6]
+
+
+def test_ボタンで動かしたあと自動送りを止めるのは5秒():
+    assert run_js("AR_MANUAL_PAUSE_MS") == 5000

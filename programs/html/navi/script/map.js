@@ -72,6 +72,15 @@ function updateOutdoorPolylines(step) {
     else flush();
   });
   flush();
+
+  // 今歩いている区間（今のステップの地点から次の地点まで）は黄緑で上に重ねる
+  const a = pathCoords[step], b = pathCoords[step + 1];
+  if (a && b && a.building === 0 && b.building === 0 && a.lat != null && b.lat != null) {
+    outdoorPolylines.push(new google.maps.Polyline({
+      path: [{ lat: a.lat, lng: a.lng }, { lat: b.lat, lng: b.lng }],
+      strokeColor: CURRENT_EDGE_COLOR, strokeOpacity: 1, strokeWeight: 7, geodesic: true, zIndex: 2, map,
+    }));
+  }
 }
 
 // ================================================================
