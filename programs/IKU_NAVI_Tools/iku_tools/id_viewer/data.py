@@ -7,6 +7,7 @@ data/{建物}_bldg/node.csv・edge.csv を読み、階ごとのノード・エ�
 フロアマップ（SVG）の座標（svg_x・svg_y）が入っていない建物・ノードがあるため、SVG の座標では描かない。
 SVG は、svg_x・svg_y と x・y の両方が入っているノードから位置合わせ（アフィン変換）を求められたときだけ、
 背景として重ねる。
+PDF で保存するとき（pdf_export.py）は逆に、フロアマップの座標（svg_x・svg_y）で描く（svg_positions）。
 """
 
 from __future__ import annotations
@@ -232,3 +233,31 @@ def fit_svg(nodes: list[Node]):
         err += (qx - px) ** 2 + (qy - py) ** 2
     rms = math.sqrt(err / len(pairs)) / SCALE
     return cx[0], cy[0], cx[1], cy[1], cx[2], cy[2], rms
+
+
+def svg_positions(nodes: list[Node]):
+    """各ノードのフロアマップ（SVG）上の位置。PDF で、フロアマップの上に番号を重ねるときに使う。
+
+    svg_x・svg_y があるノードはそのまま使う（位置合わせが要らないので、ノードが1〜2個の階でも重ねられる）。
+    無いノードは、同じ階のほかのノードから求めた位置合わせ（fit_svg）を逆に使って x・y から推定する。
+    戻り値は (番号 → (svg_x, svg_y), 推定したノードの番号の集合, 推定もできなかったノードの番号のリスト)
+    """
+    pos, guessed, missing = {}, set(), []
+    fit = fit_svg(nodes) if any(n.svg is None for n in nodes) else None
+    inverse = None
+    if fit is not None:
+        m11, m12, m21, m22, dx, dy, _ = fit
+        det = m11 * m22 - m21 * m12
+        if abs(det) > 1e-12:
+            def inverse(p):
+                px, py = p[0] - dx, p[1] - dy
+                return (m22 * px - m21 * py) / det, (-m12 * px + m11 * py) / det
+    for n in nodes:
+        if n.svg is not None:
+            pos[n.id] = n.svg
+        elif inverse is not None:
+            pos[n.id] = inverse(n.pos)
+            guessed.add(n.id)
+        else:
+            missing.append(n.id)
+    return pos, guessed, missing
