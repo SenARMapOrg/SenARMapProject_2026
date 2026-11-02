@@ -104,3 +104,40 @@ def test_実際のデータを全部の階で描ける(qapp):
             nodes = [i for i in w._scene.items() if isinstance(i, TagItem) and i._round]
             assert len(nodes) == len(g.floor_nodes(f)), (b, f)
     w.close()
+
+
+def test_PDF用にフロアマップ上の位置を求める(fake_data):
+    g = d.load_building(9)
+    # 1階は全部 svg_x・svg_y があるので、そのまま使う
+    pos, guessed, missing = d.svg_positions(g.floor_nodes(1))
+    assert pos == {1: (100, 500), 2: (100, 300), 3: (200, 300)} and not guessed and not missing
+    # 2階は svg_x・svg_y も位置合わせも無いので、描けない
+    assert d.svg_positions(g.floor_nodes(2)) == ({}, set(), [4, 5])
+    # svg_x・svg_y が1つだけ欠けていれば、ほかのノードから推定する
+    nodes = g.floor_nodes(1) + [d.Node(7, 5, 5, 0, 1, 1)]
+    pos, guessed, missing = d.svg_positions(nodes)
+    assert guessed == {7} and not missing
+    assert pos[7] == pytest.approx((200, 400))   # x=5・y=5 は、ノード1・2・3 の並びから SVG の (200, 400)
+
+
+def test_建物ごとにPDFで保存できる(qapp, fake_data, tmp_path):
+    from iku_tools.id_viewer.window import MainWindow
+    (tmp_path / "9_1F.svg").write_text(
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 600"><rect x="50" y="250" width="200" height="300" fill="#eee"/></svg>',
+        encoding="utf-8")
+    w = MainWindow()
+    out = tmp_path / "9.pdf"
+    assert w.export_pdf(str(out))
+    data = out.read_bytes()
+    assert data.startswith(b"%PDF") and b"/Count 1" in data   # フロアマップのある1階だけの1ページ
+    assert "2階" in w.statusBar().currentMessage()   # フロアマップの無い2階は入れていないと出す
+    w.close()
+
+
+def test_フロアマップが1枚も無い建物はPDFにしない(qapp, fake_data, tmp_path):
+    from iku_tools.id_viewer.window import MainWindow
+    w = MainWindow()
+    out = tmp_path / "none.pdf"
+    assert not w.export_pdf(str(out))
+    assert not out.exists()
+    w.close()

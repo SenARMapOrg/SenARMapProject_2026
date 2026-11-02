@@ -11,6 +11,8 @@
   - 番号は建物ごとの番号と、全体ID（建物番号 × 100000 + 番号）を切り替えられる
   - 右の表でも一覧でき、行を選ぶと地図のその場所に寄る。上の欄に番号を入れても探せる
   - 「画像で保存」で、表示している階を PNG にできる（印刷・共有用）
+  - 「PDFで保存」で、表示している建物の全部の階を、フロアマップに番号を重ねた PDF（1ページ1フロア・A3横）にできる
+    （フロアマップの座標 svg_x・svg_y で重ねるので、画面では重ねられない階も重なる。pdf_export.py）
   - スプレッドシートから CSV を取り込み直したら「再読み込み」
 """
 
@@ -48,6 +50,7 @@ from PyQt6.QtWidgets import (
 
 from ..common.fonts import ui_font
 from . import data as d
+from .pdf_export import export_building_pdf
 
 NODE_FILL = {1: QColor("#334155"), 2: QColor("#DC2626")}   # 通常・出入口
 EDGE_COLOR = {
@@ -270,6 +273,10 @@ class MainWindow(QMainWindow):
         save_btn.setToolTip("表示している階を PNG で保存する")
         save_btn.clicked.connect(self.save_image)
         bar.addWidget(save_btn)
+        pdf_btn = QPushButton("PDFで保存")
+        pdf_btn.setToolTip("表示している建物の全部の階を、フロアマップに番号を重ねた PDF にする（1ページ1フロア・A3横）")
+        pdf_btn.clicked.connect(self.save_pdf)
+        bar.addWidget(pdf_btn)
         return bar
 
     def _view_fit(self):
@@ -653,3 +660,27 @@ class MainWindow(QMainWindow):
         ok = image.save(path, "PNG")
         self.statusBar().showMessage(f"保存しました: {path}" if ok else f"保存できませんでした: {path}")
         return ok
+
+    # ------------------------------------------------------------------ PDF で保存
+
+    def save_pdf(self):
+        if self._building is None:
+            return
+        name = f"{self._building}号館_ID一覧.pdf"
+        path, _ = QFileDialog.getSaveFileName(self, "PDFで保存", str(Path.home() / name), "PDF (*.pdf)")
+        if path:
+            self.export_pdf(path)
+
+    def export_pdf(self, path: str) -> bool:
+        """表示している建物の、フロアマップがある階を全部 PDF にする（番号は「全体IDで表示」に合わせる）"""
+        g = self._graphs[self._building]
+        floors = export_building_pdf(g, path, global_ids=self._global_ids.isChecked())
+        if not floors:
+            self.statusBar().showMessage(f"{self._building}号館にはフロアマップ（SVG）がある階が無いため、PDF にできません")
+            return False
+        skipped = [f for f in g.floors() if f not in floors]
+        msg = f"保存しました（{len(floors)}ページ）: {path}"
+        if skipped:
+            msg += "　フロアマップが無いため入れていない階: " + "・".join(d.floor_name(f) for f in skipped)
+        self.statusBar().showMessage(msg)
+        return True
