@@ -160,13 +160,15 @@ function setCategory(cat) {
 // Facility autocomplete
 // ================================================================
 // facSearchMode ("room"/"gps") から設備検索の出発地点を解決して params に埋め込む。
+// pageParams には URL に書き込む出発地（data.js の saveSearchToUrl）を入れる。
 // 成功時は出発地の表示名（集計用。track.js 参照）、失敗時はエラーを alert して null を返す
 // （呼び出し元はそのまま return する）。
-function resolveFacFromParams(params) {
+function resolveFacFromParams(params, pageParams) {
   if (facSearchMode === "room") {
     const fromInfo = resolveRoom("fac-from-input", "fac-from-bldg");
     if (!fromInfo)               { alert("出発教室を入力してください。"); return null; }
     if (fromInfo === "ambiguous") { alert("出発教室が複数の号館に存在します。号館を指定してください。"); return null; }
+    setPlaceUrlParam(pageParams, "from", fromInfo);
     if (fromInfo.isEvent) {
       params.set("from_event", fromInfo.room);
     } else {
@@ -181,15 +183,18 @@ function resolveFacFromParams(params) {
   const nearest = findNearestNode(facGpsCoords.lat, facGpsCoords.lng);
   if (!nearest) { alert("近くの出発ノードが見つかりません。\nキャンパスから離れすぎている可能性があります。"); return null; }
   params.set("from_node", nearest.id);
+  pageParams.set("mode", "gps");  // 現在地は URL に残さない
   return "現在地";
 }
 
 // 検索APIを叩いてルート表示まで行う共通処理（doSearch / doToiletSearch / doCafeteriaSearch / doOtherFacilitySearch で共用）
 // 経路描画は屋外区間があると google.maps.Polyline/Marker を使うため、地図の初期化を待つ。
 // fromLabel・toLabel は鳳祭の案内人数集計（track.js）に記録する出発地・目的地の表示名。
+// pageParams は検索が成功したら URL に書き込む条件。restore は URL から自動で検索したときの指定
+// （startStep から始める。再読み込みで同じ検索をし直したときは、案内人数に数え直さない）。
 // レスポンスの dest_display は「目的地が最終区間の左右一覧に載っている場合」だけ入るため使わず、
 // 利用者が実際に指定した名前を呼び出し元から渡す。
-async function fetchRouteAndNavigate(url, fromLabel = "", toLabel = "") {
+async function fetchRouteAndNavigate(url, fromLabel = "", toLabel = "", pageParams = null, restore = {}) {
   await waitForMapReady();
   setLoading(true);
   try {
@@ -197,11 +202,12 @@ async function fetchRouteAndNavigate(url, fromLabel = "", toLabel = "") {
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
     if (data.error) { alert("エラー: " + data.error); return; }
-    trackSearch(fromLabel, toLabel);
+    if (!(restore.fromUrl && pageWasReloaded())) trackSearch(fromLabel, toLabel);
+    saveSearchToUrl(pageParams);
     await initRoute(data.path_coords, data.path_edges, {
       side: data.dest_side, position: data.dest_position, count: data.dest_count,
       display: data.dest_display, nearestDisplay: data.dest_nearest_display,
-    });
+    }, restore.startStep || 0);
   } catch {
     document.getElementById("step-label").textContent = "サーバーに接続できません";
     document.getElementById("step-count").textContent = "app.py が起動しているか確認してください";
@@ -216,16 +222,24 @@ function selectedOptionLabel(selectId) {
   return sel?.selectedOptions[0]?.textContent?.trim() || "";
 }
 
-async function doToiletSearch() {
+/** 「施設を探す」で URL に書き込む条件（種類・エレベーター）。出発地は resolveFacFromParams が足す */
+function facPageParams(fac, key, value) {
+  const pageParams = new URLSearchParams({ fac, [key]: value });
+  if (document.getElementById("fac-use-elevator").checked) pageParams.set("elevator", "1");
+  return pageParams;
+}
+
+async function doToiletSearch(restore = {}) {
   arPreloadThree();
   const params = new URLSearchParams({
     type:         document.getElementById("fac-toilet-type").value,
     use_elevator: document.getElementById("fac-use-elevator").checked ? "1" : "0",
   });
-  const fromLabel = resolveFacFromParams(params);
+  const pageParams = facPageParams("toilet", "fac_type", params.get("type"));
+  const fromLabel = resolveFacFromParams(params, pageParams);
   if (!fromLabel) return;
   const toLabel = `最寄りのトイレ（${selectedOptionLabel("fac-toilet-type")}）`;
-  await fetchRouteAndNavigate(`${API_BASE}/api/nearest_toilet?${params}`, fromLabel, toLabel);
+  await fetchRouteAndNavigate(`${API_BASE}/api/nearest_toilet?${params}`, fromLabel, toLabel, pageParams, restore);
 }
 
 function onFacCategoryChange() {
@@ -235,15 +249,16 @@ function onFacCategoryChange() {
   document.getElementById("fac-other-name").style.display     = cat === "other"     ? "" : "none";
 }
 
-function doFacSearch() {
+// restore: URL から自動で検索したとき（data.js の applyFacilityUrlParams）に渡す
+function doFacSearch(restore = {}) {
   const cat = document.getElementById("fac-category").value;
-  if (cat === "cafeteria") doCafeteriaSearch();
-  else if (cat === "other") doOtherFacilitySearch();
-  else doToiletSearch();
+  if (cat === "cafeteria") doCafeteriaSearch(restore);
+  else if (cat === "other") doOtherFacilitySearch(restore);
+  else doToiletSearch(restore);
 }
 
 // その他の設備（コンビニ・教務課など）。選んだ種類のうち一番近いものへ案内する
-async function doOtherFacilitySearch() {
+async function doOtherFacilitySearch(restore = {}) {
   arPreloadThree();
   const category = document.getElementById("fac-other-name").value;
   if (!category) { alert("探す設備を選んでください。"); return; }
@@ -251,21 +266,23 @@ async function doOtherFacilitySearch() {
     use_elevator: document.getElementById("fac-use-elevator").checked ? "1" : "0",
     category,
   });
-  const fromLabel = resolveFacFromParams(params);
+  const pageParams = facPageParams("other", "fac_category", category);
+  const fromLabel = resolveFacFromParams(params, pageParams);
   if (!fromLabel) return;
-  await fetchRouteAndNavigate(`${API_BASE}/api/nearest_facility?${params}`, fromLabel, `最寄りの${category}`);
+  await fetchRouteAndNavigate(`${API_BASE}/api/nearest_facility?${params}`, fromLabel, `最寄りの${category}`, pageParams, restore);
 }
 
-async function doCafeteriaSearch() {
+async function doCafeteriaSearch(restore = {}) {
   arPreloadThree();
   const params = new URLSearchParams({
     use_elevator: document.getElementById("fac-use-elevator").checked ? "1" : "0",
     name:         document.getElementById("fac-cafeteria-name").value,
   });
-  const fromLabel = resolveFacFromParams(params);
+  const pageParams = facPageParams("cafeteria", "fac_name", params.get("name"));
+  const fromLabel = resolveFacFromParams(params, pageParams);
   if (!fromLabel) return;
   const toLabel = `最寄りの食堂（${selectedOptionLabel("fac-cafeteria-name")}）`;
-  await fetchRouteAndNavigate(`${API_BASE}/api/nearest_cafeteria?${params}`, fromLabel, toLabel);
+  await fetchRouteAndNavigate(`${API_BASE}/api/nearest_cafeteria?${params}`, fromLabel, toLabel, pageParams, restore);
 }
 
 // ================================================================

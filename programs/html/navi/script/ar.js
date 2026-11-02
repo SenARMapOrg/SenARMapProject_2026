@@ -47,7 +47,7 @@ const AR_EDGE_CHUNK_M = 5;
 // 次の地点を「通過した」と判定された位置が何回続いたら次のステップへ進むか（1回だけの揺れで進まないように）
 const AR_AUTO_CONFIRM = 2;
 // ボタンで手動でステップを動かしたあと、自動送りを止めておく時間（戻した直後に勝手に進み直さないように）
-const AR_MANUAL_PAUSE_MS = 15000;
+const AR_MANUAL_PAUSE_MS = 5000;
 
 // --- GPS が取れなくなったときの案内 ---
 // 屋外ARを出してから、使える位置（精度 AR_GPS_MAX_ACCURACY 以内）がこの時間（ミリ秒）届かなければ、
@@ -614,12 +614,13 @@ function arBuildRouteMarkers() {
   arMarkersBuilt = true;
 }
 
-// 現在ステップに合わせてノード・エッジを通過済み(グレー) / これから(青) に塗り替える
+// 現在ステップに合わせてノード・エッジを通過済み(グレー) / 今歩いている区間(黄緑) / これから(青) に塗り替える
 function arUpdateRouteColors(step) {
   const PASSED_NODE = 0x9E9E9E;
   const AHEAD_NODE  = AR_NODE_COLOR;     // 0x22D3EE
   const PASSED_EDGE = 0x9E9E9E;
   const AHEAD_EDGE  = AR_EDGE_COLOR;     // 0x3B82F6
+  const CURRENT_EDGE = parseInt(CURRENT_EDGE_COLOR.slice(1), 16);
   const PASSED_OPACITY = 0.35;
   const AHEAD_OPACITY  = 0.85;
 
@@ -628,7 +629,7 @@ function arUpdateRouteColors(step) {
     if (type === "node") {
       mat.color.setHex(passed ? PASSED_NODE : AHEAD_NODE);
     } else {
-      mat.color.setHex(passed ? PASSED_EDGE : AHEAD_EDGE);
+      mat.color.setHex(passed ? PASSED_EDGE : idx === step ? CURRENT_EDGE : AHEAD_EDGE);
       mat.opacity = passed ? PASSED_OPACITY : AHEAD_OPACITY;
     }
   });

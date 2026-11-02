@@ -79,8 +79,70 @@ loadAllData();
 //   &mode=gps                             → 現在地(屋外)タブで目的地入力済み
 //   ?to_event=<id>・?from_event=<id>      → イベント設定で付けた id で展示を呼び出す（展示名が入る。
 //                                            イベントモードも自動で有効。id の代わりに展示名でもよい）
+//   ?fac=toilet&fac_type=<種類>             → 「施設を探す」（トイレ）。食堂は fac=cafeteria&fac_name=<名前>、
+//                                            その他の設備は fac=other&fac_category=<種類>。出発地は from と同じ
+//   &step=<n>                             → 経路を出したあと、n 番目のステップから始める
 // 号館(_bldg)は教室名が1つの号館にしか無い場合は省略可
+//
+// 検索するたびに、その条件をこの形で URL に書き込む（saveSearchToUrl。ページは読み込み直さない）。
+// 再読み込みしても、同じ経路の同じステップから続けられる。
 // ================================================================
+
+// 検索条件として URL に書き込むキー。これ以外（ref・event など）は書き込むときも残す
+const NAV_URL_KEYS = [
+  "from", "from_bldg", "from_building", "from_event", "to", "to_bldg", "to_building", "to_event",
+  "elevator", "mode", "step", "fac", "fac_type", "fac_name", "fac_category",
+];
+
+/** 教室・展示を URL の値にする（prefix は "from" か "to"） */
+function setPlaceUrlParam(params, prefix, info) {
+  if (info.isEvent) {
+    params.set(`${prefix}_event`, info.eventId || info.room);
+  } else {
+    params.set(prefix, info.room);
+    params.set(`${prefix}_bldg`, String(info.building));
+  }
+}
+
+function replaceUrlQuery(q) {
+  const query = q.toString();
+  try {
+    history.replaceState(history.state, "", location.pathname + (query ? `?${query}` : "") + location.hash);
+  } catch { /* URL を書き換えられなくても案内は続ける */ }
+}
+
+/** 検索が成功したときに、その条件を URL に書き込む（履歴は増やさない） */
+function saveSearchToUrl(searchParams) {
+  if (!searchParams) return;
+  const q = new URLSearchParams(location.search);
+  NAV_URL_KEYS.forEach(k => q.delete(k));
+  searchParams.forEach((v, k) => q.set(k, v));
+  replaceUrlQuery(q);
+}
+
+/** ステップを動かすたびに、今のステップを URL に書き込む（最初のステップのときは付けない） */
+function saveStepToUrl(step) {
+  const q = new URLSearchParams(location.search);
+  if (step > 0) q.set("step", String(step));
+  else q.delete("step");
+  replaceUrlQuery(q);
+}
+
+/** ページを再読み込みして開いたか（再読み込みで同じ検索をし直したときは、案内人数に数え直さない） */
+function pageWasReloaded() {
+  try {
+    return performance.getEntriesByType("navigation")[0]?.type === "reload";
+  } catch {
+    return false;
+  }
+}
+
+// select は該当 option がある場合のみ反映（API未取得時は空のまま）
+function setSelectIfOption(id, val) {
+  const sel = document.getElementById(id);
+  if (!sel || !val) return;
+  if ([...sel.options].some(o => o.value === val)) sel.value = val;
+}
 
 /** event.csv の id（または展示名）→ 展示。見つからなければ null */
 function findEventByIdOrTitle(value) {
@@ -96,18 +158,16 @@ function applyUrlParams() {
   const fromEvent = findEventByIdOrTitle(q.get("from_event"));
   const to   = toEvent?.room   || q.get("to");
   const from = fromEvent?.room || q.get("from");
-  if (!to && !from) return;
 
   // 展示は建物で絞らずに名前だけで決まるので、号館は展示の号館を入れる
   const toBldg   = toEvent   ? String(toEvent.building)   : q.get("to_bldg")   || q.get("to_building")   || "";
   const fromBldg = fromEvent ? String(fromEvent.building) : q.get("from_bldg") || q.get("from_building") || "";
+  // 自動で検索するときに渡す。step があればそのステップから始める
+  const restore = { startStep: Math.max(0, parseInt(q.get("step"), 10) || 0), fromUrl: true };
 
-  // select は該当 option がある場合のみ反映（API未取得時は空のまま）
-  const setSelect = (id, val) => {
-    const sel = document.getElementById(id);
-    if (!sel || !val) return;
-    if ([...sel.options].some(o => o.value === val)) sel.value = val;
-  };
+  if (q.get("fac")) { applyFacilityUrlParams(q, from, fromBldg, restore); return; }
+  if (!to && !from) return;
+  const setSelect = setSelectIfOption;
 
   setCategory("room");
   // 「エレベーターを使う」ははじめはオフ。?elevator=1 でオンにして開ける（?elevator=0 は前と同じくオフ）
@@ -146,7 +206,7 @@ function applyUrlParams() {
 
   // 出発・目的の両方が確定していれば自動でルート検索
   if (fromInfo && fromInfo !== "ambiguous" && toInfo && toInfo !== "ambiguous") {
-    doSearch();
+    doSearch(restore);
     return;
   }
 
@@ -156,6 +216,34 @@ function applyUrlParams() {
     document.getElementById("step-count").textContent =
       toInfo && toInfo !== "ambiguous" ? `目的地: ${bldgLabel(toInfo.building)} ${toInfo.display}` : `目的地: ${to}`;
   }
+}
+
+// 「施設を探す」の URL（?fac=...）。出発教室が決まれば自動で検索し、現在地のときは位置の取得を待つ
+function applyFacilityUrlParams(q, from, fromBldg, restore) {
+  const cat = q.get("fac");
+  const sub = {
+    toilet:    ["fac-toilet-type",    "fac_type"],
+    cafeteria: ["fac-cafeteria-name", "fac_name"],
+    other:     ["fac-other-name",     "fac_category"],
+  }[cat];
+  if (!sub) return;
+  setCategory("facility");
+  setSelectIfOption("fac-category", cat);
+  onFacCategoryChange();
+  setSelectIfOption(sub[0], q.get(sub[1]));
+  if (q.get("elevator") === "1") document.getElementById("fac-use-elevator").checked = true;
+
+  if (q.get("mode") === "gps") { setFacMode("gps"); return; }
+  setFacMode("room");
+  if (!from) return;
+  document.getElementById("fac-from-input").value = from;
+  setSelectIfOption("fac-from-bldg", fromBldg);
+  const fromInfo = resolveRoom("fac-from-input", "fac-from-bldg");
+  if (!fromInfo || fromInfo === "ambiguous") return;
+  setSelectIfOption("fac-from-bldg", String(fromInfo.building));
+  // 選んだ種類が選択肢に無い（データから消えた）ときは、別のものを勝手に探さない
+  if (document.getElementById(sub[0]).value !== q.get(sub[1])) return;
+  doFacSearch(restore);
 }
 
 function bldgLabel(b) {

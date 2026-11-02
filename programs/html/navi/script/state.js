@@ -19,6 +19,8 @@ const EVENT_MODE = (() => {
 })();
 // 経路の線・ドットなど、CSS(var(--accent))を参照できないJS描画箇所で使うアクセントカラー
 const ACCENT_COLOR = EVENT_MODE ? "#EA580C" : "#3B82F6";
+// 屋外で今歩いている区間（今のステップの線）の色。地図と AR で同じ黄緑にする
+const CURRENT_EDGE_COLOR = "#84CC16";
 if (EVENT_MODE) {
   document.body.classList.add("event-mode");
   document.getElementById("event-badge").style.display = "inline-flex";
