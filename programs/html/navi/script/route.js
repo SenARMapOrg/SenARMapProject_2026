@@ -6,10 +6,15 @@
 // ================================================================
 // Search
 // ================================================================
-async function doSearch() {
+// restore: URL から自動で検索したとき（data.js の applyUrlParams）に渡す。startStep のステップから始める
+async function doSearch(restore = {}) {
   arPreloadThree();
   const params = new URLSearchParams();
-  params.set("use_elevator", document.getElementById("use-elevator").checked ? "1" : "0");
+  const useElevator = document.getElementById("use-elevator").checked;
+  params.set("use_elevator", useElevator ? "1" : "0");
+  // 再読み込みしても同じ検索をし直せるよう、URL に書き込む条件（data.js の saveSearchToUrl）
+  const pageParams = new URLSearchParams();
+  if (useElevator) pageParams.set("elevator", "1");
   // 鳳祭の案内人数集計に記録する出発地・目的地の表示名（track.js 参照）
   let fromLabel = "";
   let toLabel   = "";
@@ -23,6 +28,8 @@ async function doSearch() {
     if (toInfo   === "ambiguous") { alert("目的教室が複数の号館に存在します。号館を指定してください。"); return; }
     fromLabel = fromInfo.display || fromInfo.room;
     toLabel   = toInfo.display   || toInfo.room;
+    setPlaceUrlParam(pageParams, "from", fromInfo);
+    setPlaceUrlParam(pageParams, "to",   toInfo);
     if (fromInfo.isEvent) {
       params.set("from_event", fromInfo.room);
     } else {
@@ -45,6 +52,9 @@ async function doSearch() {
     params.set("from_node",   nearest.id);
     fromLabel = "現在地";
     toLabel   = toInfo.display || toInfo.room;
+    // 現在地は URL に残さない（再読み込みしたら、目的地が入った状態で位置の取得からやり直す）
+    pageParams.set("mode", "gps");
+    setPlaceUrlParam(pageParams, "to", toInfo);
     if (toInfo.isEvent) {
       params.set("to_event", toInfo.room);
     } else {
@@ -53,7 +63,7 @@ async function doSearch() {
     }
   }
 
-  await fetchRouteAndNavigate(`${API_BASE}/api/route?${params}`, fromLabel, toLabel);
+  await fetchRouteAndNavigate(`${API_BASE}/api/route?${params}`, fromLabel, toLabel, pageParams, restore);
 }
 
 function setLoading(on) {
@@ -85,7 +95,8 @@ async function prefetchSvgs(coords) {
 // ================================================================
 // Route init
 // ================================================================
-async function initRoute(coords, edges, destInfo = {}) {
+// startStep: 最初に出すステップ（再読み込みで途中から続けるとき。範囲外なら最後のステップにする）
+async function initRoute(coords, edges, destInfo = {}, startStep = 0) {
   pathCoords  = coords;
   pathEdges   = edges || [];
   destSide          = destInfo.side || "";
@@ -106,7 +117,7 @@ async function initRoute(coords, edges, destInfo = {}) {
   prefetchRouteImages(coords);               // 写真: 並行ダウンロード開始（fire-and-forget）
   await prefetchSvgs(coords);               // SVG:  全フロア一括取得を待機してからナビ開始
   collapseSearchPanel();  // ルート確定後にパネルを収納
-  goToStep(0, { announce: true });
+  goToStep(Math.min(Math.max(startStep, 0), Math.max(coords.length - 2, 0)), { announce: true });
 }
 
 // ================================================================
@@ -116,6 +127,7 @@ async function initRoute(coords, edges, destInfo = {}) {
 // trueにする。戻る操作では「右に曲がってください」等が実際の進行方向と逆で誤りになるため読み上げない。
 async function goToStep(step, { announce = false } = {}) {
   currentStep = step;
+  saveStepToUrl(step);  // 再読み込みしても同じステップから続けられるように
   const node  = pathCoords[step];
   updateNavBar(node, step, pathCoords.length);
   updateRouteImage(step);
