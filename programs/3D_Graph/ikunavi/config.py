@@ -28,7 +28,8 @@ def building_dir(building):
     """data/{building}_bldg/"""
     return data_path(f"{int(building)}_bldg")
 
-CDN_BASE = "https://cdn.iku-navi.net"
+# バックアップ環境（deploy_env/backup）では IKUNAVI_CDN_BASE で自分のサーバーを指す。本番では設定しない
+CDN_BASE = os.environ.get("IKUNAVI_CDN_BASE", "https://cdn.iku-navi.net")
 
 # グローバルID = building_id * ID_OFFSET + ローカルID
 ID_OFFSET          = 100_000

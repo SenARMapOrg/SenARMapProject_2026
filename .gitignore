@@ -226,3 +226,6 @@ captured_photos/
 
 # 建物・教室一覧はビルド時に deploy_env/pages/generate_campus_pages.py が作る
 programs/html/campus/
+
+# バックアップ環境の生成物
+deploy_env/backup/public/

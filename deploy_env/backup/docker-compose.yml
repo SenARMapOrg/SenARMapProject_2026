@@ -1,0 +1,36 @@
+# 万が一 Cloudflare が使えないときのバックアップ環境（本番の Swarm とは完全に別）。
+# 手順: docs/backup_env.md
+services:
+  python:
+    # GHCR にログインしなくても動くよう、本番と同じ Dockerfile でこのサーバー上で作る
+    build:
+      context: ../..
+      dockerfile: deploy_env/python/Dockerfile
+    image: iku-backup-python
+    command: gunicorn -w ${PYTHON_WORKERS:-4} -b 0.0.0.0:8000 app:app
+    environment:
+      IKUNAVI_CDN_BASE: https://cdn.${BACKUP_DOMAIN:?deploy_env/backup/.env に BACKUP_DOMAIN を書いてください}
+      IKUNAVI_CORS_EXTRA_ORIGINS: https://${BACKUP_DOMAIN}
+    restart: always
+
+  caddy:
+    image: caddy:2-alpine
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      BACKUP_DOMAIN: ${BACKUP_DOMAIN}
+    volumes:
+      # ファイル単体でなくフォルダごと渡す（update.sh が中身を入れ替えても見えるように）
+      - ./caddy:/etc/caddy:ro
+      - ./public:/srv/public:ro
+      - caddy_data:/data     # 証明書。消すと取り直しになる
+      - caddy_config:/config
+    depends_on:
+      - python
+    restart: always
+
+volumes:
+  caddy_data:
+  caddy_config:
