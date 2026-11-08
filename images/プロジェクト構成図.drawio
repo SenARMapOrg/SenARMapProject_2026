@@ -1,0 +1,627 @@
+<mxfile host="app.diagrams.net" version="24.0.0">
+  <diagram id="iku-navi-0" name="システム構成">
+    <mxGraphModel dx="1400" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1520" pageHeight="1100" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="title" value="&lt;b&gt;IKU NAVI 本番構成&lt;/b&gt;&lt;br&gt;2026-11-06 時点（鳳祭期間）" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=none;fontColor=#222222;fontSize=12;align=left;spacing=6;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="30" y="10" width="225" height="62" as="geometry" />
+        </mxCell>
+        <mxCell id="visitor" value="&lt;b&gt;来場者・学生&lt;/b&gt;&lt;br&gt;スマホ / PC&lt;br&gt;のブラウザ" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontColor=#222222;fontSize=11;align=center;spacing=6;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="30" y="400" width="140" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="staff" value="&lt;b&gt;案内係・運営&lt;/b&gt;&lt;br&gt;管理画面 /admin" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontColor=#222222;fontSize=11;align=center;spacing=6;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="30" y="755" width="140" height="76" as="geometry" />
+        </mxCell>
+        <mxCell id="member" value="&lt;b&gt;開発メンバー&lt;/b&gt;&lt;br&gt;写真のアップロード" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontColor=#222222;fontSize=11;align=center;spacing=6;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="30" y="880" width="140" height="76" as="geometry" />
+        </mxCell>
+        <mxCell id="google" value="&lt;b&gt;Google&lt;/b&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#E8F0FE;strokeColor=#4285F4;fontColor=#222222;fontSize=12;align=center;spacing=6;verticalAlign=top;container=1;collapsible=0;recursiveResize=0;" vertex="1" parent="1">
+          <mxGeometry x="270" y="30" width="590" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="maps" value="&lt;b&gt;Maps JavaScript API&lt;/b&gt;&lt;br&gt;屋外の地図" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#4285F4;fontColor=#222222;fontSize=11;align=center;spacing=6;verticalAlign=middle;" vertex="1" parent="google">
+          <mxGeometry x="30" y="32" width="200" height="62" as="geometry" />
+        </mxCell>
+        <mxCell id="gemini" value="&lt;b&gt;Gemini API&lt;/b&gt;&lt;br&gt;AIチャット" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#4285F4;fontColor=#222222;fontSize=11;align=center;spacing=6;verticalAlign=middle;" vertex="1" parent="google">
+          <mxGeometry x="260" y="32" width="150" height="62" as="geometry" />
+        </mxCell>
+        <mxCell id="oauth" value="&lt;b&gt;Google OAuth&lt;/b&gt;&lt;br&gt;ログイン" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#4285F4;fontColor=#222222;fontSize=11;align=center;spacing=6;verticalAlign=middle;" vertex="1" parent="google">
+          <mxGeometry x="435" y="32" width="145" height="62" as="geometry" />
+        </mxCell>
+        <mxCell id="cf" value="&lt;b&gt;Cloudflare&lt;/b&gt;（DNS・TLS 終端）" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFF4E5;strokeColor=#F6821F;fontColor=#222222;fontSize=12;align=left;spacing=6;verticalAlign=top;container=1;collapsible=0;recursiveResize=0;" vertex="1" parent="1">
+          <mxGeometry x="270" y="170" width="590" height="800" as="geometry" />
+        </mxCell>
+        <mxCell id="main" value="&lt;b&gt;Pages：iku-navi.net&lt;/b&gt;&lt;br&gt;/navi、/ohtori_events、/campus、&lt;br&gt;/embed、/map3d などの静的配信&lt;br&gt;_redirects：/3d/* を api へ 301" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#F6821F;fontColor=#222222;fontSize=10;align=center;spacing=6;verticalAlign=middle;" vertex="1" parent="cf">
+          <mxGeometry x="30" y="40" width="270" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="help" value="&lt;b&gt;Pages Functions&lt;/b&gt;&lt;br&gt;POST /api/help-chat&lt;br&gt;（faq.json を渡して Gemini へ中継）" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#F6821F;fontColor=#222222;fontSize=10;align=center;spacing=6;verticalAlign=middle;" vertex="1" parent="cf">
+          <mxGeometry x="340" y="55" width="220" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="tunnel" value="&lt;b&gt;Tunnel：api.iku-navi.net&lt;/b&gt;&lt;br&gt;python:8000 へ転送" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#F6821F;fontColor=#222222;fontSize=10;align=center;spacing=6;verticalAlign=middle;" vertex="1" parent="cf">
+          <mxGeometry x="30" y="200" width="270" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="r2" value="&lt;b&gt;R2：cdn.iku-navi.net&lt;/b&gt;&lt;br&gt;バケット iku-navi-image&lt;br&gt;経路写真" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#F6821F;fontColor=#222222;fontSize=10;align=center;spacing=6;verticalAlign=middle;" vertex="1" parent="cf">
+          <mxGeometry x="30" y="320" width="270" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="tt" value="&lt;b&gt;Pages + Functions（Hono）&lt;/b&gt;&lt;br&gt;timetables.iku-navi.net&lt;br&gt;時間割共有（大学アカウントのみ）" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#F6821F;fontColor=#222222;fontSize=10;align=center;spacing=6;verticalAlign=middle;" vertex="1" parent="cf">
+          <mxGeometry x="30" y="440" width="270" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="ttdb" value="&lt;b&gt;D1&lt;/b&gt;&lt;br&gt;timetables-db" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#F6821F;fontColor=#222222;fontSize=10;align=center;spacing=6;verticalAlign=middle;" vertex="1" parent="cf">
+          <mxGeometry x="350" y="470" width="170" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="egc" value="&lt;b&gt;Pages + Functions（Hono）&lt;/b&gt;&lt;br&gt;event-guide-counter.iku-navi.net&lt;br&gt;案内人数の集計、有人サポート" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#F6821F;fontColor=#222222;fontSize=10;align=center;spacing=6;verticalAlign=middle;" vertex="1" parent="cf">
+          <mxGeometry x="30" y="560" width="270" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="egcdb" value="&lt;b&gt;D1&lt;/b&gt;&lt;br&gt;event-guide-counter-db" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#F6821F;fontColor=#222222;fontSize=10;align=center;spacing=6;verticalAlign=middle;" vertex="1" parent="cf">
+          <mxGeometry x="350" y="600" width="170" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="up" value="&lt;b&gt;Pages + Functions：image_uploader&lt;/b&gt;&lt;br&gt;Zero Trust Access（GitHub Org）で保護&lt;br&gt;署名付き URL を発行" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#F6821F;fontColor=#222222;fontSize=10;align=center;spacing=6;verticalAlign=middle;" vertex="1" parent="cf">
+          <mxGeometry x="30" y="700" width="270" height="86" as="geometry" />
+        </mxCell>
+        <mxCell id="swarm" value="&lt;b&gt;ConoHa VPS / Docker Swarm&lt;/b&gt;（計8台、stack: iku、overlay: app_net）" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#EDF7ED;strokeColor=#2E7D32;fontColor=#222222;fontSize=12;align=center;spacing=6;verticalAlign=top;container=1;collapsible=0;recursiveResize=0;" vertex="1" parent="1">
+          <mxGeometry x="900" y="170" width="590" height="510" as="geometry" />
+        </mxCell>
+        <mxCell id="mgr" value="&lt;b&gt;Manager × 2台&lt;/b&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F7FBF7;strokeColor=#2E7D32;fontColor=#222222;fontSize=11;align=center;spacing=6;verticalAlign=top;container=1;collapsible=0;recursiveResize=0;" vertex="1" parent="swarm">
+          <mxGeometry x="25" y="35" width="540" height="275" as="geometry" />
+        </mxCell>
+        <mxCell id="cad" value="&lt;b&gt;cadvisor&lt;/b&gt;&lt;br&gt;全ノードに1つ" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F3E5F5;strokeColor=#7B1FA2;fontColor=#222222;fontSize=10;align=center;spacing=6;verticalAlign=middle;" vertex="1" parent="mgr">
+          <mxGeometry x="20" y="40" width="130" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="prom" value="&lt;b&gt;prometheus&lt;/b&gt;&lt;br&gt;Manager のどちらかに1つ" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F3E5F5;strokeColor=#7B1FA2;fontColor=#222222;fontSize=10;align=center;spacing=6;verticalAlign=middle;" vertex="1" parent="mgr">
+          <mxGeometry x="215" y="40" width="155" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="graf" value="&lt;b&gt;grafana&lt;/b&gt;&lt;br&gt;Manager の&lt;br&gt;どちらかに1つ" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F3E5F5;strokeColor=#7B1FA2;fontColor=#222222;fontSize=10;align=center;spacing=6;verticalAlign=middle;" vertex="1" parent="mgr">
+          <mxGeometry x="415" y="40" width="105" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="cfd" value="&lt;b&gt;cloudflared&lt;/b&gt;&lt;br&gt;Manager の&lt;br&gt;どちらかに1つ" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#2E7D32;fontColor=#222222;fontSize=10;align=center;spacing=6;verticalAlign=middle;" vertex="1" parent="mgr">
+          <mxGeometry x="20" y="175" width="130" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="py" value="&lt;b&gt;python&lt;/b&gt;&lt;br&gt;Flask + gunicorn :8000&lt;br&gt;経路API・3Dビューア&lt;br&gt;CSV はイメージに同梱" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#2E7D32;fontColor=#222222;fontSize=10;align=center;spacing=6;verticalAlign=middle;" vertex="1" parent="mgr">
+          <mxGeometry x="215" y="162" width="305" height="96" as="geometry" />
+        </mxCell>
+        <mxCell id="wk" value="&lt;b&gt;Worker × 6台&lt;/b&gt;（鳳祭期間のみ）" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F7FBF7;strokeColor=#2E7D32;fontColor=#222222;fontSize=11;align=center;spacing=6;verticalAlign=top;container=1;collapsible=0;recursiveResize=0;" vertex="1" parent="swarm">
+          <mxGeometry x="25" y="360" width="540" height="130" as="geometry" />
+        </mxCell>
+        <mxCell id="wkpy" value="&lt;b&gt;python&lt;/b&gt;&lt;br&gt;Manager と同じイメージ" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#2E7D32;fontColor=#222222;fontSize=10;align=center;spacing=6;verticalAlign=middle;" vertex="1" parent="wk">
+          <mxGeometry x="20" y="35" width="240" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="wkcad" value="&lt;b&gt;cadvisor&lt;/b&gt;&lt;br&gt;各ノードに1つ" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F3E5F5;strokeColor=#7B1FA2;fontColor=#222222;fontSize=10;align=center;spacing=6;verticalAlign=middle;" vertex="1" parent="wk">
+          <mxGeometry x="280" y="35" width="240" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="bk" value="&lt;b&gt;バックアップ環境：iku-navi.f5.si&lt;/b&gt;（別サーバー）&lt;br&gt;Swarm と別の Docker Compose。DNS は Cloudflare 外。切り替えは手動" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F2F2F2;strokeColor=#616161;fontColor=#222222;fontSize=11;align=center;spacing=6;verticalAlign=top;container=1;collapsible=0;recursiveResize=0;" vertex="1" parent="1">
+          <mxGeometry x="900" y="700" width="590" height="255" as="geometry" />
+        </mxCell>
+        <mxCell id="caddy" value="&lt;b&gt;Caddy&lt;/b&gt;&lt;br&gt;:80 / :443&lt;br&gt;TLS を自動取得" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#616161;fontColor=#222222;fontSize=10;align=center;spacing=6;verticalAlign=middle;" vertex="1" parent="bk">
+          <mxGeometry x="25" y="55" width="130" height="185" as="geometry" />
+        </mxCell>
+        <mxCell id="bksite" value="&lt;b&gt;iku-navi.f5.si&lt;/b&gt; → public/site（programs/html を置換）" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#616161;fontColor=#222222;fontSize=10;align=center;spacing=6;verticalAlign=middle;" vertex="1" parent="bk">
+          <mxGeometry x="225" y="55" width="340" height="52" as="geometry" />
+        </mxCell>
+        <mxCell id="bkpy" value="&lt;b&gt;api.iku-navi.f5.si&lt;/b&gt; → python（経路API）" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#616161;fontColor=#222222;fontSize=10;align=center;spacing=6;verticalAlign=middle;" vertex="1" parent="bk">
+          <mxGeometry x="225" y="122" width="340" height="52" as="geometry" />
+        </mxCell>
+        <mxCell id="bkcdn" value="&lt;b&gt;cdn.iku-navi.f5.si&lt;/b&gt; → public/cdn（写真の複製）" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#616161;fontColor=#222222;fontSize=10;align=center;spacing=6;verticalAlign=middle;" vertex="1" parent="bk">
+          <mxGeometry x="225" y="189" width="340" height="52" as="geometry" />
+        </mxCell>
+        <mxCell id="legend" value="&lt;b&gt;読み方&lt;/b&gt;&lt;br&gt;実線：通常の通信　破線：リダイレクト、または条件つきの通信&lt;br&gt;python の台数は .env の PYTHON_REPLICAS（未設定なら2）。各ノードへ均等に分散&lt;br&gt;バックアップで使えない機能：AIチャット、有人サポート・案内人数の集計" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFDE7;strokeColor=#BFA100;fontColor=#222222;fontSize=10;align=left;spacing=6;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="270" y="1005" width="1220" height="74" as="geometry" />
+        </mxCell>
+        <mxCell id="e0" value="" style="edgeStyle=none;rounded=0;html=1;strokeColor=#333333;fontSize=10;fontColor=#222222;endArrow=classic;labelBackgroundColor=#FFFFFF;exitX=1.0;exitY=0.5;exitDx=0;exitDy=0;entryX=0.0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="visitor" target="maps">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="170" y="445" as="sourcePoint" />
+            <mxPoint x="300" y="93" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="215" y="445" />
+              <mxPoint x="215" y="93" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e0l" value="地図" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=10;labelBackgroundColor=#FFFFFF;" vertex="1" connectable="0" parent="e0">
+          <mxGeometry x="0.8" relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e1" value="" style="edgeStyle=none;rounded=0;html=1;strokeColor=#333333;fontSize=10;fontColor=#222222;endArrow=classic;labelBackgroundColor=#FFFFFF;exitX=1.0;exitY=0.5;exitDx=0;exitDy=0;entryX=0.0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="visitor" target="main">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="170" y="445" as="sourcePoint" />
+            <mxPoint x="300" y="270" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="215" y="445" />
+              <mxPoint x="215" y="270" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e1l" value="HTML/JS" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=10;labelBackgroundColor=#FFFFFF;" vertex="1" connectable="0" parent="e1">
+          <mxGeometry x="0.7" relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e2" value="" style="edgeStyle=none;rounded=0;html=1;strokeColor=#333333;fontSize=10;fontColor=#222222;endArrow=classic;labelBackgroundColor=#FFFFFF;exitX=1.0;exitY=0.5;exitDx=0;exitDy=0;entryX=0.0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="visitor" target="tunnel">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="170" y="445" as="sourcePoint" />
+            <mxPoint x="300" y="415" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="215" y="445" />
+              <mxPoint x="215" y="415" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e2l" value="経路API" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=10;labelBackgroundColor=#FFFFFF;" vertex="1" connectable="0" parent="e2">
+          <mxGeometry x="0.6" relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e3" value="" style="edgeStyle=none;rounded=0;html=1;strokeColor=#333333;fontSize=10;fontColor=#222222;endArrow=classic;labelBackgroundColor=#FFFFFF;exitX=1.0;exitY=0.5;exitDx=0;exitDy=0;entryX=0.0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="visitor" target="r2">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="170" y="445" as="sourcePoint" />
+            <mxPoint x="300" y="535" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="215" y="445" />
+              <mxPoint x="215" y="535" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e3l" value="写真" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=10;labelBackgroundColor=#FFFFFF;" vertex="1" connectable="0" parent="e3">
+          <mxGeometry x="0.64" relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e4" value="" style="edgeStyle=none;rounded=0;html=1;strokeColor=#333333;fontSize=10;fontColor=#222222;endArrow=classic;labelBackgroundColor=#FFFFFF;exitX=1.0;exitY=0.5;exitDx=0;exitDy=0;entryX=0.0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="visitor" target="tt">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="170" y="445" as="sourcePoint" />
+            <mxPoint x="300" y="655" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="215" y="445" />
+              <mxPoint x="215" y="655" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e4l" value="時間割" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=10;labelBackgroundColor=#FFFFFF;" vertex="1" connectable="0" parent="e4">
+          <mxGeometry x="0.74" relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e5" value="" style="edgeStyle=none;rounded=0;html=1;strokeColor=#333333;fontSize=10;fontColor=#222222;endArrow=classic;labelBackgroundColor=#FFFFFF;exitX=1.0;exitY=0.5;exitDx=0;exitDy=0;entryX=0.0;entryY=0.3182;entryDx=0;entryDy=0;" edge="1" parent="1" source="visitor" target="egc">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="170" y="445" as="sourcePoint" />
+            <mxPoint x="300" y="765" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="215" y="445" />
+              <mxPoint x="215" y="765" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e5l" value="記録・相談" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=10;labelBackgroundColor=#FFFFFF;" vertex="1" connectable="0" parent="e5">
+          <mxGeometry x="0.78" relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e6" value="" style="edgeStyle=none;rounded=0;html=1;strokeColor=#333333;fontSize=10;fontColor=#222222;endArrow=classic;labelBackgroundColor=#FFFFFF;exitX=1.0;exitY=0.5921;exitDx=0;exitDy=0;entryX=0.0;entryY=0.6364;entryDx=0;entryDy=0;" edge="1" parent="1" source="staff" target="egc">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="170" y="800" as="sourcePoint" />
+            <mxPoint x="300" y="800" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e6l" value="管理" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=10;labelBackgroundColor=#FFFFFF;" vertex="1" connectable="0" parent="e6">
+          <mxGeometry x="0.3" relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e7" value="" style="edgeStyle=none;rounded=0;html=1;strokeColor=#333333;fontSize=10;fontColor=#222222;endArrow=classic;labelBackgroundColor=#FFFFFF;exitX=1.0;exitY=0.4342;exitDx=0;exitDy=0;entryX=0.0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="member" target="up">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="170" y="913" as="sourcePoint" />
+            <mxPoint x="300" y="913" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e7l" value="選択・送信" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=10;labelBackgroundColor=#FFFFFF;" vertex="1" connectable="0" parent="e7">
+          <mxGeometry x="0.3" relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e8" value="" style="edgeStyle=none;rounded=0;html=1;strokeColor=#333333;fontSize=10;fontColor=#222222;endArrow=classic;labelBackgroundColor=#FFFFFF;exitX=0.2963;exitY=1.0;exitDx=0;exitDy=0;entryX=0.2963;entryY=0.0;entryDx=0;entryDy=0;dashed=1;" edge="1" parent="1" source="main" target="tunnel">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="380" y="330" as="sourcePoint" />
+            <mxPoint x="380" y="370" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e8l" value="301" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=10;labelBackgroundColor=#FFFFFF;" vertex="1" connectable="0" parent="e8">
+          <mxGeometry x="0.0" relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e9" value="" style="edgeStyle=none;rounded=0;html=1;strokeColor=#333333;fontSize=10;fontColor=#222222;endArrow=classic;labelBackgroundColor=#FFFFFF;exitX=1.0;exitY=0.5;exitDx=0;exitDy=0;entryX=0.0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="main" target="help">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="570" y="270" as="sourcePoint" />
+            <mxPoint x="610" y="270" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e10" value="" style="edgeStyle=none;rounded=0;html=1;strokeColor=#333333;fontSize=10;fontColor=#222222;endArrow=classic;labelBackgroundColor=#FFFFFF;exitX=0.0455;exitY=0.0;exitDx=0;exitDy=0;entryX=0.6;entryY=1.0;entryDx=0;entryDy=0;" edge="1" parent="1" source="help" target="gemini">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="620" y="225" as="sourcePoint" />
+            <mxPoint x="620" y="124" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e11" value="" style="edgeStyle=none;rounded=0;html=1;strokeColor=#333333;fontSize=10;fontColor=#222222;endArrow=classic;labelBackgroundColor=#FFFFFF;exitX=1.0;exitY=0.6667;exitDx=0;exitDy=0;entryX=0.0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="tt" target="ttdb">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="570" y="670" as="sourcePoint" />
+            <mxPoint x="620" y="670" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e12" value="" style="edgeStyle=none;rounded=0;html=1;strokeColor=#333333;fontSize=10;fontColor=#222222;endArrow=classic;labelBackgroundColor=#FFFFFF;exitX=1.0;exitY=0.6364;exitDx=0;exitDy=0;entryX=0.0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="egc" target="egcdb">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="570" y="800" as="sourcePoint" />
+            <mxPoint x="620" y="800" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e13" value="" style="edgeStyle=none;rounded=0;html=1;strokeColor=#333333;fontSize=10;fontColor=#222222;endArrow=classic;labelBackgroundColor=#FFFFFF;exitX=1.0;exitY=0.1667;exitDx=0;exitDy=0;entryX=0.9655;entryY=1.0;entryDx=0;entryDy=0;" edge="1" parent="1" source="tt" target="oauth">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="570" y="625" as="sourcePoint" />
+            <mxPoint x="845" y="124" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="845" y="625" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e13l" value="ログイン" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=10;labelBackgroundColor=#FFFFFF;" vertex="1" connectable="0" parent="e13">
+          <mxGeometry x="-0.8" relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e14" value="" style="edgeStyle=none;rounded=0;html=1;strokeColor=#333333;fontSize=10;fontColor=#222222;endArrow=classic;labelBackgroundColor=#FFFFFF;exitX=1.0;exitY=0.1818;exitDx=0;exitDy=0;entryX=0.9655;entryY=1.0;entryDx=0;entryDy=0;" edge="1" parent="1" source="egc" target="oauth">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="570" y="750" as="sourcePoint" />
+            <mxPoint x="845" y="124" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="845" y="750" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e14l" value="ログイン" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=10;labelBackgroundColor=#FFFFFF;" vertex="1" connectable="0" parent="e14">
+          <mxGeometry x="-0.8" relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e15" value="" style="edgeStyle=none;rounded=0;html=1;strokeColor=#333333;fontSize=10;fontColor=#222222;endArrow=classic;labelBackgroundColor=#FFFFFF;exitX=1.0;exitY=0.5;exitDx=0;exitDy=0;entryX=1.0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="up" target="r2">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="570" y="913" as="sourcePoint" />
+            <mxPoint x="570" y="535" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="592" y="913" />
+              <mxPoint x="592" y="535" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e15l" value="署名付き URL で PUT" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=10;labelBackgroundColor=#FFFFFF;" vertex="1" connectable="0" parent="e15">
+          <mxGeometry x="0.0" relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e16" value="" style="edgeStyle=none;rounded=0;html=1;strokeColor=#333333;fontSize=10;fontColor=#222222;endArrow=classic;labelBackgroundColor=#FFFFFF;exitX=0.0;exitY=0.5;exitDx=0;exitDy=0;entryX=1.0;entryY=0.5;entryDx=0;entryDy=0;startArrow=classic;" edge="1" parent="1" source="cfd" target="tunnel">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="945" y="415" as="sourcePoint" />
+            <mxPoint x="570" y="415" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e16l" value="外向きに接続（ポートは非公開）" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=10;labelBackgroundColor=#FFFFFF;" vertex="1" connectable="0" parent="e16">
+          <mxGeometry x="-0.16" relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e17" value="" style="edgeStyle=none;rounded=0;html=1;strokeColor=#333333;fontSize=10;fontColor=#222222;endArrow=classic;labelBackgroundColor=#FFFFFF;exitX=1.0;exitY=0.5;exitDx=0;exitDy=0;entryX=0.0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="cfd" target="py">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1075" y="415" as="sourcePoint" />
+            <mxPoint x="1140" y="415" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e17l" value="/api、/3d" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=10;labelBackgroundColor=#FFFFFF;" vertex="1" connectable="0" parent="e17">
+          <mxGeometry x="0.0" relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e18" value="" style="edgeStyle=none;rounded=0;html=1;strokeColor=#333333;fontSize=10;fontColor=#222222;endArrow=classic;labelBackgroundColor=#FFFFFF;exitX=0.0;exitY=0.5;exitDx=0;exitDy=0;entryX=1.0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="prom" target="cad">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1140" y="280" as="sourcePoint" />
+            <mxPoint x="1075" y="280" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e18l" value="15秒ごと" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=10;labelBackgroundColor=#FFFFFF;" vertex="1" connectable="0" parent="e18">
+          <mxGeometry x="0.0" relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e19" value="" style="edgeStyle=none;rounded=0;html=1;strokeColor=#333333;fontSize=10;fontColor=#222222;endArrow=classic;labelBackgroundColor=#FFFFFF;exitX=0.0;exitY=0.5;exitDx=0;exitDy=0;entryX=1.0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="graf" target="prom">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1340" y="280" as="sourcePoint" />
+            <mxPoint x="1295" y="280" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e20" value="" style="edgeStyle=none;rounded=0;html=1;strokeColor=#333333;fontSize=10;fontColor=#222222;endArrow=classic;labelBackgroundColor=#FFFFFF;exitX=0.5;exitY=1.0;exitDx=0;exitDy=0;entryX=0.5;entryY=0.0;entryDx=0;entryDy=0;startArrow=classic;strokeWidth=2;" edge="1" parent="1" source="mgr" target="wk">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1195" y="480" as="sourcePoint" />
+            <mxPoint x="1195" y="530" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e20l" value="overlay で python に振り分け" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=10;labelBackgroundColor=#FFFFFF;" vertex="1" connectable="0" parent="e20">
+          <mxGeometry x="0.0" relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e21" value="" style="edgeStyle=none;rounded=0;html=1;strokeColor=#616161;fontSize=10;fontColor=#222222;endArrow=classic;labelBackgroundColor=#FFFFFF;exitX=0.0;exitY=0.5;exitDx=0;exitDy=0;entryX=0.0;entryY=0.8649;entryDx=0;entryDy=0;dashed=1;" edge="1" parent="1" source="visitor" target="caddy">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="30" y="445" as="sourcePoint" />
+            <mxPoint x="925" y="915" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="12" y="445" />
+              <mxPoint x="12" y="985" />
+              <mxPoint x="880" y="985" />
+              <mxPoint x="880" y="915" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e21l" value="Cloudflare 障害時のみ：SNS や掲示で URL を案内（iku-navi.net の QR はこちらに来ない）" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=10;labelBackgroundColor=#FFFFFF;" vertex="1" connectable="0" parent="e21">
+          <mxGeometry x="0.2" relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e22" value="" style="edgeStyle=none;rounded=0;html=1;strokeColor=#333333;fontSize=10;fontColor=#222222;endArrow=classic;labelBackgroundColor=#FFFFFF;exitX=1.0;exitY=0.1405;exitDx=0;exitDy=0;entryX=0.0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="caddy" target="bksite">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1055" y="781" as="sourcePoint" />
+            <mxPoint x="1125" y="781" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e23" value="" style="edgeStyle=none;rounded=0;html=1;strokeColor=#333333;fontSize=10;fontColor=#222222;endArrow=classic;labelBackgroundColor=#FFFFFF;exitX=1.0;exitY=0.5027;exitDx=0;exitDy=0;entryX=0.0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="caddy" target="bkpy">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1055" y="848" as="sourcePoint" />
+            <mxPoint x="1125" y="848" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e24" value="" style="edgeStyle=none;rounded=0;html=1;strokeColor=#333333;fontSize=10;fontColor=#222222;endArrow=classic;labelBackgroundColor=#FFFFFF;exitX=1.0;exitY=0.8649;exitDx=0;exitDy=0;entryX=0.0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="caddy" target="bkcdn">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1055" y="915" as="sourcePoint" />
+            <mxPoint x="1125" y="915" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="iku-navi-1" name="デプロイ・データ更新">
+    <mxGraphModel dx="1400" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1460" pageHeight="760" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="title" value="&lt;b&gt;デプロイとデータ更新の流れ&lt;/b&gt;&lt;br&gt;2026-11-06 時点" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=none;fontColor=#222222;fontSize=12;align=left;spacing=6;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="30" y="10" width="500" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="dev" value="&lt;b&gt;開発者&lt;/b&gt;&lt;br&gt;ES へ直接コミット・push" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontColor=#222222;fontSize=11;align=center;spacing=6;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="30" y="290" width="180" height="66" as="geometry" />
+        </mxCell>
+        <mxCell id="sheet" value="&lt;b&gt;スプレッドシート&lt;/b&gt;&lt;br&gt;スクリプトで data/ へ Push&lt;br&gt;（鳳祭期間は CSV を直接編集）" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFDE7;strokeColor=#BFA100;fontColor=#222222;fontSize=10;align=center;spacing=6;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="30" y="385" width="180" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="tools" value="&lt;b&gt;IKU_NAVI_Tools&lt;/b&gt;&lt;br&gt;データ作成・検証（PyQt6）" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontColor=#222222;fontSize=10;align=center;spacing=6;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="30" y="495" width="180" height="66" as="geometry" />
+        </mxCell>
+        <mxCell id="gh" value="&lt;b&gt;GitHub&lt;/b&gt;&lt;br&gt;SenARMapOrg/SenARMapProject_2026" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F0F3F6;strokeColor=#24292F;fontColor=#222222;fontSize=10;align=center;spacing=6;verticalAlign=top;container=1;collapsible=0;recursiveResize=0;" vertex="1" parent="1">
+          <mxGeometry x="270" y="90" width="210" height="490" as="geometry" />
+        </mxCell>
+        <mxCell id="gmain" value="&lt;b&gt;main&lt;/b&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#24292F;fontColor=#222222;fontSize=11;align=center;spacing=6;verticalAlign=middle;" vertex="1" parent="gh">
+          <mxGeometry x="20" y="80" width="170" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="ges" value="&lt;b&gt;ES&lt;/b&gt;&lt;br&gt;開発ブランチ" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#24292F;fontColor=#222222;fontSize=11;align=center;spacing=6;verticalAlign=middle;" vertex="1" parent="gh">
+          <mxGeometry x="20" y="300" width="170" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="ci" value="&lt;b&gt;GitHub Actions&lt;/b&gt;&lt;br&gt;test.yml → build-push.yml&lt;br&gt;テストが通ったら python イメージを作成&lt;br&gt;（main 以外への push はテストのみ）" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F0F3F6;strokeColor=#24292F;fontColor=#222222;fontSize=10;align=center;spacing=6;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="560" y="90" width="230" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="ghcr" value="&lt;b&gt;GHCR&lt;/b&gt;&lt;br&gt;iki_project_2026_python" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F0F3F6;strokeColor=#24292F;fontColor=#222222;fontSize=10;align=center;spacing=6;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="860" y="90" width="220" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="upd" value="&lt;b&gt;本番 Manager：~/update.sh&lt;/b&gt;&lt;br&gt;cron で30分ごと：更新 → docker stack deploy" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#EDF7ED;strokeColor=#2E7D32;fontColor=#222222;fontSize=10;align=center;spacing=6;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="1150" y="90" width="280" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="pbuild" value="&lt;b&gt;Cloudflare Pages のビルド&lt;/b&gt;&lt;br&gt;Git 連携（Production branch: main）&lt;br&gt;本体は deploy_env/pages/build.sh&lt;br&gt;（config.js と /campus を生成）" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFF4E5;strokeColor=#F6821F;fontColor=#222222;fontSize=10;align=center;spacing=6;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="560" y="230" width="230" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="pprod" value="&lt;b&gt;本番の Pages&lt;/b&gt;&lt;br&gt;本体、timetables、&lt;br&gt;event-guide-counter、image_uploader" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFF4E5;strokeColor=#F6821F;fontColor=#222222;fontSize=10;align=center;spacing=6;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="860" y="230" width="220" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="pprev" value="&lt;b&gt;プレビュー&lt;/b&gt;&lt;br&gt;*.pages.dev（D1 は preview 用）" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFF4E5;strokeColor=#F6821F;fontColor=#222222;fontSize=10;align=center;spacing=6;verticalAlign=middle;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="860" y="345" width="220" height="56" as="geometry" />
+        </mxCell>
+        <mxCell id="bkupd" value="&lt;b&gt;バックアップ：update.sh&lt;/b&gt;&lt;br&gt;git pull（ES を clone）&lt;br&gt;build_site.py → sync_cdn.py&lt;br&gt;docker compose up --build" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F2F2F2;strokeColor=#616161;fontColor=#222222;fontSize=10;align=center;spacing=6;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="560" y="420" width="230" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="bkenv" value="&lt;b&gt;バックアップ環境&lt;/b&gt;&lt;br&gt;iku-navi.f5.si&lt;br&gt;public/site、public/cdn、python" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F2F2F2;strokeColor=#616161;fontColor=#222222;fontSize=10;align=center;spacing=6;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="860" y="430" width="220" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="member" value="&lt;b&gt;開発メンバー&lt;/b&gt;&lt;br&gt;経路写真" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontColor=#222222;fontSize=11;align=center;spacing=6;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="30" y="620" width="180" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="up" value="&lt;b&gt;image_uploader&lt;/b&gt;&lt;br&gt;署名付き URL で直接 PUT" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFF4E5;strokeColor=#F6821F;fontColor=#222222;fontSize=10;align=center;spacing=6;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="270" y="620" width="210" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="r2" value="&lt;b&gt;R2：iku-navi-image&lt;/b&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFF4E5;strokeColor=#F6821F;fontColor=#222222;fontSize=10;align=center;spacing=6;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="560" y="620" width="230" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="cdn" value="&lt;b&gt;cdn.iku-navi.net&lt;/b&gt;&lt;br&gt;ブラウザへ配信" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFF4E5;strokeColor=#F6821F;fontColor=#222222;fontSize=10;align=center;spacing=6;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="860" y="620" width="220" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="e0" value="" style="edgeStyle=none;rounded=0;html=1;strokeColor=#333333;fontSize=10;fontColor=#222222;endArrow=classic;labelBackgroundColor=#FFFFFF;exitX=1.0;exitY=0.5;exitDx=0;exitDy=0;entryX=0.0;entryY=0.25;entryDx=0;entryDy=0;" edge="1" parent="1" source="dev" target="ges">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="210" y="323" as="sourcePoint" />
+            <mxPoint x="290" y="410" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="250" y="323" />
+              <mxPoint x="250" y="410" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e1" value="" style="edgeStyle=none;rounded=0;html=1;strokeColor=#333333;fontSize=10;fontColor=#222222;endArrow=classic;labelBackgroundColor=#FFFFFF;exitX=1.0;exitY=0.5625;exitDx=0;exitDy=0;entryX=0.0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="sheet" target="ges">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="210" y="430" as="sourcePoint" />
+            <mxPoint x="290" y="430" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e2" value="" style="edgeStyle=none;rounded=0;html=1;strokeColor=#333333;fontSize=10;fontColor=#222222;endArrow=classic;labelBackgroundColor=#FFFFFF;exitX=1.0;exitY=0.5;exitDx=0;exitDy=0;entryX=0.0;entryY=0.75;entryDx=0;entryDy=0;" edge="1" parent="1" source="tools" target="ges">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="210" y="528" as="sourcePoint" />
+            <mxPoint x="290" y="450" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="250" y="528" />
+              <mxPoint x="250" y="450" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e3" value="" style="edgeStyle=none;rounded=0;html=1;strokeColor=#333333;fontSize=10;fontColor=#222222;endArrow=classic;labelBackgroundColor=#FFFFFF;exitX=0.5;exitY=0.0;exitDx=0;exitDy=0;entryX=0.5;entryY=1.0;entryDx=0;entryDy=0;" edge="1" parent="1" source="ges" target="gmain">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="375" y="390" as="sourcePoint" />
+            <mxPoint x="375" y="250" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e3l" value="PR（マージは手動）" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=10;labelBackgroundColor=#FFFFFF;" vertex="1" connectable="0" parent="e3">
+          <mxGeometry x="0.0" relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e4" value="" style="edgeStyle=none;rounded=0;html=1;strokeColor=#333333;fontSize=10;fontColor=#222222;endArrow=classic;labelBackgroundColor=#FFFFFF;exitX=1.0;exitY=0.25;exitDx=0;exitDy=0;entryX=0.0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="gmain" target="ci">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="460" y="190" as="sourcePoint" />
+            <mxPoint x="560" y="140" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="510" y="190" />
+              <mxPoint x="510" y="140" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e4l" value="push" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=10;labelBackgroundColor=#FFFFFF;" vertex="1" connectable="0" parent="e4">
+          <mxGeometry x="0.0" relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e5" value="" style="edgeStyle=none;rounded=0;html=1;strokeColor=#333333;fontSize=10;fontColor=#222222;endArrow=classic;labelBackgroundColor=#FFFFFF;exitX=1.0;exitY=0.75;exitDx=0;exitDy=0;entryX=0.0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="gmain" target="pbuild">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="460" y="230" as="sourcePoint" />
+            <mxPoint x="560" y="280" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="510" y="230" />
+              <mxPoint x="510" y="280" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e5l" value="連携" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=10;labelBackgroundColor=#FFFFFF;" vertex="1" connectable="0" parent="e5">
+          <mxGeometry x="0.0" relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e6" value="" style="edgeStyle=none;rounded=0;html=1;strokeColor=#333333;fontSize=10;fontColor=#222222;endArrow=classic;labelBackgroundColor=#FFFFFF;exitX=1.0;exitY=0.5;exitDx=0;exitDy=0;entryX=0.0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="ci" target="ghcr">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="790" y="140" as="sourcePoint" />
+            <mxPoint x="860" y="140" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e6l" value="push" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=10;labelBackgroundColor=#FFFFFF;" vertex="1" connectable="0" parent="e6">
+          <mxGeometry x="0.0" relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e7" value="" style="edgeStyle=none;rounded=0;html=1;strokeColor=#333333;fontSize=10;fontColor=#222222;endArrow=classic;labelBackgroundColor=#FFFFFF;exitX=0.0;exitY=0.5;exitDx=0;exitDy=0;entryX=1.0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="upd" target="ghcr">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1150" y="140" as="sourcePoint" />
+            <mxPoint x="1080" y="140" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e7l" value="pull" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=10;labelBackgroundColor=#FFFFFF;" vertex="1" connectable="0" parent="e7">
+          <mxGeometry x="0.0" relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e8" value="" style="edgeStyle=none;rounded=0;html=1;strokeColor=#333333;fontSize=10;fontColor=#222222;endArrow=classic;labelBackgroundColor=#FFFFFF;exitX=1.0;exitY=0.5;exitDx=0;exitDy=0;entryX=0.0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="pbuild" target="pprod">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="790" y="280" as="sourcePoint" />
+            <mxPoint x="860" y="280" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e8l" value="公開" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=10;labelBackgroundColor=#FFFFFF;" vertex="1" connectable="0" parent="e8">
+          <mxGeometry x="0.0" relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e9" value="" style="edgeStyle=none;rounded=0;html=1;strokeColor=#333333;fontSize=10;fontColor=#222222;endArrow=classic;labelBackgroundColor=#FFFFFF;exitX=1.0;exitY=0.25;exitDx=0;exitDy=0;entryX=0.0;entryY=0.85;entryDx=0;entryDy=0;dashed=1;" edge="1" parent="1" source="ges" target="pbuild">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="460" y="410" as="sourcePoint" />
+            <mxPoint x="560" y="315" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="525" y="410" />
+              <mxPoint x="525" y="315" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e9l" value="連携" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=10;labelBackgroundColor=#FFFFFF;" vertex="1" connectable="0" parent="e9">
+          <mxGeometry x="-0.6" relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e10" value="" style="edgeStyle=none;rounded=0;html=1;strokeColor=#333333;fontSize=10;fontColor=#222222;endArrow=classic;labelBackgroundColor=#FFFFFF;exitX=0.5;exitY=1.0;exitDx=0;exitDy=0;entryX=0.0;entryY=0.5;entryDx=0;entryDy=0;dashed=1;" edge="1" parent="1" source="pbuild" target="pprev">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="675" y="330" as="sourcePoint" />
+            <mxPoint x="860" y="373" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="675" y="373" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e10l" value="main 以外" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=10;labelBackgroundColor=#FFFFFF;" vertex="1" connectable="0" parent="e10">
+          <mxGeometry x="0.4" relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e11" value="" style="edgeStyle=none;rounded=0;html=1;strokeColor=#333333;fontSize=10;fontColor=#222222;endArrow=classic;labelBackgroundColor=#FFFFFF;exitX=0.0;exitY=0.35;exitDx=0;exitDy=0;entryX=1.0;entryY=0.8125;entryDx=0;entryDy=0;" edge="1" parent="1" source="bkupd" target="ges">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="560" y="455" as="sourcePoint" />
+            <mxPoint x="460" y="455" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e11l" value="git pull" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=10;labelBackgroundColor=#FFFFFF;" vertex="1" connectable="0" parent="e11">
+          <mxGeometry x="0.0" relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e12" value="" style="edgeStyle=none;rounded=0;html=1;strokeColor=#333333;fontSize=10;fontColor=#222222;endArrow=classic;labelBackgroundColor=#FFFFFF;exitX=1.0;exitY=0.5;exitDx=0;exitDy=0;entryX=0.0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="bkupd" target="bkenv">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="790" y="470" as="sourcePoint" />
+            <mxPoint x="860" y="470" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e13" value="" style="edgeStyle=none;rounded=0;html=1;strokeColor=#333333;fontSize=10;fontColor=#222222;endArrow=classic;labelBackgroundColor=#FFFFFF;exitX=0.5;exitY=1.0;exitDx=0;exitDy=0;entryX=0.5;entryY=0.0;entryDx=0;entryDy=0;" edge="1" parent="1" source="bkenv" target="cdn">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="970" y="510" as="sourcePoint" />
+            <mxPoint x="970" y="620" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e13l" value="sync_cdn.py が写真を複製" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=10;labelBackgroundColor=#FFFFFF;" vertex="1" connectable="0" parent="e13">
+          <mxGeometry x="0.0" relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e14" value="" style="edgeStyle=none;rounded=0;html=1;strokeColor=#333333;fontSize=10;fontColor=#222222;endArrow=classic;labelBackgroundColor=#FFFFFF;exitX=1.0;exitY=0.5;exitDx=0;exitDy=0;entryX=0.0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="member" target="up">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="210" y="655" as="sourcePoint" />
+            <mxPoint x="270" y="655" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e15" value="" style="edgeStyle=none;rounded=0;html=1;strokeColor=#333333;fontSize=10;fontColor=#222222;endArrow=classic;labelBackgroundColor=#FFFFFF;exitX=1.0;exitY=0.5;exitDx=0;exitDy=0;entryX=0.0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="up" target="r2">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="480" y="655" as="sourcePoint" />
+            <mxPoint x="560" y="655" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e16" value="" style="edgeStyle=none;rounded=0;html=1;strokeColor=#333333;fontSize=10;fontColor=#222222;endArrow=classic;labelBackgroundColor=#FFFFFF;exitX=1.0;exitY=0.5;exitDx=0;exitDy=0;entryX=0.0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="r2" target="cdn">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="790" y="655" as="sourcePoint" />
+            <mxPoint x="860" y="655" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

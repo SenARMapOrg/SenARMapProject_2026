@@ -1,0 +1,192 @@
+<mxfile host="app.diagrams.net" version="24.0.0">
+  <diagram id="iku-navi-0" name="お客さま向け機能の構成">
+    <mxGraphModel dx="1400" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1520" pageHeight="950" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="title" value="&lt;b&gt;IKU NAVI システム構成（来場者が使う機能）&lt;/b&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=none;fontColor=#222222;fontSize=12;align=left;spacing=6;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="30" y="10" width="500" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="browser" value="&lt;b&gt;来場者のスマホ / PC&lt;/b&gt;（ブラウザ）" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F7F7F7;strokeColor=#333333;fontColor=#222222;fontSize=12;align=center;spacing=6;verticalAlign=top;container=1;collapsible=0;recursiveResize=0;" vertex="1" parent="1">
+          <mxGeometry x="30" y="50" width="300" height="880" as="geometry" />
+        </mxCell>
+        <mxCell id="m_map" value="&lt;b&gt;屋外の地図&lt;/b&gt;&lt;br&gt;現在地（GPS）と経路を表示" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontColor=#222222;fontSize=10;align=center;spacing=6;verticalAlign=middle;" vertex="1" parent="browser">
+          <mxGeometry x="20" y="35" width="260" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="m_page" value="&lt;b&gt;ページ表示&lt;/b&gt;&lt;br&gt;ナビ、鳳祭の一覧、キャンパス案内、&lt;br&gt;3Dマップ、埋め込みマップ&lt;br&gt;屋内は SVG のフロアマップ" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontColor=#222222;fontSize=10;align=center;spacing=6;verticalAlign=middle;" vertex="1" parent="browser">
+          <mxGeometry x="20" y="170" width="260" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="m_route" value="&lt;b&gt;検索・経路案内&lt;/b&gt;&lt;br&gt;教室、イベント、トイレ、食堂、&lt;br&gt;設備までの経路" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontColor=#222222;fontSize=10;align=center;spacing=6;verticalAlign=middle;" vertex="1" parent="browser">
+          <mxGeometry x="20" y="290" width="260" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="m_photo" value="&lt;b&gt;経路写真&lt;/b&gt;&lt;br&gt;写真に進行方向の矢印を重ねる" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontColor=#222222;fontSize=10;align=center;spacing=6;verticalAlign=middle;" vertex="1" parent="browser">
+          <mxGeometry x="20" y="395" width="260" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="m_help" value="&lt;b&gt;使い方&lt;/b&gt;&lt;br&gt;よくある質問、AI への質問" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontColor=#222222;fontSize=10;align=center;spacing=6;verticalAlign=middle;" vertex="1" parent="browser">
+          <mxGeometry x="20" y="530" width="260" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="m_sup" value="&lt;b&gt;オペレーターに相談&lt;/b&gt;&lt;br&gt;受付中のときだけ人につなぐ" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontColor=#222222;fontSize=10;align=center;spacing=6;verticalAlign=middle;" vertex="1" parent="browser">
+          <mxGeometry x="20" y="630" width="260" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="m_ar" value="&lt;b&gt;屋外 AR（端末内で処理）&lt;/b&gt;&lt;br&gt;カメラ映像に Three.js で経路を描画&lt;br&gt;GPS とジャイロで向きを合わせる" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontColor=#222222;fontSize=10;align=center;spacing=6;verticalAlign=middle;" vertex="1" parent="browser">
+          <mxGeometry x="20" y="720" width="260" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="m_voice" value="&lt;b&gt;音声案内（端末内で処理）&lt;/b&gt;&lt;br&gt;Web Speech API で読み上げ" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontColor=#222222;fontSize=10;align=center;spacing=6;verticalAlign=middle;" vertex="1" parent="browser">
+          <mxGeometry x="20" y="810" width="260" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="maps" value="&lt;b&gt;Google Maps JavaScript API&lt;/b&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#4285F4;fontColor=#222222;fontSize=11;align=center;spacing=6;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="470" y="80" width="400" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="cf" value="&lt;b&gt;Cloudflare&lt;/b&gt;（DNS、TLS）" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFF4E5;strokeColor=#F6821F;fontColor=#222222;fontSize=12;align=left;spacing=6;verticalAlign=top;container=1;collapsible=0;recursiveResize=0;" vertex="1" parent="1">
+          <mxGeometry x="470" y="170" width="400" height="600" as="geometry" />
+        </mxCell>
+        <mxCell id="pages" value="&lt;b&gt;Pages：iku-navi.net&lt;/b&gt;&lt;br&gt;HTML / CSS / JavaScript（フレームワークなし）&lt;br&gt;/navi、/ohtori_events、/campus、/map3d、/embed&lt;br&gt;/svg（フロアマップ）、/navi/faq.json" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#F6821F;fontColor=#222222;fontSize=10;align=center;spacing=6;verticalAlign=middle;" vertex="1" parent="cf">
+          <mxGeometry x="30" y="35" width="340" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="tunnel" value="&lt;b&gt;Tunnel：api.iku-navi.net&lt;/b&gt;&lt;br&gt;サーバーのポートを公開せずに API へ接続" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#F6821F;fontColor=#222222;fontSize=10;align=center;spacing=6;verticalAlign=middle;" vertex="1" parent="cf">
+          <mxGeometry x="30" y="170" width="340" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="r2" value="&lt;b&gt;R2：cdn.iku-navi.net&lt;/b&gt;&lt;br&gt;経路写真の配信" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#F6821F;fontColor=#222222;fontSize=10;align=center;spacing=6;verticalAlign=middle;" vertex="1" parent="cf">
+          <mxGeometry x="30" y="270" width="340" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="help" value="&lt;b&gt;Pages Functions：/api/help-chat&lt;/b&gt;&lt;br&gt;API キーを隠して Gemini へ中継&lt;br&gt;faq.json の内容だけで答えるよう指示" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#F6821F;fontColor=#222222;fontSize=10;align=center;spacing=6;verticalAlign=middle;" vertex="1" parent="cf">
+          <mxGeometry x="30" y="400" width="340" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="sup" value="&lt;b&gt;Pages Functions&lt;/b&gt;&lt;br&gt;/api/support/*" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#F6821F;fontColor=#222222;fontSize=10;align=center;spacing=6;verticalAlign=middle;" vertex="1" parent="cf">
+          <mxGeometry x="30" y="500" width="190" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="d1" value="&lt;b&gt;D1&lt;/b&gt;&lt;br&gt;相談内容" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#F6821F;fontColor=#222222;fontSize=10;align=center;spacing=6;verticalAlign=middle;" vertex="1" parent="cf">
+          <mxGeometry x="260" y="510" width="110" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="swarm" value="&lt;b&gt;ConoHa VPS / Docker Swarm&lt;/b&gt;（複数台に分散）" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#EDF7ED;strokeColor=#2E7D32;fontColor=#222222;fontSize=12;align=center;spacing=6;verticalAlign=top;container=1;collapsible=0;recursiveResize=0;" vertex="1" parent="1">
+          <mxGeometry x="930" y="250" width="560" height="310" as="geometry" />
+        </mxCell>
+        <mxCell id="cfd" value="&lt;b&gt;cloudflared&lt;/b&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#2E7D32;fontColor=#222222;fontSize=10;align=center;spacing=6;verticalAlign=middle;" vertex="1" parent="swarm">
+          <mxGeometry x="20" y="95" width="120" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="py" value="&lt;b&gt;python（Flask + Gunicorn）&lt;/b&gt;&lt;br&gt;GET /api/all：教室・ノードの初期データ&lt;br&gt;GET /api/route：経路探索&lt;br&gt;GET /api/nearest_toilet、nearest_cafeteria、&lt;br&gt;nearest_facility：最寄りの設備まで&lt;br&gt;GET /api/events：鳳祭のイベント一覧&lt;br&gt;GET /api/edge_images：区間ごとの写真 URL&lt;br&gt;GET /api/graph：3Dマップ用のデータ" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#2E7D32;fontColor=#222222;fontSize=10;align=left;spacing=6;verticalAlign=middle;" vertex="1" parent="swarm">
+          <mxGeometry x="190" y="40" width="350" height="180" as="geometry" />
+        </mxCell>
+        <mxCell id="algo" value="&lt;b&gt;NetworkX&lt;/b&gt;&lt;br&gt;双方向 Dijkstra" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#2E7D32;fontColor=#222222;fontSize=10;align=center;spacing=6;verticalAlign=middle;" vertex="1" parent="swarm">
+          <mxGeometry x="190" y="240" width="170" height="56" as="geometry" />
+        </mxCell>
+        <mxCell id="csv" value="&lt;b&gt;CSV データ&lt;/b&gt;&lt;br&gt;ノード、エッジ、設備など" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#2E7D32;fontColor=#222222;fontSize=10;align=center;spacing=6;verticalAlign=middle;" vertex="1" parent="swarm">
+          <mxGeometry x="370" y="240" width="170" height="56" as="geometry" />
+        </mxCell>
+        <mxCell id="gemini" value="&lt;b&gt;Gemini API&lt;/b&gt;（Google）" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#4285F4;fontColor=#222222;fontSize=11;align=center;spacing=6;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="930" y="580" width="560" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="flow" value="&lt;b&gt;案内の流れ&lt;/b&gt;&lt;br&gt;1. ページを開くと、Pages から画面を読み込み、経路 API から教室や設備の一覧を取得する&lt;br&gt;2. 出発地と目的地を選ぶと、経路 API がキャンパスのグラフから最短経路を計算して返す&lt;br&gt;3. 屋外の区間は Google Maps、屋内の区間は SVG のフロアマップに経路を表示する&lt;br&gt;4. 屋内は区間ごとの写真に矢印を重ね、屋外はカメラ映像に経路を重ねる（屋外 AR）&lt;br&gt;5. 困ったときは、よくある質問、AI、オペレーターの順に相談できる" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFDE7;strokeColor=#BFA100;fontColor=#222222;fontSize=11;align=left;spacing=6;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="470" y="790" width="1020" height="140" as="geometry" />
+        </mxCell>
+        <mxCell id="e0" value="" style="edgeStyle=none;rounded=0;html=1;strokeColor=#333333;fontSize=10;fontColor=#222222;endArrow=classic;labelBackgroundColor=#FFFFFF;exitX=1.0;exitY=0.5;exitDx=0;exitDy=0;entryX=0.0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="m_map" target="maps">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="310" y="115" as="sourcePoint" />
+            <mxPoint x="470" y="115" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e0l" value="地図" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=10;labelBackgroundColor=#FFFFFF;" vertex="1" connectable="0" parent="e0">
+          <mxGeometry x="0.0" relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e1" value="" style="edgeStyle=none;rounded=0;html=1;strokeColor=#333333;fontSize=10;fontColor=#222222;endArrow=classic;labelBackgroundColor=#FFFFFF;exitX=1.0;exitY=0.5;exitDx=0;exitDy=0;entryX=0.0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="m_page" target="pages">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="310" y="265" as="sourcePoint" />
+            <mxPoint x="500" y="265" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e1l" value="画面、SVG、FAQ" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=10;labelBackgroundColor=#FFFFFF;" vertex="1" connectable="0" parent="e1">
+          <mxGeometry x="-0.1" relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e2" value="" style="edgeStyle=none;rounded=0;html=1;strokeColor=#333333;fontSize=10;fontColor=#222222;endArrow=classic;labelBackgroundColor=#FFFFFF;exitX=1.0;exitY=0.5;exitDx=0;exitDy=0;entryX=0.0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="m_route" target="tunnel">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="310" y="380" as="sourcePoint" />
+            <mxPoint x="500" y="380" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e2l" value="経路 API" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=10;labelBackgroundColor=#FFFFFF;" vertex="1" connectable="0" parent="e2">
+          <mxGeometry x="-0.1" relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e3" value="" style="edgeStyle=none;rounded=0;html=1;strokeColor=#333333;fontSize=10;fontColor=#222222;endArrow=classic;labelBackgroundColor=#FFFFFF;exitX=1.0;exitY=0.5;exitDx=0;exitDy=0;entryX=0.0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="m_photo" target="r2">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="310" y="475" as="sourcePoint" />
+            <mxPoint x="500" y="475" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e3l" value="写真" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=10;labelBackgroundColor=#FFFFFF;" vertex="1" connectable="0" parent="e3">
+          <mxGeometry x="-0.1" relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e4" value="" style="edgeStyle=none;rounded=0;html=1;strokeColor=#333333;fontSize=10;fontColor=#222222;endArrow=classic;labelBackgroundColor=#FFFFFF;exitX=1.0;exitY=0.5;exitDx=0;exitDy=0;entryX=0.0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="m_help" target="help">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="310" y="610" as="sourcePoint" />
+            <mxPoint x="500" y="610" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e4l" value="質問" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=10;labelBackgroundColor=#FFFFFF;" vertex="1" connectable="0" parent="e4">
+          <mxGeometry x="-0.1" relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e5" value="" style="edgeStyle=none;rounded=0;html=1;strokeColor=#333333;fontSize=10;fontColor=#222222;endArrow=classic;labelBackgroundColor=#FFFFFF;exitX=1.0;exitY=0.5;exitDx=0;exitDy=0;entryX=0.0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="m_sup" target="sup">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="310" y="710" as="sourcePoint" />
+            <mxPoint x="500" y="710" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e5l" value="相談" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=10;labelBackgroundColor=#FFFFFF;" vertex="1" connectable="0" parent="e5">
+          <mxGeometry x="-0.1" relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e6" value="" style="edgeStyle=none;rounded=0;html=1;strokeColor=#333333;fontSize=10;fontColor=#222222;endArrow=classic;labelBackgroundColor=#FFFFFF;exitX=1.0;exitY=0.5;exitDx=0;exitDy=0;entryX=0.0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="sup" target="d1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="690" y="710" as="sourcePoint" />
+            <mxPoint x="730" y="710" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e7" value="" style="edgeStyle=none;rounded=0;html=1;strokeColor=#333333;fontSize=10;fontColor=#222222;endArrow=classic;labelBackgroundColor=#FFFFFF;exitX=1.0;exitY=0.5;exitDx=0;exitDy=0;entryX=0.0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="help" target="gemini">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="840" y="610" as="sourcePoint" />
+            <mxPoint x="930" y="610" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e8" value="" style="edgeStyle=none;rounded=0;html=1;strokeColor=#333333;fontSize=10;fontColor=#222222;endArrow=classic;labelBackgroundColor=#FFFFFF;exitX=0.0;exitY=0.5;exitDx=0;exitDy=0;entryX=1.0;entryY=0.5;entryDx=0;entryDy=0;startArrow=classic;" edge="1" parent="1" source="cfd" target="tunnel">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="950" y="380" as="sourcePoint" />
+            <mxPoint x="840" y="380" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e8l" value="Tunnel" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=10;labelBackgroundColor=#FFFFFF;" vertex="1" connectable="0" parent="e8">
+          <mxGeometry x="0.0" relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e9" value="" style="edgeStyle=none;rounded=0;html=1;strokeColor=#333333;fontSize=10;fontColor=#222222;endArrow=classic;labelBackgroundColor=#FFFFFF;exitX=1.0;exitY=0.5;exitDx=0;exitDy=0;entryX=0.0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="cfd" target="py">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1070" y="380" as="sourcePoint" />
+            <mxPoint x="1120" y="380" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e10" value="" style="edgeStyle=none;rounded=0;html=1;strokeColor=#333333;fontSize=10;fontColor=#222222;endArrow=classic;labelBackgroundColor=#FFFFFF;exitX=0.2429;exitY=1.0;exitDx=0;exitDy=0;entryX=0.5;entryY=0.0;entryDx=0;entryDy=0;" edge="1" parent="1" source="py" target="algo">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1205" y="470" as="sourcePoint" />
+            <mxPoint x="1205" y="490" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e11" value="" style="edgeStyle=none;rounded=0;html=1;strokeColor=#333333;fontSize=10;fontColor=#222222;endArrow=classic;labelBackgroundColor=#FFFFFF;exitX=0.7571;exitY=1.0;exitDx=0;exitDy=0;entryX=0.5;entryY=0.0;entryDx=0;entryDy=0;" edge="1" parent="1" source="py" target="csv">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1385" y="470" as="sourcePoint" />
+            <mxPoint x="1385" y="490" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
