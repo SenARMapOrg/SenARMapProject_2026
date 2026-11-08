@@ -167,6 +167,14 @@ docker exec $(docker ps -q -f name=iku_prometheus) \
   wget -qO- 'http://localhost:9090/api/v1/query?query=up' | python3 -m json.tool
 ```
 
+### Grafana ダッシュボード
+
+`deploy_env/grafana/iku-navi-monitor.json` を Grafana の「Dashboards → New → Import」で読み込む（同じ uid で読み込むと上書きになる）。Prometheus の設定変更は要らない。
+
+上から「止まっていないか → 余裕はあるか → どのノードか → どのサービスか → どのコンテナか」の順に読む。各パネルの見方は、タイトル横の ⓘ に書いてある。
+
+cAdvisor の値だけを使っているので、リクエスト数・エラー率・応答時間は出ない（アクセスの増減は cloudflared の受信量で見る）。
+
 ---
 
 ## コンテナのお掃除（ハウスキーピング）
