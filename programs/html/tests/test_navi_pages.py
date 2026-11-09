@@ -20,7 +20,11 @@ APP_SCRIPTS = ["state.js", "track.js", "data.js", "search-form.js", "gps.js", "r
 TRAILING_SCRIPTS = ["ar.js", "maps-loader.js"]
 
 # 動的に生成される・存在しないこともある要素（スクリプト側で null を許容している）
-OPTIONAL_IDS = {"event-badge"}
+OPTIONAL_IDS = {
+    "event-badge",
+    # 屋外ARの画面の案内。10種類の画面で共通に使うので、ar.js（arEnsureHud）が #ar-area の中に作る
+    "ar-hud", "ar-hud-hint", "ar-hud-turn", "ar-xr-btn",
+}
 
 SCRIPT_SRC = re.compile(r'<script src="([^"]+)"></script>')
 GET_BY_ID = re.compile(r'getElementById\(\s*"([^"]+)"\s*\)')
