@@ -380,3 +380,94 @@ def test_今のステップの区間だけ黄緑で_通過済みはグレー_こ
 
 def test_ボタンで動かしたあと自動送りを止めるのは5秒():
     assert run_js("AR_MANUAL_PAUSE_MS") == 5000
+
+
+# ---------------------------------------------------------------- 画角をカメラ映像に合わせる
+
+def test_画面に映っている映像の範囲に画角を合わせる():
+    import math
+    # 縦長の映像（1080x1920）を、ほぼ正方形の場所（390x400）に切って出すと、縦は映像の一部しか映らない
+    fov = run_js("arVerticalFov(1080, 1920, 390, 400)")
+    half_visible = 400 / 2 / (390 / 1080)               # 映っている縦の半分（映像の px）
+    expected = 2 * math.degrees(math.atan(half_visible * 0.66 / 960))
+    assert fov == pytest.approx(expected)
+    assert 38 < fov < 46                                 # 以前の固定値 65度よりずっと狭い
+    # 映像の大きさがまだ分からないときも、縦長の映像とみなして求める
+    assert 30 < run_js("arVerticalFov(0, 0, 390, 400)") < 60
+
+
+# ---------------------------------------------------------------- ジャイロとコンパスの組み合わせ
+
+def test_カメラが向いている方位を求める():
+    # スマホを立てて（beta=90）持ち、alpha=0 なら北、alpha=270 なら東（alpha は反時計回り）
+    out = run_js("[arCamHeading({alpha: 0, beta: 90, gamma: 0}), arCamHeading({alpha: 270, beta: 90, gamma: 0}),"
+                 " arCamHeading({alpha: 90, beta: 0, gamma: 0})]")
+    assert out[0] == pytest.approx(0, abs=1e-6)
+    assert out[1] == pytest.approx(90, abs=1e-6)
+    assert out[2] == pytest.approx(270, abs=1e-6)        # 寝かせているときは端末の上の辺の向き（西）
+
+
+def test_ジャイロの向きをコンパスにゆっくり合わせ_狂った値は使わない():
+    out = run_js("""
+      arRelOrient = { alpha: 0, beta: 90, gamma: 0 };          // ジャイロでは北
+      const compass = (h) => arFeedCompass({ alpha: 360 - h, beta: 90, gamma: 0 });
+      for (let i = 0; i < 5; i++) compass(20);                 // コンパスでは 20度 → 差は 20度で始まる
+      const start = arYawOffset;
+      compass(80);                                             // 1回だけ大きく狂った値（鉄骨のそばなど）
+      const afterOutlier = arYawOffset;
+      for (let i = 0; i < 50; i++) compass(30);                // コンパスが少しずつ 30度を指す
+      const after = arYawOffset;
+      const fused = arFusedOrientation();
+      [start, afterOutlier, after, arCamHeading(fused)]
+    """)
+    assert out[0] == pytest.approx(20)
+    assert out[1] == pytest.approx(20)                   # 狂った値は無視
+    assert 20 < out[2] < 30                              # 一気には動かず、少しずつ寄る
+    # 描画に使う向き ＝ ジャイロ + 差 − 偏角（真北基準）
+    assert out[3] == pytest.approx(out[2] - 7.6, abs=1e-6)
+
+
+def test_コンパスとの差が大きいまま続いたら合わせ直す():
+    out = run_js("""
+      arRelOrient = { alpha: 0, beta: 90, gamma: 0 };
+      const compass = (h) => arFeedCompass({ alpha: 360 - h, beta: 90, gamma: 0 });
+      for (let i = 0; i < 5; i++) compass(20);
+      for (let i = 0; i < AR_COMPASS_MAX_OUTLIERS; i++) compass(90);
+      arYawOffset
+    """)
+    assert out == pytest.approx(90)
+
+
+def test_画面を右になぞると目印が右に動くように向きを変える():
+    out = run_js("arVFov = 45; arOnSwipe(100, 400); arHeadingOffset")
+    assert out < 0                                       # カメラを左に回したのと同じ（方位が減る）
+
+
+# ---------------------------------------------------------------- 高精度モードの地図との位置合わせ
+
+def test_歩いた軌跡とGPSの軌跡を重ねて回転とずれを求める():
+    import math
+    psi, tx, tz = 35, 4, -7
+    pairs = []
+    for i in range(15):
+        ax, az = i * 3.0, (1.5 if i % 2 else -1.5)      # GPS は道（東向き）から ±1.5m 揺れる
+        c, s = math.cos(math.radians(psi)), math.sin(math.radians(psi))
+        bx, bz = i * 3.0 * c + tx, i * 3.0 * s + tz       # XR は揺れない
+        pairs.append({"ax": ax, "az": az, "bx": bx, "bz": bz, "w": 1})
+    out = run_js(f"arFitAlignment({json.dumps(pairs)})")
+    assert out["fitted"] == pytest.approx(psi, abs=1)
+    assert out["spread"] > 20
+    # 回転を決めて渡したときは、ずれ（平行移動）だけ求める
+    fixed = run_js(f"arFitAlignment({json.dumps(pairs)}, {psi})")
+    assert fixed["psi"] == psi
+    assert fixed["tx"] == pytest.approx(tx, abs=1) and fixed["tz"] == pytest.approx(tz, abs=1)
+
+
+def test_組が無ければ位置合わせしない():
+    assert run_js("arFitAlignment([])") is None
+
+
+# ---------------------------------------------------------------- 距離の札
+
+def test_残りの距離は近ければ1m単位_遠ければ5m単位():
+    assert run_js("[arDistanceText(0.3), arDistanceText(7.6), arDistanceText(33)]") == ["あと 1m", "あと 8m", "あと 35m"]
