@@ -16,6 +16,16 @@ def use_elevator_param():
     return request.args.get("use_elevator", "1") != "0"
 
 
+def step_free_param():
+    """step_free=1 のとき階段・エスカレータを使わない（省略時は使う）"""
+    return request.args.get("step_free", "0") == "1"
+
+
+def graph_from_request():
+    """クエリの use_elevator・step_free に合った経路探索用グラフ"""
+    return cache.get_graph(use_elevator=use_elevator_param(), step_free=step_free_param())
+
+
 def edges_for_room_or_404(room_name, building, label="教室"):
     """教室名→エッジ行。見つからなければ404"""
     edges = cache.find_edges_for_room(room_name, building)

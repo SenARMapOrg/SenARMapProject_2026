@@ -76,6 +76,7 @@ loadAllData();
 //   ?to=131&to_bldg=1                     → 目的地だけ入力済みの状態で開く
 //   ?from=101A&from_bldg=10&to=131&to_bldg=1 → 自動でルート検索して表示
 //   &elevator=0                           → エレベーター不使用
+//   &step_free=1                          → 階段・エスカレーターを使わない（エレベーターは必ず使う）
 //   &mode=gps                             → 現在地(屋外)タブで目的地入力済み
 //   ?to_event=<id>・?from_event=<id>      → イベント設定で付けた id で展示を呼び出す（展示名が入る。
 //                                            イベントモードも自動で有効。id の代わりに展示名でもよい）
@@ -91,7 +92,7 @@ loadAllData();
 // 検索条件として URL に書き込むキー。これ以外（ref・event など）は書き込むときも残す
 const NAV_URL_KEYS = [
   "from", "from_bldg", "from_building", "from_event", "to", "to_bldg", "to_building", "to_event",
-  "elevator", "mode", "step", "fac", "fac_type", "fac_name", "fac_category",
+  "elevator", "step_free", "mode", "step", "fac", "fac_type", "fac_name", "fac_category",
 ];
 
 /** 教室・展示を URL の値にする（prefix は "from" か "to"） */
@@ -173,6 +174,7 @@ function applyUrlParams() {
   // 「エレベーターを使う」ははじめはオフ。?elevator=1 でオンにして開ける（?elevator=0 は前と同じくオフ）
   if (q.get("elevator") === "1") document.getElementById("use-elevator").checked = true;
   if (q.get("elevator") === "0") document.getElementById("use-elevator").checked = false;
+  if (q.get("step_free") === "1") setStepFree("step-free", true);
 
   // 現在地(屋外)モード: 目的地だけ埋めて GPS 取得はユーザー操作に任せる
   if (q.get("mode") === "gps") {
@@ -232,6 +234,7 @@ function applyFacilityUrlParams(q, from, fromBldg, restore) {
   onFacCategoryChange();
   setSelectIfOption(sub[0], q.get(sub[1]));
   if (q.get("elevator") === "1") document.getElementById("fac-use-elevator").checked = true;
+  if (q.get("step_free") === "1") setStepFree("fac-step-free", true);
 
   if (q.get("mode") === "gps") { setFacMode("gps"); return; }
   setFacMode("room");

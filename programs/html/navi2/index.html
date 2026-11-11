@@ -702,10 +702,16 @@ button, select, input { color: inherit; }
                 </div>
               </div>
 
-              <label class="ev-label">
-                <input type="checkbox" id="use-elevator" checked>
-                <span>エレベーターを使う</span>
-              </label>
+              <div class="route-options" style="display:flex;flex-direction:column;gap:6px;flex-shrink:0;">
+                <label class="ev-label">
+                  <input type="checkbox" id="use-elevator" checked>
+                  <span>エレベーターを使う</span>
+                </label>
+                <label class="ev-label">
+                  <input type="checkbox" id="step-free">
+                  <span>階段・エスカレーターを使わない</span>
+                </label>
+              </div>
               <button class="btn-primary" onclick="doSearch()">ルートを検索する</button>
             </div>
 
@@ -758,10 +764,16 @@ button, select, input { color: inherit; }
                 </div>
               </div>
 
-              <label class="ev-label">
-                <input type="checkbox" id="fac-use-elevator" checked>
-                <span>エレベーターを使う</span>
-              </label>
+              <div class="route-options" style="display:flex;flex-direction:column;gap:6px;flex-shrink:0;">
+                <label class="ev-label">
+                  <input type="checkbox" id="fac-use-elevator" checked>
+                  <span>エレベーターを使う</span>
+                </label>
+                <label class="ev-label">
+                  <input type="checkbox" id="fac-step-free">
+                  <span>階段・エスカレーターを使わない</span>
+                </label>
+              </div>
               <button class="btn-primary" onclick="doFacSearch()">設備を検索する</button>
             </div>
 

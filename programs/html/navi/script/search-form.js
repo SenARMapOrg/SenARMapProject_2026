@@ -199,9 +199,10 @@ async function fetchRouteAndNavigate(url, fromLabel = "", toLabel = "", pagePara
   setLoading(true);
   try {
     const res = await fetch(url);
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const data = await res.json();
-    if (data.error) { alert("エラー: " + data.error); return; }
+    // 経路が無いとき（404）も API は error を JSON で返すので、読めればその内容を出す
+    const data = await res.json().catch(() => null);
+    if (!data || (!res.ok && !data.error)) throw new Error(`HTTP ${res.status}`);
+    if (data.error) { alert(routeErrorMessage(url, data.error)); return; }
     if (!(restore.fromUrl && pageWasReloaded())) trackSearch(fromLabel, toLabel);
     saveSearchToUrl(pageParams);
     await initRoute(data.path_coords, data.path_edges, {
@@ -216,24 +217,80 @@ async function fetchRouteAndNavigate(url, fromLabel = "", toLabel = "", pagePara
   }
 }
 
+// ================================================================
+// 「階段・エスカレーターを使わない」（車いす・ベビーカー・大きな荷物のときなど）
+// オンにすると階を移るのはエレベーターだけになるので、「エレベーターを使う」をオンにして固定する。
+// オフに戻したら、オンにする前の「エレベーターを使う」の状態に戻す。
+// navi1〜9 のようにチェックボックスが無い画面では何もしない（いつもどおり階段も使う）。
+// ================================================================
+const STEP_FREE_PAIRS = { "step-free": "use-elevator", "fac-step-free": "fac-use-elevator" };
+
+function isStepFree(id) {
+  return !!document.getElementById(id)?.checked;
+}
+
+function syncStepFree(id) {
+  const box = document.getElementById(id);
+  const ev  = document.getElementById(STEP_FREE_PAIRS[id]);
+  if (!box || !ev) return;
+  if (box.checked) {
+    if (!ev.disabled) ev.dataset.beforeStepFree = ev.checked ? "1" : "0";
+    ev.checked = true;
+    ev.disabled = true;
+  } else if (ev.disabled) {
+    ev.disabled = false;
+    ev.checked = ev.dataset.beforeStepFree === "1";
+  }
+  ev.closest("label")?.classList.toggle("is-locked", box.checked);
+}
+
+/** URL から開いたときなどに、チェックを入れて連動させる */
+function setStepFree(id, on) {
+  const box = document.getElementById(id);
+  if (!box) return;
+  box.checked = on;
+  syncStepFree(id);
+}
+
+Object.keys(STEP_FREE_PAIRS).forEach(id => {
+  document.getElementById(id)?.addEventListener("change", () => syncStepFree(id));
+});
+
+/** 経路が見つからなかったときの案内。階段・エスカレーターを使わない指定なら、そのせいで見つからないことを伝える */
+function routeErrorMessage(url, error) {
+  if (new URL(url, location.href).searchParams.get("step_free") === "1") {
+    return "階段・エスカレーターを使わずに行ける経路が見つかりませんでした。\n"
+      + "エレベーターの無い建物の上の階などは、この設定では案内できません。";
+  }
+  return "エラー: " + error;
+}
+
 // 設備検索の目的地は「最寄りの○○」なので、選択中の選択肢の表示名を集計用のラベルにする
 function selectedOptionLabel(selectId) {
   const sel = document.getElementById(selectId);
   return sel?.selectedOptions[0]?.textContent?.trim() || "";
 }
 
-/** 「施設を探す」で URL に書き込む条件（種類・エレベーター）。出発地は resolveFacFromParams が足す */
+/** 「施設を探す」で URL に書き込む条件（種類・エレベーター・階段とエスカレーター）。出発地は resolveFacFromParams が足す */
 function facPageParams(fac, key, value) {
   const pageParams = new URLSearchParams({ fac, [key]: value });
   if (document.getElementById("fac-use-elevator").checked) pageParams.set("elevator", "1");
+  if (isStepFree("fac-step-free")) pageParams.set("step_free", "1");
   return pageParams;
+}
+
+/** 「施設を探す」の API に渡す、エレベーター・階段とエスカレーターの条件 */
+function facRouteOptions() {
+  const opts = { use_elevator: document.getElementById("fac-use-elevator").checked ? "1" : "0" };
+  if (isStepFree("fac-step-free")) opts.step_free = "1";
+  return opts;
 }
 
 async function doToiletSearch(restore = {}) {
   arPreloadThree();
   const params = new URLSearchParams({
     type:         document.getElementById("fac-toilet-type").value,
-    use_elevator: document.getElementById("fac-use-elevator").checked ? "1" : "0",
+    ...facRouteOptions(),
   });
   const pageParams = facPageParams("toilet", "fac_type", params.get("type"));
   const fromLabel = resolveFacFromParams(params, pageParams);
@@ -263,7 +320,7 @@ async function doOtherFacilitySearch(restore = {}) {
   const category = document.getElementById("fac-other-name").value;
   if (!category) { alert("探す設備を選んでください。"); return; }
   const params = new URLSearchParams({
-    use_elevator: document.getElementById("fac-use-elevator").checked ? "1" : "0",
+    ...facRouteOptions(),
     category,
   });
   const pageParams = facPageParams("other", "fac_category", category);
@@ -275,7 +332,7 @@ async function doOtherFacilitySearch(restore = {}) {
 async function doCafeteriaSearch(restore = {}) {
   arPreloadThree();
   const params = new URLSearchParams({
-    use_elevator: document.getElementById("fac-use-elevator").checked ? "1" : "0",
+    ...facRouteOptions(),
     name:         document.getElementById("fac-cafeteria-name").value,
   });
   const pageParams = facPageParams("cafeteria", "fac_name", params.get("name"));

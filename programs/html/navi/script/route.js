@@ -15,6 +15,10 @@ async function doSearch(restore = {}) {
   // 再読み込みしても同じ検索をし直せるよう、URL に書き込む条件（data.js の saveSearchToUrl）
   const pageParams = new URLSearchParams();
   if (useElevator) pageParams.set("elevator", "1");
+  if (isStepFree("step-free")) {
+    params.set("step_free", "1");
+    pageParams.set("step_free", "1");
+  }
   // 鳳祭の案内人数集計に記録する出発地・目的地の表示名（track.js 参照）
   let fromLabel = "";
   let toLabel   = "";

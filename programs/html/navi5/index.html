@@ -705,10 +705,16 @@
         </div>
 
         <div class="bottom-row">
-          <label class="ev-label">
-            <input type="checkbox" id="use-elevator" checked>
-            エレベーター使用
-          </label>
+          <div class="route-options" style="display:flex;flex-direction:column;gap:6px;flex-shrink:0;">
+            <label class="ev-label">
+              <input type="checkbox" id="use-elevator" checked>
+              エレベーター使用
+            </label>
+            <label class="ev-label">
+              <input type="checkbox" id="step-free">
+              階段・エスカレーターを使わない
+            </label>
+          </div>
           <button class="btn-primary" onclick="doSearch()">経路を探す</button>
         </div>
       </div><!-- /#cat-content-room -->
@@ -760,10 +766,16 @@
         </div>
 
         <div class="bottom-row">
-          <label class="ev-label">
-            <input type="checkbox" id="fac-use-elevator" checked>
-            エレベーター使用
-          </label>
+          <div class="route-options" style="display:flex;flex-direction:column;gap:6px;flex-shrink:0;">
+            <label class="ev-label">
+              <input type="checkbox" id="fac-use-elevator" checked>
+              エレベーター使用
+            </label>
+            <label class="ev-label">
+              <input type="checkbox" id="fac-step-free">
+              階段・エスカレーターを使わない
+            </label>
+          </div>
           <button class="btn-primary" onclick="doFacSearch()">設備を探す</button>
         </div>
       </div><!-- /#cat-content-facility -->

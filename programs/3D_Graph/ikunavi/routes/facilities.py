@@ -10,7 +10,7 @@ from ..errors import ApiError
 from ..naming import TOILET_LABEL, TOILET_TYPE_MAP
 from ..search import best_route, candidates_from_edges, extend_to_far_endpoint
 from ..serialize import apply_dest_info, edge_to_dict, path_result
-from ._common import FromSpec, use_elevator_param
+from ._common import FromSpec, graph_from_request
 
 bp = Blueprint("facilities", __name__)
 
@@ -52,12 +52,13 @@ def api_nearest_toilet():
 
     条件:
       use_elevator=0/1 (省略時 1)
+      step_free=0/1 (省略時 0。1 なら階段・エスカレーターを使わず、エレベーターは必ず使う)
     """
     toilet_type = request.args.get("type", "all").strip().upper()
     from_spec = FromSpec.from_request().require()
 
     targets = TOILET_TYPE_MAP.get(toilet_type, TOILET_TYPE_MAP["ALL"])
-    G = cache.get_graph(use_elevator=use_elevator_param())
+    G = graph_from_request()
     start_candidates = from_spec.candidates(G)
 
     # トイレエッジを全建物から収集（教室名索引から引く。複数種別併記のエッジはIDで重複排除）
@@ -95,6 +96,7 @@ def api_nearest_cafeteria():
 
     条件:
       use_elevator=0/1 (省略時 1)
+      step_free=0/1 (省略時 0。1 なら階段・エスカレーターを使わず、エレベーターは必ず使う)
     """
     from_spec = FromSpec.from_request().require()
 
@@ -105,7 +107,7 @@ def api_nearest_cafeteria():
     caf_name = request.args.get("name", "all").strip()
     targets  = [caf_name] if caf_name != "all" else cafeteria_names
 
-    G = cache.get_graph(use_elevator=use_elevator_param())
+    G = graph_from_request()
     start_candidates = from_spec.candidates(G)
 
     caf_edges = cache.edges_by_names(targets)
@@ -146,6 +148,7 @@ def api_nearest_facility():
 
     条件:
       use_elevator=0/1 (省略時 1)
+      step_free=0/1 (省略時 0。1 なら階段・エスカレーターを使わず、エレベーターは必ず使う)
     """
     category = request.args.get("category", "").strip()
     if not category:
@@ -157,7 +160,7 @@ def api_nearest_facility():
         raise ApiError(f"「{category}」は facility.csv に登録されていません", 404)
     by_name = {f["name"]: f for f in facilities}
 
-    G = cache.get_graph(use_elevator=use_elevator_param())
+    G = graph_from_request()
     start_candidates = from_spec.candidates(G)
 
     facility_edges = cache.edges_by_names(list(by_name))
