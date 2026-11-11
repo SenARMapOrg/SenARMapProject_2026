@@ -331,6 +331,16 @@
       accent-color: var(--accent);
       cursor: pointer;
     }
+    /* 「エレベーターを使う」と「階段・エスカレーターを使わない」を縦に並べる */
+    .route-options {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+    /* 「階段・エスカレーターを使わない」がオンの間は「エレベーターを使う」をオンのまま変えられない */
+    .ev-label.is-locked { cursor: default; opacity: 0.6; }
+    .ev-label.is-locked input[type="checkbox"] { cursor: default; }
     #btn-search, #btn-fac-search {
       flex: 1;
       height: 46px;

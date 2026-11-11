@@ -264,9 +264,14 @@
           </div>
 
           <div style="margin-top:12px;">
-            <label style="font-size:0.9rem;display:flex;align-items:center;gap:8px;">
-              <input type="checkbox" id="use-elevator" checked> EVを優先する
-            </label>
+            <div class="route-options" style="display:flex;flex-direction:column;gap:6px;flex-shrink:0;">
+              <label style="font-size:0.9rem;display:flex;align-items:center;gap:8px;">
+                <input type="checkbox" id="use-elevator" checked> EVを優先する
+              </label>
+              <label style="font-size:0.9rem;display:flex;align-items:center;gap:8px;">
+                <input type="checkbox" id="step-free"> 階段・エスカレーターを使わない
+              </label>
+            </div>
             <button class="search-btn" onclick="doSearch()">ルートを検索</button>
           </div>
         </div>
@@ -317,9 +322,14 @@
           </div>
 
           <div style="margin-top:12px;">
-            <label style="font-size:0.9rem;display:flex;align-items:center;gap:8px;">
-              <input type="checkbox" id="fac-use-elevator" checked> EVを優先する
-            </label>
+            <div class="route-options" style="display:flex;flex-direction:column;gap:6px;flex-shrink:0;">
+              <label style="font-size:0.9rem;display:flex;align-items:center;gap:8px;">
+                <input type="checkbox" id="fac-use-elevator" checked> EVを優先する
+              </label>
+              <label style="font-size:0.9rem;display:flex;align-items:center;gap:8px;">
+                <input type="checkbox" id="fac-step-free"> 階段・エスカレーターを使わない
+              </label>
+            </div>
             <button class="search-btn" onclick="doFacSearch()">設備を検索</button>
           </div>
         </div>

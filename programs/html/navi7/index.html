@@ -279,9 +279,14 @@
           </div>
           
           <div class="action-row">
-            <label class="checkbox-label">
-              <input type="checkbox" id="use-elevator" checked> エレベーターを使用する
-            </label>
+            <div class="route-options" style="display:flex;flex-direction:column;gap:6px;flex-shrink:0;">
+              <label class="checkbox-label">
+                <input type="checkbox" id="use-elevator" checked> エレベーターを使用する
+              </label>
+              <label class="checkbox-label">
+                <input type="checkbox" id="step-free"> 階段・エスカレーターを使わない
+              </label>
+            </div>
             <button class="btn-primary" onclick="doSearch()">経路を検索する</button>
           </div>
         </div>
@@ -336,9 +341,14 @@
           </div>
           
           <div class="action-row">
-            <label class="checkbox-label">
-              <input type="checkbox" id="fac-use-elevator" checked> エレベーターを使用する
-            </label>
+            <div class="route-options" style="display:flex;flex-direction:column;gap:6px;flex-shrink:0;">
+              <label class="checkbox-label">
+                <input type="checkbox" id="fac-use-elevator" checked> エレベーターを使用する
+              </label>
+              <label class="checkbox-label">
+                <input type="checkbox" id="fac-step-free"> 階段・エスカレーターを使わない
+              </label>
+            </div>
             <button class="btn-primary" onclick="doFacSearch()">設備を検索する</button>
           </div>
         </div>

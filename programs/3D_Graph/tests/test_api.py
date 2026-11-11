@@ -138,6 +138,21 @@ def test_エレベータを使わない指定(client):
     assert status == 404
 
 
+def test_階段とエスカレーターを使わない指定(client):
+    # 2号館: 2階の n5 へはエレベーターで行ける。n3 へはエスカレーター(n2→n3)しか無い
+    status, data = get(client, f"/api/route?from_node={B2[1]}&to_node={B2[5]}&step_free=1&use_elevator=0")
+    assert status == 200 and data["total_weight"] == 4.0
+    status, data = get(client, f"/api/route?from_node={B2[2]}&to_node={B2[3]}")
+    assert status == 200
+    status, data = get(client, f"/api/route?from_node={B2[2]}&to_node={B2[3]}&step_free=1")
+    assert status == 404   # n3 へはエスカレーターしか無い
+    # 1号館の2階（男子トイレ）へは階段しか無い
+    status, data = get(client, f"/api/nearest_toilet?from_node={B1[1]}&type=M")
+    assert status == 200
+    status, data = get(client, f"/api/nearest_toilet?from_node={B1[1]}&type=M&step_free=1")
+    assert status == 404
+
+
 def test_出発地の指定がなければ400(client):
     status, data = get(client, "/api/route?to_room=101&to_building=1")
     assert status == 400

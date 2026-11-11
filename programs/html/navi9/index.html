@@ -1112,15 +1112,25 @@
 
             <div class="bottom-row">
 
-              <label class="ev-label">
+              <div class="route-options" style="display:flex;flex-direction:column;gap:6px;flex-shrink:0;">
+                <label class="ev-label">
 
-                <input type="checkbox"
-                       id="use-elevator"
-                       checked>
+                  <input type="checkbox"
+                         id="use-elevator"
+                         checked>
 
-                エレベーター使用
+                  エレベーター使用
 
-              </label>
+                </label>
+                <label class="ev-label">
+
+                  <input type="checkbox"
+                         id="step-free">
+
+                  階段・エスカレーターを使わない
+
+                </label>
+              </div>
 
               <button id="btn-search"
                       onclick="doSearch()">
@@ -1271,15 +1281,25 @@
 
             <div class="bottom-row">
 
-              <label class="ev-label">
+              <div class="route-options" style="display:flex;flex-direction:column;gap:6px;flex-shrink:0;">
+                <label class="ev-label">
 
-                <input type="checkbox"
-                       id="fac-use-elevator"
-                       checked>
+                  <input type="checkbox"
+                         id="fac-use-elevator"
+                         checked>
 
-                エレベーター使用
+                  エレベーター使用
 
-              </label>
+                </label>
+                <label class="ev-label">
+
+                  <input type="checkbox"
+                         id="fac-step-free">
+
+                  階段・エスカレーターを使わない
+
+                </label>
+              </div>
 
               <button id="btn-fac-search"
                       onclick="doFacSearch()">
