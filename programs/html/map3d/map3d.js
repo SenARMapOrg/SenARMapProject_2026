@@ -8,6 +8,18 @@
 
 const API_BASE = ["localhost", "127.0.0.1"].includes(location.hostname) ? "" : "https://api.iku-navi.net";
 
+// 読むだけのデータは、Pages のビルドで書き出した静的な JSON（/data/*.json、docs/static_data.md）を先に読む。
+// サーバーを通らないので速い。無いとき（ローカルや書き出しに失敗したとき）は今までどおり API を読む
+async function fetchData(file, apiPath) {
+  try {
+    const res = await fetch(`/data/${file}`);
+    if (res.ok) return await res.json();
+  } catch { /* 下の API へ */ }
+  const res = await fetch(`${API_BASE}${apiPath}`);
+  if (!res.ok) throw new Error(`${apiPath}: ${res.status}`);
+  return res.json();
+}
+
 // エッジ種別（docs/XYZ_Design.md）
 const WALK_TYPES = new Set([1, 3, 5, 6]);
 const VERTICAL_STYLE = {
@@ -42,8 +54,8 @@ const CORRIDOR_R = 0.45;    // 通路の太さ（半径m）
 const $ = (id) => document.getElementById(id);
 
 const state = {
-  graph: null,            // /api/graph
-  rooms: [],              // /api/all の rooms
+  graph: null,            // /data/graph.json（＝ /api/graph）
+  rooms: [],              // /data/all.json（＝ /api/all）の rooms
   buildingNames: {},      // {建物番号: "10号館"}
   config: {},             // 建物ごとの座標変換（回転角 rot_deg を床の向きに使う）
   shownBuildings: new Set(),
@@ -839,7 +851,7 @@ function animate(now) {
 // 左右は、鏡写しを直したあとの実際の東西南北で決める（教室名の左右と同じ）。データも API も変えず、読むだけ
 const photo = {
   on: false,
-  images: null,       // /api/edge_images（{"from_to": 写真のURL}）。写真モードを初めて使うときに読む
+  images: null,       // /data/edge_images.json（＝ /api/edge_images。{"from_to": 写真のURL}）。写真モードを初めて使うときに読む
   adjacency: null,    // 点の番号 -> [{ to: 点の番号, e: 線 }]
   from: null, to: null,   // 立っている点と、向いている線の先の点
   heading: null,      // いま向いている水平の向き（階段・エレベーターのように水平の長さが無い線では、直前の向きを引き継ぐ）
@@ -1698,8 +1710,7 @@ async function setPhotoMode(on) {
   if (!photo.images) {
     setStatus("写真の一覧を読み込んでいます…");
     try {
-      const res = await fetch(`${API_BASE}/api/edge_images`);
-      photo.images = res.ok ? await res.json() : {};
+      photo.images = await fetchData("edge_images.json", "/api/edge_images");
     } catch {
       photo.images = {};
     }
@@ -1758,8 +1769,8 @@ async function init() {
   let graph, all;
   try {
     [graph, all] = await Promise.all([
-      fetch(`${API_BASE}/api/graph`).then(r => r.json()),
-      fetch(`${API_BASE}/api/all`).then(r => r.json()),
+      fetchData("graph.json", "/api/graph"),
+      fetchData("all.json", "/api/all"),
     ]);
   } catch {
     setStatus("経路探索サーバーに接続できませんでした", true);

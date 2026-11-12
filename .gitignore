@@ -229,3 +229,6 @@ programs/html/campus/
 
 # バックアップ環境の生成物
 deploy_env/backup/public/
+
+# Pages のビルドで書き出す静的データ（deploy_env/pages/build.sh → programs/3D_Graph/export_static.py）
+programs/html/data/

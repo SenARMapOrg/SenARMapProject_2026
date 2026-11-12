@@ -30,3 +30,17 @@ if command -v python3 >/dev/null 2>&1; then
 else
     echo "[pages] WARN: python3 not found; campus pages were not generated." >&2
 fi
+
+# 経路探索APIの「読むだけ」のデータ（/api/graph・/api/all・/api/edge_images）を、静的なJSON（/data/*.json）として書き出す。
+# Pages から直接配るので、サーバー（api.iku-navi.net）に頼らず速く読める（静的な配信は無料・無制限）。
+# 中身は API とまったく同じにするため、programs/3D_Graph の Flask アプリをそのまま動かして作る（docs/static_data.md）。
+# いまは失敗してもビルドは止めない（画面は /data/*.json が無ければ今までどおり API を読む）
+if command -v python3 >/dev/null 2>&1; then
+    if python3 -m pip install --quiet --disable-pip-version-check -r deploy_env/python/requirements.txt; then
+        python3 programs/3D_Graph/export_static.py --out programs/html || echo "[pages] WARN: static data was not exported." >&2
+    else
+        echo "[pages] WARN: could not install Python packages; static data was not exported." >&2
+    fi
+else
+    echo "[pages] WARN: python3 not found; static data was not exported." >&2
+fi
