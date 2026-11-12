@@ -88,7 +88,9 @@ async function answer(request, env) {
   return json(body, status);
 }
 
-export async function onRequestGet({ request, env }) {
+// Pages は onRequestGet などの名前を書き出したファイルを、置き場所に関係なくルートにする（/_lib/api-handler ができてしまう）。
+// そのためここでは別の名前で書き出し、functions/api/[[path]].js で onRequestGet として書き出し直す
+export async function handleApiGet({ request, env }) {
   let response;
   try {
     response = await answer(request, env);

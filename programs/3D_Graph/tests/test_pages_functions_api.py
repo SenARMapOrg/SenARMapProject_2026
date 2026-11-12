@@ -22,7 +22,7 @@ CLIENT = ROOT / "programs" / "html" / "shared" / "api-client.js"
 RUNNER = """
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { onRequestGet } from %s;
+import { handleApiGet as onRequestGet } from %s;
 const [siteDir, requestsPath] = process.argv.slice(2);
 const env = { ASSETS: { async fetch(url) {
   try { return new Response(readFileSync(join(siteDir, new URL(url).pathname))); }
