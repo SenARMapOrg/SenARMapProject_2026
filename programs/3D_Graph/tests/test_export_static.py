@@ -15,7 +15,7 @@ SCRIPT = ROOT / "programs" / "3D_Graph" / "export_static.py"
 
 def test_書き出したファイルがAPIの返事と同じ(client, tmp_path):
     written = export_static.export(tmp_path)
-    assert sorted(p.name for p in written) == sorted(export_static.EXPORTS)
+    assert sorted(p.name for p in written) == sorted([*export_static.EXPORTS, export_static.ROUTE_DATA_FILE])
     for name, url in export_static.EXPORTS.items():
         assert (tmp_path / "data" / name).read_bytes() == client.get(url).get_data(), name
 
@@ -29,3 +29,6 @@ def test_今のdataで書き出せる(tmp_path):
     assert graph["nodes"] and graph["edges"]
     assert all_["rooms"] and all_["buildings"]
     assert images and all(url.startswith("https://cdn.iku-navi.net/") for url in images.values())
+    route = json.loads((tmp_path / "data" / export_static.ROUTE_DATA_FILE).read_text(encoding="utf-8"))
+    assert route["version"] == export_static.ROUTE_DATA_VERSION
+    assert len(route["nodes"]) == len(graph["nodes"]) and len(route["edges"]) == len(graph["edges"])

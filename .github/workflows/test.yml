@@ -29,6 +29,10 @@ jobs:
       - name: 依存をインストール
         run: pip install -r programs/3D_Graph/requirements-dev.txt
 
+      # JS の経路計算（programs/html/shared/route-core.mjs）を Python と比べるテストで node を使う（ランナーに入っている）
+      - name: node の確認
+        run: node --version
+
       - name: pytest
         run: pytest
 
