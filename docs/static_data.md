@@ -60,6 +60,8 @@ Flask（VPS）は段階5まで動かしたままにしてあるので、いつ�
 
 ## api.iku-navi.net の切り替え手順（Cloudflare の画面での作業）
 
+**2026-11-13 に切り替え済み。** `api.iku-navi.net` は Pages（Functions）が答え、`/api/` 以外は Redirect Rule（ルール名「api redirect」）で `iku-navi.net` へ 301 で飛ぶ。Flask は `old-api.iku-navi.net` で答える。以下は記録と、戻すときのため。
+
 Flask はすでに `old-api.iku-navi.net`（Tunnel）でも答えている（2026-11-12 設定）。画面の「予備の問い合わせ先」と
 `/3d` の転送先はコードで `old-api.iku-navi.net` に変えてある。下の順で進めれば、どこで止まってもサービスは動く。
 
