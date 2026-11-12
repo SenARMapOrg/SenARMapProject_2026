@@ -4,7 +4,7 @@
 // 場所は「名前で選ぶ」（教室・トイレ・食堂）か、通路・地点の ID（IKU NAVI ツールのマップ編集で見られる番号）で指定する。
 // ================================================================
 
-const API_BASE = ["localhost", "127.0.0.1"].includes(location.hostname) ? "" : "https://api.iku-navi.net";
+// 経路探索API は /shared/api-client.js の ikunaviFetch で呼ぶ
 // 見本はこのページと同じオリジンの /embed/ を出す（ローカル確認でも動くように）。コードには本番の URL を書く
 const PREVIEW_ORIGIN = location.origin;
 const TOILETS = { M_Toilet: "男子トイレ", F_Toilet: "女子トイレ", C_Toilet: "多目的トイレ" };
@@ -24,7 +24,7 @@ function addOption(text, spec) {
 }
 
 async function loadData() {
-  const res = await fetch(`${API_BASE}/api/all`);
+  const res = await ikunaviFetch("/api/all");
   if (!res.ok) throw new Error();
   const data = await res.json();
   (data.buildings || []).forEach(b => { names[Number(b.id)] = b.display_name; });
@@ -34,8 +34,8 @@ async function loadData() {
 
   // トイレ・食堂も名前で選べるように（教室一覧には出ない）
   const extra = await Promise.allSettled([
-    ...Object.keys(TOILETS).map(t => fetch(`${API_BASE}/api/edges?name=${t}`).then(r => r.json())),
-    fetch(`${API_BASE}/api/cafeterias`).then(r => r.json()),
+    ...Object.keys(TOILETS).map(t => ikunaviFetch(`/api/edges?name=${t}`).then(r => r.json())),
+    ikunaviFetch("/api/cafeterias").then(r => r.json()),
   ]);
   extra.slice(0, -1).forEach(res => {
     if (res.status !== "fulfilled" || !Array.isArray(res.value)) return;

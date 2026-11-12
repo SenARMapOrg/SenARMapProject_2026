@@ -24,6 +24,7 @@ Mac でサブプログラム（IKU NAVI ツール・経路探索API・時間割�
 
 ```bash
 # 経路探索API（programs/3D_Graph）とナビ画面のHTML/JSの噛み合わせ
+# JS の経路計算が Python と同じ答えを返すかのテストもあるので、node（v18 以上）も要る
 pip install -r programs/3D_Graph/requirements-dev.txt
 pytest
 

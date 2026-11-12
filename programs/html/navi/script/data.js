@@ -8,13 +8,14 @@
 // ================================================================
 async function loadAllData() {
   prefetchArrowImages(); // ページ読み込み時に矢印画像を事前取得（fire-and-forget）
+  ikunaviPreload();      // 経路計算（shared/api-client.js）の準備を先に始め、最初の検索を待たせない
   try {
     const [dataRes, imgRes, cafRes, facRes, evRes] = await Promise.all([
-      fetch(`${API_BASE}/api/all`),
-      fetch(`${API_BASE}/api/edge_images`),
-      fetch(`${API_BASE}/api/cafeterias`),
-      fetch(`${API_BASE}/api/facilities`).catch(() => null),
-      EVENT_MODE ? fetch(`${API_BASE}/api/events`) : Promise.resolve(null),
+      ikunaviFetch("/api/all"),
+      ikunaviFetch("/api/edge_images"),
+      ikunaviFetch("/api/cafeterias"),
+      ikunaviFetch("/api/facilities").catch(() => null),
+      EVENT_MODE ? ikunaviFetch("/api/events") : Promise.resolve(null),
     ]);
     if (dataRes.ok) {
       const data = await dataRes.json();

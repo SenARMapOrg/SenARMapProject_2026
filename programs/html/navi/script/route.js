@@ -67,7 +67,7 @@ async function doSearch(restore = {}) {
     }
   }
 
-  await fetchRouteAndNavigate(`${API_BASE}/api/route?${params}`, fromLabel, toLabel, pageParams, restore);
+  await fetchRouteAndNavigate(`/api/route?${params}`, fromLabel, toLabel, pageParams, restore);
 }
 
 function setLoading(on) {

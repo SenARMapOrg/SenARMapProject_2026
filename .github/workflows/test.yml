@@ -29,6 +29,10 @@ jobs:
       - name: 依存をインストール
         run: pip install -r programs/3D_Graph/requirements-dev.txt
 
+      # JS の経路計算（programs/html/shared/route-core.mjs）を Python と比べるテストで node を使う（ランナーに入っている）
+      - name: node の確認
+        run: node --version
+
       - name: pytest
         run: pytest
 
@@ -147,7 +151,7 @@ jobs:
       # 構文エラーがあると本番でページごと動かなくなる
       - name: node --check
         run: |
-          for f in programs/html/navi/script/*.js programs/html/embed/*.js programs/html/embed/builder/*.js; do
+          for f in programs/html/navi/script/*.js programs/html/embed/*.js programs/html/embed/builder/*.js programs/html/map3d/*.js programs/html/shared/*.js programs/html/shared/*.mjs functions/_lib/*.mjs functions/api/*.js; do
             echo "checking $f"
             node --check "$f"
           done

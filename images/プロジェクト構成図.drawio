@@ -88,22 +88,7 @@
         <mxCell id="wkcad" value="&lt;b&gt;cadvisor&lt;/b&gt;&lt;br&gt;各ノードに1つ" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F3E5F5;strokeColor=#7B1FA2;fontColor=#222222;fontSize=10;align=center;spacing=6;verticalAlign=middle;" vertex="1" parent="wk">
           <mxGeometry x="280" y="35" width="240" height="80" as="geometry" />
         </mxCell>
-        <mxCell id="bk" value="&lt;b&gt;バックアップ環境：iku-navi.f5.si&lt;/b&gt;（別サーバー）&lt;br&gt;Swarm と別の Docker Compose。DNS は Cloudflare 外。切り替えは手動" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F2F2F2;strokeColor=#616161;fontColor=#222222;fontSize=11;align=center;spacing=6;verticalAlign=top;container=1;collapsible=0;recursiveResize=0;" vertex="1" parent="1">
-          <mxGeometry x="900" y="700" width="590" height="255" as="geometry" />
-        </mxCell>
-        <mxCell id="caddy" value="&lt;b&gt;Caddy&lt;/b&gt;&lt;br&gt;:80 / :443&lt;br&gt;TLS を自動取得" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#616161;fontColor=#222222;fontSize=10;align=center;spacing=6;verticalAlign=middle;" vertex="1" parent="bk">
-          <mxGeometry x="25" y="55" width="130" height="185" as="geometry" />
-        </mxCell>
-        <mxCell id="bksite" value="&lt;b&gt;iku-navi.f5.si&lt;/b&gt; → public/site（programs/html を置換）" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#616161;fontColor=#222222;fontSize=10;align=center;spacing=6;verticalAlign=middle;" vertex="1" parent="bk">
-          <mxGeometry x="225" y="55" width="340" height="52" as="geometry" />
-        </mxCell>
-        <mxCell id="bkpy" value="&lt;b&gt;api.iku-navi.f5.si&lt;/b&gt; → python（経路API）" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#616161;fontColor=#222222;fontSize=10;align=center;spacing=6;verticalAlign=middle;" vertex="1" parent="bk">
-          <mxGeometry x="225" y="122" width="340" height="52" as="geometry" />
-        </mxCell>
-        <mxCell id="bkcdn" value="&lt;b&gt;cdn.iku-navi.f5.si&lt;/b&gt; → public/cdn（写真の複製）" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#616161;fontColor=#222222;fontSize=10;align=center;spacing=6;verticalAlign=middle;" vertex="1" parent="bk">
-          <mxGeometry x="225" y="189" width="340" height="52" as="geometry" />
-        </mxCell>
-        <mxCell id="legend" value="&lt;b&gt;読み方&lt;/b&gt;&lt;br&gt;実線：通常の通信　破線：リダイレクト、または条件つきの通信&lt;br&gt;python の台数は .env の PYTHON_REPLICAS（未設定なら2）。各ノードへ均等に分散&lt;br&gt;バックアップで使えない機能：AIチャット、有人サポート・案内人数の集計" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFDE7;strokeColor=#BFA100;fontColor=#222222;fontSize=10;align=left;spacing=6;verticalAlign=middle;" vertex="1" parent="1">
+        <mxCell id="legend" value="&lt;b&gt;読み方&lt;/b&gt;&lt;br&gt;実線：通常の通信　破線：リダイレクト、または条件つきの通信&lt;br&gt;python の台数は .env の PYTHON_REPLICAS（未設定なら2）。各ノードへ均等に分散" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFDE7;strokeColor=#BFA100;fontColor=#222222;fontSize=10;align=left;spacing=6;verticalAlign=middle;" vertex="1" parent="1">
           <mxGeometry x="270" y="1005" width="1220" height="74" as="geometry" />
         </mxCell>
         <mxCell id="e0" value="" style="edgeStyle=none;rounded=0;html=1;strokeColor=#333333;fontSize=10;fontColor=#222222;endArrow=classic;labelBackgroundColor=#FFFFFF;exitX=1.0;exitY=0.5;exitDx=0;exitDy=0;entryX=0.0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="visitor" target="maps">
@@ -346,41 +331,6 @@
             <mxPoint as="offset" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="e21" value="" style="edgeStyle=none;rounded=0;html=1;strokeColor=#616161;fontSize=10;fontColor=#222222;endArrow=classic;labelBackgroundColor=#FFFFFF;exitX=0.0;exitY=0.5;exitDx=0;exitDy=0;entryX=0.0;entryY=0.8649;entryDx=0;entryDy=0;dashed=1;" edge="1" parent="1" source="visitor" target="caddy">
-          <mxGeometry relative="1" as="geometry">
-            <mxPoint x="30" y="445" as="sourcePoint" />
-            <mxPoint x="925" y="915" as="targetPoint" />
-            <Array as="points">
-              <mxPoint x="12" y="445" />
-              <mxPoint x="12" y="985" />
-              <mxPoint x="880" y="985" />
-              <mxPoint x="880" y="915" />
-            </Array>
-          </mxGeometry>
-        </mxCell>
-        <mxCell id="e21l" value="Cloudflare 障害時のみ：SNS や掲示で URL を案内（iku-navi.net の QR はこちらに来ない）" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=10;labelBackgroundColor=#FFFFFF;" vertex="1" connectable="0" parent="e21">
-          <mxGeometry x="0.2" relative="1" as="geometry">
-            <mxPoint as="offset" />
-          </mxGeometry>
-        </mxCell>
-        <mxCell id="e22" value="" style="edgeStyle=none;rounded=0;html=1;strokeColor=#333333;fontSize=10;fontColor=#222222;endArrow=classic;labelBackgroundColor=#FFFFFF;exitX=1.0;exitY=0.1405;exitDx=0;exitDy=0;entryX=0.0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="caddy" target="bksite">
-          <mxGeometry relative="1" as="geometry">
-            <mxPoint x="1055" y="781" as="sourcePoint" />
-            <mxPoint x="1125" y="781" as="targetPoint" />
-          </mxGeometry>
-        </mxCell>
-        <mxCell id="e23" value="" style="edgeStyle=none;rounded=0;html=1;strokeColor=#333333;fontSize=10;fontColor=#222222;endArrow=classic;labelBackgroundColor=#FFFFFF;exitX=1.0;exitY=0.5027;exitDx=0;exitDy=0;entryX=0.0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="caddy" target="bkpy">
-          <mxGeometry relative="1" as="geometry">
-            <mxPoint x="1055" y="848" as="sourcePoint" />
-            <mxPoint x="1125" y="848" as="targetPoint" />
-          </mxGeometry>
-        </mxCell>
-        <mxCell id="e24" value="" style="edgeStyle=none;rounded=0;html=1;strokeColor=#333333;fontSize=10;fontColor=#222222;endArrow=classic;labelBackgroundColor=#FFFFFF;exitX=1.0;exitY=0.8649;exitDx=0;exitDy=0;entryX=0.0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="caddy" target="bkcdn">
-          <mxGeometry relative="1" as="geometry">
-            <mxPoint x="1055" y="915" as="sourcePoint" />
-            <mxPoint x="1125" y="915" as="targetPoint" />
-          </mxGeometry>
-        </mxCell>
       </root>
     </mxGraphModel>
   </diagram>
@@ -427,12 +377,6 @@
         </mxCell>
         <mxCell id="pprev" value="&lt;b&gt;プレビュー&lt;/b&gt;&lt;br&gt;*.pages.dev（D1 は preview 用）" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFF4E5;strokeColor=#F6821F;fontColor=#222222;fontSize=10;align=center;spacing=6;verticalAlign=middle;dashed=1;" vertex="1" parent="1">
           <mxGeometry x="860" y="345" width="220" height="56" as="geometry" />
-        </mxCell>
-        <mxCell id="bkupd" value="&lt;b&gt;バックアップ：update.sh&lt;/b&gt;&lt;br&gt;git pull（ES を clone）&lt;br&gt;build_site.py → sync_cdn.py&lt;br&gt;docker compose up --build" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F2F2F2;strokeColor=#616161;fontColor=#222222;fontSize=10;align=center;spacing=6;verticalAlign=middle;" vertex="1" parent="1">
-          <mxGeometry x="560" y="420" width="230" height="100" as="geometry" />
-        </mxCell>
-        <mxCell id="bkenv" value="&lt;b&gt;バックアップ環境&lt;/b&gt;&lt;br&gt;iku-navi.f5.si&lt;br&gt;public/site、public/cdn、python" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F2F2F2;strokeColor=#616161;fontColor=#222222;fontSize=10;align=center;spacing=6;verticalAlign=middle;" vertex="1" parent="1">
-          <mxGeometry x="860" y="430" width="220" height="80" as="geometry" />
         </mxCell>
         <mxCell id="member" value="&lt;b&gt;開発メンバー&lt;/b&gt;&lt;br&gt;経路写真" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontColor=#222222;fontSize=11;align=center;spacing=6;verticalAlign=middle;" vertex="1" parent="1">
           <mxGeometry x="30" y="620" width="180" height="70" as="geometry" />
@@ -575,27 +519,9 @@
             <mxPoint as="offset" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="e11" value="" style="edgeStyle=none;rounded=0;html=1;strokeColor=#333333;fontSize=10;fontColor=#222222;endArrow=classic;labelBackgroundColor=#FFFFFF;exitX=0.0;exitY=0.35;exitDx=0;exitDy=0;entryX=1.0;entryY=0.8125;entryDx=0;entryDy=0;" edge="1" parent="1" source="bkupd" target="ges">
-          <mxGeometry relative="1" as="geometry">
-            <mxPoint x="560" y="455" as="sourcePoint" />
-            <mxPoint x="460" y="455" as="targetPoint" />
-          </mxGeometry>
-        </mxCell>
         <mxCell id="e11l" value="git pull" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=10;labelBackgroundColor=#FFFFFF;" vertex="1" connectable="0" parent="e11">
           <mxGeometry x="0.0" relative="1" as="geometry">
             <mxPoint as="offset" />
-          </mxGeometry>
-        </mxCell>
-        <mxCell id="e12" value="" style="edgeStyle=none;rounded=0;html=1;strokeColor=#333333;fontSize=10;fontColor=#222222;endArrow=classic;labelBackgroundColor=#FFFFFF;exitX=1.0;exitY=0.5;exitDx=0;exitDy=0;entryX=0.0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="bkupd" target="bkenv">
-          <mxGeometry relative="1" as="geometry">
-            <mxPoint x="790" y="470" as="sourcePoint" />
-            <mxPoint x="860" y="470" as="targetPoint" />
-          </mxGeometry>
-        </mxCell>
-        <mxCell id="e13" value="" style="edgeStyle=none;rounded=0;html=1;strokeColor=#333333;fontSize=10;fontColor=#222222;endArrow=classic;labelBackgroundColor=#FFFFFF;exitX=0.5;exitY=1.0;exitDx=0;exitDy=0;entryX=0.5;entryY=0.0;entryDx=0;entryDy=0;" edge="1" parent="1" source="bkenv" target="cdn">
-          <mxGeometry relative="1" as="geometry">
-            <mxPoint x="970" y="510" as="sourcePoint" />
-            <mxPoint x="970" y="620" as="targetPoint" />
           </mxGeometry>
         </mxCell>
         <mxCell id="e13l" value="sync_cdn.py が写真を複製" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=10;labelBackgroundColor=#FFFFFF;" vertex="1" connectable="0" parent="e13">

@@ -14,7 +14,7 @@ import pytest
 DATA_JS = Path(__file__).resolve().parents[1] / "navi" / "script" / "data.js"
 
 # history.replaceState で location も書き換わる。
-# 読み込み時の loadAllData() は、通信できない（fetch が失敗する）ものとして素通りさせる
+# 読み込み時の loadAllData() は、通信できない（ikunaviFetch が失敗する）ものとして素通りさせる
 RUNNER = r"""
 const vm = require("vm");
 const fs = require("fs");
@@ -24,6 +24,9 @@ const replaced = [];
 const ctx = {
   console: { ...console, warn() {} }, URLSearchParams, location, replaced,
   fetch: () => Promise.reject(new Error("offline")),
+  ikunaviFetch: () => Promise.reject(new Error("offline")),
+  ikunaviPreload() {},
+  EVENT_MODE: false,   // state.js で決まる値（このテストでは state.js を読まない）
   history: {
     state: null,
     replaceState(state, title, url) {
