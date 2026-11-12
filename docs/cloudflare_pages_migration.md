@@ -1,5 +1,8 @@
 # Cloudflare Pages 移行手順書（Nginx 完全撤去版）
 
+> **2026-11 追記**: 経路探索API はサーバー（Flask）から Pages（ブラウザでの計算と Pages Functions）へ移している途中。`api.iku-navi.net` は Pages につなぎ直し、Flask は `old-api.iku-navi.net` に移す。`/redirect/*`（QR コード）の転送はやめた。最新の構成と手順は `docs/static_data.md`。
+
+
 静的コンテンツ（`programs/html`）を Cloudflare Pages に移管し、サーバー側から **nginx を完全に撤去**する。
 移行後のサーバーは **python（Flask API + 3D ビューア）/ counter / db / 監視基盤（prometheus・grafana・cadvisor）/ cloudflared** のみとなり、2GB VPS の負荷・メモリを削減する。
 

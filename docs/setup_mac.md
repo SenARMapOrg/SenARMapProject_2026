@@ -94,7 +94,7 @@ python main.py route_checker   # タブを指定して起動（map_editor / id_v
                                #   image_checker / image_renamer / human_remover / svg_pointer）
 ```
 
-ルート検証・画像チェックのタブは経路探索APIを使う。既定は本番の `https://api.iku-navi.net` なので、そのまま使える。
+ルート検証・画像チェックのタブは経路探索APIを使う。既定は本番の Flask（`https://old-api.iku-navi.net`）なので、そのまま使える。
 手元で編集した `data/` を確かめたいときは、**別のターミナル**で次の API を起動し、画面の API の欄を `http://localhost:5001` に書き換える。
 
 ### 経路探索API

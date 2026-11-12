@@ -31,7 +31,7 @@ API の名前が付いたファイル（`route_data.json` 以外）の中身は�
 |---|---|
 | 一覧（`/api/all`・`/api/graph`・`/api/edge_images`・`/api/events`・`/api/cafeterias`・`/api/facilities`） | `/data/*.json` を読む |
 | 経路（`/api/route`・`/api/shortest_path`・`/api/nearest_*`・`/api/edges`） | `route-core.mjs` でブラウザの中で計算する（サーバーに聞かない） |
-| それ以外・上が使えないとき（静的データが無い・計算で想定外の失敗） | 今までどおりサーバー（`api.iku-navi.net`）に聞く |
+| それ以外・上が使えないとき（静的データが無い・計算で想定外の失敗） | 今までどおりサーバー（Flask。`old-api.iku-navi.net`）に聞く |
 
 経路計算の準備（`route-core.mjs` と `route_data.json`、合わせて gzip で数十KB）は、ナビを開いたときに先に始めるので、
 最初の検索も待たせない。
@@ -39,6 +39,46 @@ API の名前が付いたファイル（`route_data.json` 以外）の中身は�
 **サーバーでの計算に戻すとき**は、`api-client.js` の `DEFAULT_ENGINE` を `"server"` にしてデプロイする（全画面が今までの動きに戻る）。
 1回だけ見比べたいときは、ページの URL に `?engine=server`（または `?engine=local`）を付ける。
 Flask（VPS）は段階5まで動かしたままにしてあるので、いつでも戻せる。
+
+## API としての提供（Pages Functions）
+
+`https://iku-navi.net/api/*`（切り替え後は `https://api.iku-navi.net/api/*` も）は、Pages Functions が答える
+（`functions/api/[[path]].js` → `functions/_lib/api-handler.mjs`）。返事・エラー・CORS は Flask と同じ。
+
+| API | 答え方 |
+|---|---|
+| 一覧（`/api/all`・`/api/graph`・`/api/edge_images`・`/api/events`・`/api/cafeterias`・`/api/facilities`） | `/data/*.json` をそのまま返す |
+| 経路（`/api/route`・`/api/shortest_path`・`/api/nearest_*`・`/api/edges`） | `route-core.mjs` で計算する（ブラウザと同じ） |
+| `/api/rooms`・`/api/navigate_to_room`・`/3d` | 提供しない（404）。Flask の `old-api.iku-navi.net` に残してある |
+| `/api/help-chat` | 今までどおり `functions/api/help-chat.js` |
+
+- **回数の上限**: Functions は Workers と合わせて1日10万回まで（無料。超えると課金ではなくエラー）。画面はブラウザで計算するので
+  ここを呼ばない。呼ぶのは時間割共有（`/api/all`）と外部の利用者だけ。全教室の組み合わせを調べる IKU NAVI ツールの
+  ルート検証は、上限に当たらないよう Flask（`old-api.iku-navi.net`）を使う（`iku_tools/common/api.py` の `DEFAULT_API`）。
+- **計算の時間**: 無料の Functions は1回あたり CPU 10ms まで。教室どうしの経路・最寄りの施設とも、ふだんは1ms前後で終わる。
+- **CORS**: `iku-navi.net`・`www.iku-navi.net`・`timetables.iku-navi.net`・`*.pages.dev` からの読み込みを許可（Flask と同じ）。
+
+## api.iku-navi.net の切り替え手順（Cloudflare の画面での作業）
+
+Flask はすでに `old-api.iku-navi.net`（Tunnel）でも答えている（2026-11-12 設定）。画面の「予備の問い合わせ先」と
+`/3d` の転送先はコードで `old-api.iku-navi.net` に変えてある。下の順で進めれば、どこで止まってもサービスは動く。
+
+1. 段階4までのコードを main に入れて、Pages に反映する
+2. 本番で確かめる
+   - `https://iku-navi.net/data/route_data.json` が開ける（Pages のビルドで書き出せている）
+   - `https://iku-navi.net/api/route?from_room=10301&from_building=10&to_room=131&to_building=1` が JSON を返す（Functions）
+   - ナビで検索したとき、ブラウザの通信に `old-api.iku-navi.net` が出ない（ブラウザで計算できている）
+3. Zero Trust → Networks → Tunnels → 対象のトンネル → Public Hostname から `api.iku-navi.net` の行を消す
+4. Workers & Pages → IKU NAVI の Pages プロジェクト → Custom domains → `api.iku-navi.net` を追加する
+   （DNS のレコードは Cloudflare が作り直す。消した Tunnel 用の CNAME が残っていたら消す）
+5. `api.iku-navi.net` の `/api/` 以外（トップページなど）を `iku-navi.net` へ飛ばす。
+   Rules → Redirect Rules → 新しいルール:
+   - 条件（式）: `(http.host eq "api.iku-navi.net" and not starts_with(http.request.uri.path, "/api/"))`
+   - 飛ばし先: 動的 `concat("https://iku-navi.net", http.request.uri.path)`、301、クエリ文字列を残す
+6. 確かめる: `https://api.iku-navi.net/api/all` が JSON を返す・`https://api.iku-navi.net/` が `iku-navi.net` へ飛ぶ・
+   時間割共有の教室の選択肢が出る
+
+戻すときは、4 のカスタムドメインを外し、3 の Public Hostname（`api.iku-navi.net` → `http://python:8000`）を足し直す。
 
 ## 経路計算（JS）
 
@@ -104,5 +144,5 @@ cd programs/html && python3 -m http.server 8765                    # http://127.
 1. **静的 JSON の書き出しと、3Dマップの切り替え**（済み）
 2. **経路計算を JS のモジュールに移し、Python と答えが同じことを CI で確かめる**（済み。上の「経路計算（JS）」）
 3. **ナビ・埋め込みマップ・3Dマップをブラウザでの計算に切り替える**（済み。上の「画面からの呼び出し」。Flask は動かしたままで、すぐ戻せる）
-4. 同じ JS で Pages Functions の `/api/route` などを用意し、「GET すれば結果が返る」API の形を残す
+4. **同じ JS で Pages Functions の `/api/route` などを用意し、「GET すれば結果が返る」API の形を残す**（コードは済み。上の「API としての提供」。`api.iku-navi.net` の切り替えは Cloudflare の画面で）
 5. Python（Flask・VPS・Tunnel・監視）を撤去する

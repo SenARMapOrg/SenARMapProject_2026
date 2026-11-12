@@ -232,3 +232,6 @@ deploy_env/backup/public/
 
 # Pages のビルドで書き出す静的データ（deploy_env/pages/build.sh → programs/3D_Graph/export_static.py）
 programs/html/data/
+
+# wrangler pages dev（Pages Functions を手元で動かす）が作る作業用フォルダ
+.wrangler/

@@ -11,7 +11,9 @@ from urllib3.util.retry import Retry
 
 # 既定は本番の API。手元で編集した data/ を確かめたいときは、画面の API の欄を
 # http://localhost:5001（programs/3D_Graph で python app.py）に書き換える
-DEFAULT_API = "https://api.iku-navi.net"
+# ルート検証は全教室の組み合わせで /api/route を呼ぶので、Pages Functions（api.iku-navi.net。1日の回数に上限がある）
+# ではなく、Flask が動いている old-api.iku-navi.net を使う（docs/static_data.md）
+DEFAULT_API = "https://old-api.iku-navi.net"
 
 JSON_HEADERS = {"Accept": "application/json"}
 

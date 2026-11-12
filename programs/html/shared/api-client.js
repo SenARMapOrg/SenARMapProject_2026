@@ -6,7 +6,7 @@
 //
 //   一覧の API（/api/all など）     … Pages のビルドで書き出した /data/*.json を読む
 //   経路の API（/api/route など）   … /shared/route-core.mjs でブラウザの中で計算する（サーバーに聞かない）
-//   それ以外・上の2つが使えないとき … 今までどおりサーバー（api.iku-navi.net）に聞く
+//   それ以外・上の2つが使えないとき … 今までどおりサーバー（old-api.iku-navi.net の Flask）に聞く
 //
 // サーバーでの計算に戻すには DEFAULT_ENGINE を "server" にする（全画面が今までの動きに戻る）。
 // 1回だけ見比べたいときは、ページの URL に ?engine=server（または ?engine=local）を付ける。
@@ -17,7 +17,9 @@
 
   const DEFAULT_ENGINE = "local";   // "local"（ブラウザで計算）/ "server"（今までどおりサーバーに聞く）
 
-  const API_BASE = ["localhost", "127.0.0.1"].includes(location.hostname) ? "" : "https://api.iku-navi.net";
+  // サーバー（Flask）。api.iku-navi.net は Pages Functions に移すので、Flask は old-api.iku-navi.net で答える。
+  // ローカル開発では同じオリジンの /api/...
+  const API_BASE = ["localhost", "127.0.0.1"].includes(location.hostname) ? "" : "https://old-api.iku-navi.net";
   const STATIC_FILES = {
     "/api/all": "all.json",
     "/api/graph": "graph.json",

@@ -211,16 +211,24 @@ class Heap {
 }
 
 // 戻り値: [距離, 経路] または null（経路なし）
+// networkx の実装をそのまま移したもの。ただし networkx は「その点までの経路」を配列で丸ごと持ち、
+// 点を更新するたびにコピーしているが、ここでは「どの点から来たか」だけを持ち、経路は必要なときに組み立てる
+// （確定した点の来た道は以後変わらないので、組み立てた結果は networkx の配列と同じになる）
 export function bidirectionalDijkstra(G, source, target) {
   if (source === target) return [0, [source]];
   const dists = [new Map(), new Map()];
-  const paths = [new Map([[source, [source]]]), new Map([[target, [target]]])];
+  const prev = [new Map([[source, null]]), new Map([[target, null]])];
   const fringe = [new Heap(), new Heap()];
   const seen = [new Map([[source, 0]]), new Map([[target, 0]])];
   let c = 0;
   fringe[0].push([0, c++, source]);
   fringe[1].push([0, c++, target]);
   const neighs = [G.succ, G.pred];
+  const chain = (dir, w) => {
+    const out = [];
+    for (let n = w; n !== null; n = prev[dir].get(n)) out.push(n);
+    return out;   // w から始点（dir=0 は source、1 は target）へ向かう順
+  };
   let finalpath = [];
   let finaldist;
   let dir = 1;
@@ -230,28 +238,50 @@ export function bidirectionalDijkstra(G, source, target) {
     if (dists[dir].has(v)) continue;
     dists[dir].set(v, dist);
     if (dists[1 - dir].has(v)) return [finaldist, finalpath];
+    const dv = dist;
     for (const [w, d] of neighs[dir].get(v)) {
       const cost = d.weight === undefined ? 1 : d.weight;
       if (cost === null) continue;
-      const vwLength = dists[dir].get(v) + cost;
+      const vwLength = dv + cost;
       if (dists[dir].has(w)) {
         if (vwLength < dists[dir].get(w)) throw new Error("Contradictory paths found: negative weights?");
       } else if (!seen[dir].has(w) || vwLength < seen[dir].get(w)) {
         seen[dir].set(w, vwLength);
         fringe[dir].push([vwLength, c++, w]);
-        paths[dir].set(w, [...paths[dir].get(v), w]);
+        prev[dir].set(w, v);
         if (seen[0].has(w) && seen[1].has(w)) {
           const totaldist = seen[0].get(w) + seen[1].get(w);
           if (finalpath.length === 0 || finaldist > totaldist) {
             finaldist = totaldist;
-            const revpath = [...paths[1].get(w)].reverse();
-            finalpath = [...paths[0].get(w), ...revpath.slice(1)];
+            finalpath = [...chain(0, w).reverse(), ...chain(1, w).slice(1)];
           }
         }
       }
     }
   }
   return null;
+}
+
+// 1つの点から、たどり着ける全部の点までの最短距離（候補の絞り込み用。経路の選び方には使わない）
+function distancesFrom(G, source) {
+  const dist = new Map([[source, 0]]);
+  const done = new Set();
+  const heap = new Heap();
+  let c = 0;
+  heap.push([0, c++, source]);
+  while (heap.size) {
+    const [d, , v] = heap.pop();
+    if (done.has(v)) continue;
+    done.add(v);
+    for (const [w, e] of G.succ.get(v)) {
+      const nd = d + (e.weight === undefined ? 1 : e.weight);
+      if (!dist.has(w) || nd < dist.get(w)) {
+        dist.set(w, nd);
+        heap.push([nd, c++, w]);
+      }
+    }
+  }
+  return dist;
 }
 
 // ---------------------------------------------------------------- 候補と総当たり（search.py）
@@ -293,10 +323,36 @@ function extendToFarEndpoint(G, path, length, destRow) {
   return [[...path, far], length + (e.weight ?? 0.0)];
 }
 
+// 総当たりの組み合わせがこれより多いときは、先に候補を絞る（最寄りのトイレなど。教室どうしは 2×2 なので絞らない）
+const PRUNE_ABOVE = 8;
+// 絞り込みで残す幅。双方向探索と片方向の探索では、足し算の順番の違いで距離の最後の桁がずれることがあるため、
+// 一番近い距離よりわずかに長いものまで残し、そこから先は Python と同じ双方向探索で比べる
+const PRUNE_SLACK = 1e-6;
+
 function bestRoute(G, starts, dests, allowSameNode = true) {
   let bestPath = null, bestLength = Infinity, bestStart = null, bestDest = null;
+  // 絞り込み: 出発候補ごとに全点への距離を1回だけ求め、一番近い距離から大きく離れた組み合わせは調べない
+  // （双方向探索の距離も同じ最短距離なので、離れた組み合わせが選ばれることは無い。選び方は変わらない）
+  let keep = null;
+  if (starts.length * dests.length > PRUNE_ABOVE) {
+    const fromStart = new Map();
+    for (const [sNode] of starts) {
+      if (G.hasNode(sNode) && !fromStart.has(sNode)) fromStart.set(sNode, distancesFrom(G, sNode));
+    }
+    const approx = (sNode, dNode) => {
+      if (sNode === dNode) return allowSameNode ? 0 : Infinity;
+      const m = fromStart.get(sNode);
+      return m && m.has(dNode) ? m.get(dNode) : Infinity;
+    };
+    let min = Infinity;
+    for (const [sNode] of starts) for (const [dNode] of dests) min = Math.min(min, approx(sNode, dNode));
+    if (min === Infinity) return [null, Infinity, null, null];
+    const limit = min + PRUNE_SLACK * Math.max(1, min);
+    keep = (sNode, dNode) => approx(sNode, dNode) <= limit;
+  }
   for (const [sNode, sRow] of starts) {
     for (const [dNode, dRow] of dests) {
+      if (keep && !keep(sNode, dNode)) continue;
       let length, path;
       if (sNode === dNode) {
         if (!allowSameNode) continue;
