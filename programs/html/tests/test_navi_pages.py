@@ -61,7 +61,9 @@ def test_参照しているスクリプトが実在する(page):
     for src in SCRIPT_SRC.findall(page.read_text(encoding="utf-8")):
         if src.endswith("config.js"):
             continue  # Cloudflare Pages のビルド時に生成される
-        assert (page.parent / src).resolve().exists(), f"{page.parent.name}: {src} が無い"
+        # "/shared/..." のようにサイトのルートから書いたものは programs/html から探す
+        path = HTML_DIR / src.lstrip("/") if src.startswith("/") else page.parent / src
+        assert path.resolve().exists(), f"{page.parent.name}: {src} が無い"
 
 
 @pytest.mark.parametrize("page", PAGES, ids=PAGE_IDS)
@@ -71,6 +73,9 @@ def test_スクリプトの読み込み順が規約通り(page):
     assert app_scripts == APP_SCRIPTS, f"{page.parent.name}: {app_scripts}"
     # 共有する定数・変数を宣言する state.js が先頭、ar/maps-loader が最後
     assert srcs.index("state.js") < srcs.index("data.js")
+    # 経路探索API を呼ぶ ikunaviFetch（shared/api-client.js）は、それを使うスクリプトより先に読む
+    assert "api-client.js" in srcs, f"{page.parent.name}: /shared/api-client.js を読み込んでいない"
+    assert srcs.index("api-client.js") < srcs.index("data.js")
     assert srcs.index("page.js") < srcs.index("ar.js") < srcs.index("maps-loader.js")
 
 

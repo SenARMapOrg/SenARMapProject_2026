@@ -12,8 +12,7 @@
 //           { type: "ikunavi:segment", index: n } で道順の n 番目（0始まり）の区間を見せる
 // ================================================================
 
-// ローカル開発（Flask 同居）では同一オリジン、本番は api サブドメイン（ナビ画面の state.js と同じ）
-const API_BASE = ["localhost", "127.0.0.1"].includes(location.hostname) ? "" : "https://api.iku-navi.net";
+// 経路探索API は /shared/api-client.js の ikunaviFetch で呼ぶ（ブラウザでの計算・静的データ・サーバーを振り分ける）
 const SVG_NS = "http://www.w3.org/2000/svg";
 const EMBEDDED = window.self !== window.top;   // iframe の中か
 const MAX_ZOOM = 8;
@@ -52,7 +51,7 @@ function notifyParent(type, detail = {}) {
 // ================================================================
 async function loadCampus() {
   if (campus) return campus;
-  const res = await fetch(`${API_BASE}/api/all`);
+  const res = await ikunaviFetch("/api/all");
   if (!res.ok) throw new Error("教室の一覧を読み込めませんでした。時間をおいて開き直してください。");
   const data = await res.json();
   const names = {};
@@ -64,7 +63,7 @@ async function loadCampus() {
 }
 
 async function fetchJson(path) {
-  const res = await fetch(`${API_BASE}${path}`);
+  const res = await ikunaviFetch(path);
   const data = await res.json().catch(() => ({}));
   return { ok: res.ok, data };
 }

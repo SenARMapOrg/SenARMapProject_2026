@@ -12,15 +12,33 @@ AIへの質問・集計・時間割と共有）も使わない。経路計算を
 | ファイル | 中身（元の API） | 読んでいる画面 |
 |---|---|---|
 | `/data/graph.json` | `/api/graph`（全ノード・全エッジの座標と種類、建物の色など） | 3Dマップ |
-| `/data/all.json` | `/api/all`（教室・ノード・建物の一覧） | 3Dマップ |
-| `/data/edge_images.json` | `/api/edge_images`（区間ごとの経路写真のURL） | 3Dマップ（写真モード） |
-| `/data/events.json` | `/api/events`（大学祭などのイベント一覧） | （段階3でナビが読む） |
-| `/data/cafeterias.json` | `/api/cafeterias`（食堂の一覧） | （段階3でナビが読む） |
-| `/data/facilities.json` | `/api/facilities`（その他の設備の一覧） | （段階3でナビが読む） |
-| `/data/route_data.json` | 経路計算用のデータ（下の「経路計算（JS）」） | JS の経路計算 |
+| `/data/all.json` | `/api/all`（教室・ノード・建物の一覧） | ナビ・埋め込みマップ・3Dマップ |
+| `/data/edge_images.json` | `/api/edge_images`（区間ごとの経路写真のURL） | ナビ・3Dマップ（写真モード） |
+| `/data/events.json` | `/api/events`（大学祭などのイベント一覧） | ナビ |
+| `/data/cafeterias.json` | `/api/cafeterias`（食堂の一覧） | ナビ・埋め込みマップの作成ページ |
+| `/data/facilities.json` | `/api/facilities`（その他の設備の一覧） | ナビ |
+| `/data/route_data.json` | 経路計算用のデータ（下の「経路計算（JS）」） | JS の経路計算（ナビ・埋め込みマップ・3Dマップ） |
 
 API の名前が付いたファイル（`route_data.json` 以外）の中身は、API の返事と1バイトも違わない。`programs/3D_Graph/export_static.py` が Flask のアプリをそのまま動かし、
 各 API を呼んだ結果を保存しているため（計算の仕組みを2つ持たない）。テスト（`test_export_static.py`）でも確かめている。
+
+## 画面からの呼び出し（ikunaviFetch）
+
+ナビ（`/navi/`・`/navi1/`〜`/navi9/`）・埋め込みマップ（`/embed/`・作成ページ）・3Dマップは、経路探索API を
+`fetch` ではなく `programs/html/shared/api-client.js` の `ikunaviFetch("/api/...")` で呼ぶ。返事は `fetch` と同じ `Response`。
+
+| 呼んだ API | 答え方 |
+|---|---|
+| 一覧（`/api/all`・`/api/graph`・`/api/edge_images`・`/api/events`・`/api/cafeterias`・`/api/facilities`） | `/data/*.json` を読む |
+| 経路（`/api/route`・`/api/shortest_path`・`/api/nearest_*`・`/api/edges`） | `route-core.mjs` でブラウザの中で計算する（サーバーに聞かない） |
+| それ以外・上が使えないとき（静的データが無い・計算で想定外の失敗） | 今までどおりサーバー（`api.iku-navi.net`）に聞く |
+
+経路計算の準備（`route-core.mjs` と `route_data.json`、合わせて gzip で数十KB）は、ナビを開いたときに先に始めるので、
+最初の検索も待たせない。
+
+**サーバーでの計算に戻すとき**は、`api-client.js` の `DEFAULT_ENGINE` を `"server"` にしてデプロイする（全画面が今までの動きに戻る）。
+1回だけ見比べたいときは、ページの URL に `?engine=server`（または `?engine=local`）を付ける。
+Flask（VPS）は段階5まで動かしたままにしてあるので、いつでも戻せる。
 
 ## 経路計算（JS）
 
@@ -67,9 +85,9 @@ Python 側（`ikunavi/`）の経路の決め方や返事を変えたら、`route
 
 生成物はリポジトリに入れない（`.gitignore` の `programs/html/data/`）。
 
-**いまは書き出しに失敗してもビルドは止めない。** 画面は `/data/*.json` が無ければ今までどおり API を読む
-（`map3d.js` の `fetchData`）。失敗したときは Pages のビルドログに `[pages] WARN: ... static data was not exported.` が出る。
-ナビ本体が静的データだけで動くようになったら（移行の3段目）、失敗したらビルドを止めるように変える。
+**いまは書き出しに失敗してもビルドは止めない。** 画面は `/data/*.json` が無ければ今までどおりサーバーに聞く
+（`ikunaviFetch`）。失敗したときは Pages のビルドログに `[pages] WARN: ... static data was not exported.` が出る。
+サーバー（Flask）を撤去するとき（移行の5段目）に、失敗したらビルドを止めるように変える。
 
 ## ローカルで試す
 
@@ -78,12 +96,13 @@ python3 programs/3D_Graph/export_static.py --out programs/html   # programs/html
 cd programs/html && python3 -m http.server 8765                    # http://127.0.0.1:8765/map3d/
 ```
 
-書き出さずに開くと、3Dマップは API（ローカルでは同じオリジンの `/api/...`）を読みに行く。
+書き出さずに開くと、画面はサーバー（ローカルでは同じオリジンの `/api/...`）に聞きに行く。
+簡易サーバー（`http.server`）はキャッシュの指示を出さないので、ファイルを変えたあとはブラウザのキャッシュを消して開き直す。
 
 ## 移行の段階
 
 1. **静的 JSON の書き出しと、3Dマップの切り替え**（済み）
 2. **経路計算を JS のモジュールに移し、Python と答えが同じことを CI で確かめる**（済み。上の「経路計算（JS）」）
-3. ナビ・埋め込みマップをブラウザでの計算に切り替える（しばらく Flask も動かしてすぐ戻せるようにする）
+3. **ナビ・埋め込みマップ・3Dマップをブラウザでの計算に切り替える**（済み。上の「画面からの呼び出し」。Flask は動かしたままで、すぐ戻せる）
 4. 同じ JS で Pages Functions の `/api/route` などを用意し、「GET すれば結果が返る」API の形を残す
 5. Python（Flask・VPS・Tunnel・監視）を撤去する

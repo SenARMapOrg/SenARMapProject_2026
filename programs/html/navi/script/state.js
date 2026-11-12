@@ -7,8 +7,7 @@
 // ================================================================
 // State
 // ================================================================
-// ローカル開発（nginx/Flask 同居）では同一オリジン、本番（Cloudflare Pages）では api サブドメインへ
-const API_BASE = ["localhost", "127.0.0.1"].includes(location.hostname) ? "" : "https://api.iku-navi.net";
+// 経路探索API は shared/api-client.js の ikunaviFetch("/api/...") で呼ぶ（ブラウザでの計算・静的データ・サーバーを振り分ける）
 
 // イベントモード: navi/?event=1 で有効化。
 // event.csv に登録されたイベント名（屋台など）を検索候補に加え、イベント名でルート検索できる。

@@ -6,16 +6,10 @@
 // ================================================================
 "use strict";
 
-const API_BASE = ["localhost", "127.0.0.1"].includes(location.hostname) ? "" : "https://api.iku-navi.net";
-
-// 読むだけのデータは、Pages のビルドで書き出した静的な JSON（/data/*.json、docs/static_data.md）を先に読む。
-// サーバーを通らないので速い。無いとき（ローカルや書き出しに失敗したとき）は今までどおり API を読む
-async function fetchData(file, apiPath) {
-  try {
-    const res = await fetch(`/data/${file}`);
-    if (res.ok) return await res.json();
-  } catch { /* 下の API へ */ }
-  const res = await fetch(`${API_BASE}${apiPath}`);
+// 経路探索API は /shared/api-client.js の ikunaviFetch で呼ぶ。読むだけのデータは Pages のビルドで書き出した
+// 静的な JSON（/data/*.json）、道順はブラウザでの計算で答え、どちらも使えないときはサーバーに聞く（docs/static_data.md）
+async function fetchData(apiPath) {
+  const res = await ikunaviFetch(apiPath);
   if (!res.ok) throw new Error(`${apiPath}: ${res.status}`);
   return res.json();
 }
@@ -671,7 +665,7 @@ async function searchRoute(fromValue, toValue, useElevator) {
   });
   setStatus("道順を探しています…");
   try {
-    const res = await fetch(`${API_BASE}/api/route?${params}`).then(r => r.json());
+    const res = await ikunaviFetch(`/api/route?${params}`).then(r => r.json());
     if (res.error) { setStatus(res.error, true); return; }
     // 道順が通る建物に、まだ表示していない建物があれば（位置が未設定など）、その区間は描けない
     drawRoute(res.path_coords.filter(n => n.building === 0 || state.shownBuildings.has(n.building)));
@@ -1710,7 +1704,7 @@ async function setPhotoMode(on) {
   if (!photo.images) {
     setStatus("写真の一覧を読み込んでいます…");
     try {
-      photo.images = await fetchData("edge_images.json", "/api/edge_images");
+      photo.images = await fetchData("/api/edge_images");
     } catch {
       photo.images = {};
     }
@@ -1769,8 +1763,8 @@ async function init() {
   let graph, all;
   try {
     [graph, all] = await Promise.all([
-      fetchData("graph.json", "/api/graph"),
-      fetchData("all.json", "/api/all"),
+      fetchData("/api/graph"),
+      fetchData("/api/all"),
     ]);
   } catch {
     setStatus("経路探索サーバーに接続できませんでした", true);

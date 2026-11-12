@@ -20,7 +20,7 @@
 //   serialize.py      … edgeToDict / pathResult / destInfo / eventDestInfo
 //   naming.py         … displayName / firstDisplayLabel
 //   cache.py          … 索引（教室・エッジID・イベント）
-//   routes/*.py       … handle（/api/route・/api/shortest_path・/api/nearest_toilet・/api/nearest_cafeteria・/api/nearest_facility）
+//   routes/*.py       … handle（/api/route・/api/shortest_path・/api/nearest_toilet・/api/nearest_cafeteria・/api/nearest_facility・/api/edges）
 // ================================================================
 
 export const ROUTE_DATA_VERSION = 1;
@@ -47,6 +47,9 @@ class ApiError extends Error {
     this.status = status;
   }
 }
+
+// 古い iOS の Safari には Object.hasOwn が無いので、同じことをする関数を使う
+const hasOwn = (obj, key) => Object.prototype.hasOwnProperty.call(obj, key);
 
 // JSON では NaN を null で書いているので戻す
 const num = v => (v === null ? NaN : v);
@@ -328,7 +331,7 @@ export function createRouter(data) {
   const firstDisplayLabel = (building, raw) => {
     const first = String(raw ?? "").split(";")[0].trim();
     if (!first) return "";
-    if (Object.hasOwn(TOILET_LABEL, first)) return TOILET_LABEL[first];
+    if (hasOwn(TOILET_LABEL, first)) return TOILET_LABEL[first];
     return displayName(building, first);
   };
 
@@ -472,7 +475,7 @@ export function createRouter(data) {
       return info;
     }
     const side = place.side;
-    if (!Object.hasOwn(OTHER_SIDE, side)) return { ...EMPTY_DEST_INFO };
+    if (!hasOwn(OTHER_SIDE, side)) return { ...EMPTY_DEST_INFO };
     const forward = last.from === u;
     const walkSide = forward ? side : OTHER_SIDE[side];
     let lineup = eventLineups.get(`${destRow.id}\u0000${side}`) || [];
@@ -629,7 +632,7 @@ export function createRouter(data) {
     const toiletType = args.str("type", "all").toUpperCase();
     const spec = fromSpec(args);
     requireFrom(spec);
-    const targets = Object.hasOwn(TOILET_TYPE_MAP, toiletType) ? TOILET_TYPE_MAP[toiletType] : TOILET_TYPE_MAP.ALL;
+    const targets = hasOwn(TOILET_TYPE_MAP, toiletType) ? TOILET_TYPE_MAP[toiletType] : TOILET_TYPE_MAP.ALL;
     const G = graphFromArgs(args);
     const starts = fromCandidates(spec, G);
     const toiletEdges = edgesByNames(targets);
@@ -640,7 +643,7 @@ export function createRouter(data) {
     const foundKey = TOILET_TYPE_MAP.ALL.find(t => tNames.includes(t)) || "";
     result.toilet_type = foundKey ? foundKey.split("_")[0] : "";
     result.toilet_name = foundKey;
-    result.toilet_label = Object.hasOwn(TOILET_LABEL, foundKey) ? TOILET_LABEL[foundKey] : "トイレ";
+    result.toilet_label = hasOwn(TOILET_LABEL, foundKey) ? TOILET_LABEL[foundKey] : "トイレ";
     result.toilet_building = row.building;
     result.toilet_floor = row.floor;
     result.toilet_edge = edgeToDict(row);
@@ -695,7 +698,34 @@ export function createRouter(data) {
     return result;
   }
 
+  // ---------------- routes/rooms.py の /api/edges（埋め込みマップが通路を引くのに使う）
+  const edgePlace = (row, labelName = null) => {
+    const names = String(row.name || "").split(";").map(n => n.trim()).filter(Boolean);
+    if (labelName === null && names.length === 1) labelName = names[0];
+    return {
+      id: row.id, building: row.building, floor: row.floor, from: row.from, to: row.to,
+      type: row.type, length: num(row.length), name: String(row.name || ""),
+      display: labelName ? firstDisplayLabel(row.building, labelName) : "",
+    };
+  };
+
+  function apiEdges(args) {
+    const edgeId = args.int("id");
+    const name = args.str("name");
+    const building = args.int("building");
+    if (edgeId !== null) return [edgePlace(edgeOr404(edgeId))];
+    if (!name) throw new ApiError("id か name を指定してください");
+    const result = [];
+    for (const [key, rows] of roomIndex) {
+      const [n, b] = key.split("\u0000");
+      if (n !== name || (building !== null && Number(b) !== building)) continue;
+      for (const row of rows) result.push(edgePlace(row, name));
+    }
+    return result;
+  }
+
   const HANDLERS = {
+    "/api/edges": apiEdges,
     "/api/route": apiRoute,
     "/api/shortest_path": apiShortestPath,
     "/api/nearest_toilet": apiNearestToilet,
@@ -710,7 +740,7 @@ export function createRouter(data) {
    * @returns {{status:number, body:object}}  Flask の API と同じ status と JSON
    */
   function handle(path, params) {
-    const handler = Object.hasOwn(HANDLERS, path) ? HANDLERS[path] : null;
+    const handler = hasOwn(HANDLERS, path) ? HANDLERS[path] : null;
     if (!handler) return { status: 404, body: { error: `${path} はありません` } };
     try {
       return { status: 200, body: handler(argsReader(params)) };

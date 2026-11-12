@@ -198,7 +198,7 @@ async function fetchRouteAndNavigate(url, fromLabel = "", toLabel = "", pagePara
   await waitForMapReady();
   setLoading(true);
   try {
-    const res = await fetch(url);
+    const res = await ikunaviFetch(url);
     // 経路が無いとき（404）も API は error を JSON で返すので、読めればその内容を出す
     const data = await res.json().catch(() => null);
     if (!data || (!res.ok && !data.error)) throw new Error(`HTTP ${res.status}`);
@@ -296,7 +296,7 @@ async function doToiletSearch(restore = {}) {
   const fromLabel = resolveFacFromParams(params, pageParams);
   if (!fromLabel) return;
   const toLabel = `最寄りのトイレ（${selectedOptionLabel("fac-toilet-type")}）`;
-  await fetchRouteAndNavigate(`${API_BASE}/api/nearest_toilet?${params}`, fromLabel, toLabel, pageParams, restore);
+  await fetchRouteAndNavigate(`/api/nearest_toilet?${params}`, fromLabel, toLabel, pageParams, restore);
 }
 
 function onFacCategoryChange() {
@@ -326,7 +326,7 @@ async function doOtherFacilitySearch(restore = {}) {
   const pageParams = facPageParams("other", "fac_category", category);
   const fromLabel = resolveFacFromParams(params, pageParams);
   if (!fromLabel) return;
-  await fetchRouteAndNavigate(`${API_BASE}/api/nearest_facility?${params}`, fromLabel, `最寄りの${category}`, pageParams, restore);
+  await fetchRouteAndNavigate(`/api/nearest_facility?${params}`, fromLabel, `最寄りの${category}`, pageParams, restore);
 }
 
 async function doCafeteriaSearch(restore = {}) {
@@ -339,7 +339,7 @@ async function doCafeteriaSearch(restore = {}) {
   const fromLabel = resolveFacFromParams(params, pageParams);
   if (!fromLabel) return;
   const toLabel = `最寄りの食堂（${selectedOptionLabel("fac-cafeteria-name")}）`;
-  await fetchRouteAndNavigate(`${API_BASE}/api/nearest_cafeteria?${params}`, fromLabel, toLabel, pageParams, restore);
+  await fetchRouteAndNavigate(`/api/nearest_cafeteria?${params}`, fromLabel, toLabel, pageParams, restore);
 }
 
 // ================================================================

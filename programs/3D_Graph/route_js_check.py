@@ -94,6 +94,19 @@ def build_queries(client, full=False, seed=20261112):
         for ev in events[:10]:
             queries.append(_q("/api/nearest_toilet", from_event=ev["title"], **cond))
 
+    # 通路を引く（埋め込みマップ）。ID・名前（建物の指定あり・なし。トイレや教室の無い名前も）
+    for e in (edge_ids if full else rng.sample(edge_ids, min(200, len(edge_ids)))):
+        queries.append(_q("/api/edges", id=e))
+    names = sorted({r for r, _ in rooms} | {"M_Toilet", "F_Toilet", "C_Toilet"})
+    for name in (names if full else rng.sample(names, min(150, len(names)))):
+        queries.append(_q("/api/edges", name=name))
+    for r, b in rng.sample(rooms, min(100, len(rooms))):
+        queries.append(_q("/api/edges", name=r, building=b))
+    for t in ("M_Toilet", "F_Toilet", "C_Toilet"):
+        queries.append(_q("/api/edges", name=t, building=ref[1]))
+    queries += [_q("/api/edges"), _q("/api/edges", id=1), _q("/api/edges", name="存在しない名前"),
+                _q("/api/edges", name=rooms[0][0], building=999)]
+
     # 引数の誤り・見つからないとき（エラーの文言とステータスも同じにする）
     some_room, some_b = rooms[0]
     queries += [
