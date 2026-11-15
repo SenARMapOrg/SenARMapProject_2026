@@ -283,10 +283,7 @@ CDN_BASE = "https://cdn.iku-navi.net"
   Cloudflare → cloudflared (Swarm: manager固定)
                     ↓
               nginx (Swarm: manager固定)
-              ├── /api/*, /3d/*  → python × 2レプリカ（gunicorn -w 4）
-              └── /redirect/*    → counter × 2レプリカ
-                                        ↓
-                                   db (MariaDB, manager固定)
+              └── /api/*, /3d/*  → python × 2レプリカ（gunicorn -w 4）
 
 [監視]
   cadvisor (global: 全ノード) → prometheus (manager固定) → grafana (manager固定)
@@ -296,8 +293,6 @@ CDN_BASE = "https://cdn.iku-navi.net"
 |---------|------|------|
 | nginx | リバースプロキシ・静的ファイル配信 | manager固定 |
 | python | Flask + Gunicorn | 全ノード分散（2→4レプリカ） |
-| counter | アクセスカウンター（Rails） | 全ノード分散（2→4レプリカ） |
-| db | MariaDB 11 | manager固定（ボリュームあり） |
 | cloudflared | Cloudflare Tunnel | manager固定 |
 | prometheus | メトリクス収集（dockerswarm_sd） | manager固定 |
 | grafana | 監視ダッシュボード | manager固定 |

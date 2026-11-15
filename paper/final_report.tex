@@ -1,0 +1,293 @@
+% ================================================================
+% プロジェクト最終成果報告書（IKU NAVI）
+%
+% 書式（大学指定のフォーマットに合わせている）
+%   A4・余白 上下25mm／左右20mm・本文2段組（1段23文字・35行）
+%   本文：游明朝 10.5pt、タイトル：游ゴシック 16pt、副題：游ゴシック 14pt
+%   見出し・図表の表題：游ゴシック 10.5pt、ページ番号なし
+%
+% ビルド（macOS。游フォントはOSの追加フォント置き場にあるので OSFONTDIR で教える）
+%   cd paper
+%   OSFONTDIR=/System/Library/AssetsV2// lualatex final_report.tex
+%   OSFONTDIR=/System/Library/AssetsV2// lualatex final_report.tex   # 図表番号の参照を確定させるため2回
+% ================================================================
+\documentclass[
+  paper=a4paper,
+  fontsize=10.5pt,
+  jafontsize=10.5pt,
+  twocolumn,
+  line_length=82.5mm,   % 1段の幅。(170mm - 段間5mm) / 2
+  column_gap=5mm,
+  gutter=20mm,          % 左右の余白 20mm
+  number_of_lines=35,   % 1段35行
+  head_space=25mm,      % 上の余白 25mm（下も25mmになるよう baselineskip を決めている）
+  baselineskip=20.36pt, % (247mm - 10.5pt) / 34
+]{jlreq}
+
+\usepackage{luatexja-fontspec}
+\setmainfont{YuMincho}[UprightFont=* Medium, BoldFont=* Demibold, ItalicFont=* Medium, ItalicFeatures={FakeSlant=0.2}]
+\setmainjfont{YuMincho}[UprightFont=* Medium, BoldFont=* Demibold]
+\setsansfont{YuGothic}[UprightFont=* Medium, BoldFont=* Bold]
+\setsansjfont{YuGothic}[UprightFont=* Medium, BoldFont=* Bold]
+
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{tikz}
+\usetikzlibrary{positioning,fit,arrows.meta,backgrounds}
+\usepackage[hidelinks]{hyperref}
+\usepackage{xurl}
+\urlstyle{same}
+
+% 1段に23文字入れる。1段の幅 82.5mm に全角23文字を並べるため、字間をわずかに詰める
+% （23\zw + 22 × kanjiskip = 82.5mm）
+\ltjsetparameter{kanjiskip={-0.31pt plus 0.4pt minus 0.1pt}}
+
+% ページ番号は入れない
+\pagestyle{empty}
+
+% ---- 見出し：すべて游ゴシック 10.5pt。「1.」「2.1」「(1)」の形 ----
+\renewcommand{\thesubsubsection}{(\arabic{subsubsection})}
+\ModifyHeading{section}{font={\sffamily\normalsize}, label_format={\thesection.}, after_label_space=1\zw, lines=1, before_lines=1}
+\ModifyHeading{subsection}{font={\sffamily\normalsize}, label_format={\thesubsection}, after_label_space=1\zw, lines=1}
+\ModifyHeading{subsubsection}{font={\sffamily\normalsize}, label_format={\thesubsubsection}, after_label_space=0.5\zw, lines=1}
+
+% ---- 図表の表題：游ゴシック 10.5pt。「図1」「表1」 ----
+\jlreqsetup{
+  caption_font={\sffamily\normalsize},
+  caption_label_font={\sffamily\normalsize},
+  caption_after_label_space=1\zw,
+}
+
+% 注の番号（本文中の上付き）
+\newcommand{\chu}[1]{\textsuperscript{(#1)}}
+
+\begin{document}
+
+% ================================================================
+% タイトル・副題・姓名
+% ================================================================
+\twocolumn[
+\begin{center}
+{\sffamily\bfseries\fontsize{16pt}{24pt}\selectfont AR対応キャンパスナビゲーション「IKU NAVI」の開発と運用\par}
+\vspace{2mm}
+{\sffamily\fontsize{14pt}{21pt}\selectfont ―専修大学生田キャンパスにおける屋内外を通した道案内の実現―\par}
+\vspace{4mm}
+% TODO: 代表者を最初に、他のメンバーは50音順、最後に担当教員
+姓 名（代表）, 姓 名, 姓 名, 姓 名, 姓 名\par
+姓 名, 姓 名, 姓 名, 姓 名\par
+姓 名（担当教員）\par
+\vspace{6mm}
+\end{center}
+]
+
+% ================================================================
+\section{はじめに}
+
+専修大学生田キャンパスは丘陵地に建てられており、号館の数が多く、渡り廊下や連絡通路で号館どうしがつながっている。号館ごとに地上の高さが異なるため、同じ高さの通路でも号館によって階の数え方が変わり、初めて訪れる新入生や来訪者が目的の教室にたどり着くことは容易ではない。紙の案内図や構内の案内板は、現在地から目的地までの道順を示すことができない。
+
+本プロジェクトは、スマートフォンのブラウザから教室名を入れるだけで道順を案内するWebアプリケーション「IKU NAVI」（生亀プロジェクト、2026）を開発し、2026年2月から11月まで開発と本番運用を続けた。基本の方針は、専用アプリや高精度な位置推定を必要とする本格的なARではなく、\textbf{実際の通路の写真に進む向きの矢印を重ねる簡易なARから始め、段階的に発展させる}ことである。
+
+本報告では、システムの概要（2章）、データと経路探索（3章）、案内画面（4章）、運用と大学祭での実績（5章）を述べ、成果と課題（6章）をまとめる。
+
+% ================================================================
+\section{システムの概要}
+
+\subsection{利用の流れ}
+
+利用者は \url{https://iku-navi.net/} を開き、目的地の教室名を入力する。入力の途中から候補が表示され、選ぶと最短経路が計算される。出発地は教室名で指定するほか、屋外であればGPSの現在地から自動で決められる。
+
+案内は経路を区間に分け、1区間ずつ進める形式である。屋外の区間ではGoogle Maps上に経路を描き、屋内の区間では号館・階ごとのフロアマップ上に経路を描く。同じ画面に、その区間の通路の写真と進む向きの矢印を表示する。目的地に着くと「131教室は右手です」のように最後の一歩まで案内する。
+
+\subsection{システム構成}
+
+システム全体の構成を図\ref{fig:arch}に示す。画面（HTML・JavaScript・フロアマップ）はCloudflare Pagesから静的に配信し、経路写真はCloudflare R2から配信する（Cloudflare, n.d.）。経路探索APIはConoHa VPS上のDocker Swarmで動かし、Cloudflare Tunnelを通して公開する。サーバーのポートは外部に開けていない。AIへの質問、大学祭の案内人数の集計、時間割共有などの付随する機能は、Pages Functionsとデータベース（D1）で、VPSとは別に動かしている。
+
+\begin{figure*}[t]
+\centering
+\begin{tikzpicture}[
+  font=\sffamily\footnotesize,
+  box/.style={draw, rounded corners=1.5pt, align=center, inner sep=3pt, minimum height=9mm, fill=white},
+  grp/.style={draw, rounded corners=3pt, inner sep=4pt, fill=black!5},
+  lbl/.style={font=\sffamily\scriptsize, fill=white, inner sep=1pt},
+  arr/.style={-{Stealth[length=2mm]}, thick},
+  darr/.style={-{Stealth[length=2mm]}, thick, dashed},
+]
+  % 利用者
+  \node[box, minimum width=22mm] (user) at (0,0) {利用者\\（スマホ・PC\\のブラウザ）};
+  \node[box, minimum width=22mm] (staff) at (0,-3.55) {案内係・運営\\（管理画面）};
+
+  % Cloudflare
+  \node[box, minimum width=40mm] (pages) at (5.6,1.3) {Pages：iku-navi.net\\画面・フロアマップの静的配信};
+  \node[box, minimum width=40mm, below=2mm of pages] (fn) {Pages Functions\\AIへの質問（Geminiへ中継）};
+  \node[box, minimum width=40mm, below=2mm of fn] (r2) {R2：cdn.iku-navi.net\\経路写真（約1,300枚）};
+  \node[box, minimum width=40mm, below=2mm of r2] (tunnel) {Tunnel：api.iku-navi.net\\経路探索APIへ転送};
+  \node[box, minimum width=40mm, below=2mm of tunnel] (counter) {Pages Functions ＋ D1\\案内人数の集計・有人の相談};
+  \begin{scope}[on background layer]
+    \node[grp, fit=(pages)(counter), label={[font=\sffamily\footnotesize]above:Cloudflare}] (cf) {};
+  \end{scope}
+
+  % VPS
+  \node[box, minimum width=38mm] (py) at (11.6,0.2) {python（Flask＋Gunicorn）\\経路探索API\\平常時2台・大学祭時は増設};
+  \node[box, minimum width=38mm, below=2mm of py] (mon) {Prometheus・Grafana\\cAdvisor（監視）};
+  \begin{scope}[on background layer]
+    \node[grp, fit=(py)(mon), label={[font=\sffamily\footnotesize]above:ConoHa VPS / Docker Swarm}] (vps) {};
+  \end{scope}
+
+  % 外部
+  \node[box, minimum width=38mm, above=7mm of vps] (google) {Google\\Maps API（屋外の地図）・Gemini API};
+
+  % 開発・データ
+  \node[box, minimum width=38mm, below=8mm of vps] (gh) {GitHub（スプレッドシート→CSV）\\Actions：テスト→イメージ作成};
+
+  \draw[arr] (user.east) -- (pages.west);
+  \draw[arr] (user.east) -- (fn.west);
+  \draw[arr] (user.east) -- (r2.west);
+  \draw[arr] (user.east) -- (tunnel.west);
+  \draw[arr] (staff.east) -- (counter.west);
+  \draw[arr] (tunnel.east) -- node[lbl, above]{外向きに接続} (py.west);
+  \draw[arr] (fn.east) -- (google.west);
+  \draw[arr] (user.north) |- (google.north west) node[lbl, pos=0.75, above]{地図};
+  \draw[darr] (gh.north) -- node[lbl, right]{デプロイ} (vps.south);
+  \draw[darr] (gh.south) -- ++(0,-3mm) -| node[lbl, pos=0.25, below]{ビルド} (cf.south);
+\end{tikzpicture}
+\caption{システム全体の構成（大学祭の期間中の本番構成を簡略化したもの）}
+\label{fig:arch}
+\end{figure*}
+
+% ================================================================
+\section{データと経路探索}
+
+\subsection{キャンパスのグラフ}
+
+キャンパスは、曲がり角や出入口を点（ノード）、点を結ぶ通路を辺（エッジ）とするグラフとして表す。号館の中のノードには「号館番号$\times$100{,}000＋号館内の番号」、屋外のノードには「番号＋9{,}000{,}000」の番号を付け、キャンパス全体を一つのグラフとして扱う。号館ごとの座標は、2点の対応点から回転角と平行移動量を求めてキャンパス全体の座標に変換する。
+
+教室はノードではなくエッジの属性として持たせた。教室の前の通路に教室名を付けることで、出入口が複数ある教室も自然に表せる。2026年11月時点のデータの規模を表\ref{tab:data}に示す。
+
+\begin{table}[t]
+\centering
+\caption{データの規模（2026年11月12日時点）}
+\label{tab:data}
+\begin{tabular}{lr}
+\toprule
+項目 & 数 \\
+\midrule
+対象の号館 & 9 \\
+フロアマップ（階） & 46 \\
+ノード（屋内／屋外） & 535／57 \\
+エッジ（屋内／屋外・接続） & 645／64 \\
+経路写真 & 約1{,}300 \\
+大学祭の企画（目的地） & 134 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{最短経路と経路の条件}
+
+経路探索にはDijkstra法（Dijkstra, 1959）を用い、NetworkX（Hagberg et al., 2008）の双方向探索で実装した。エッジのコストは、通りやすさの係数と実際の距離（m）の積とする。エッジには通路・階段・スロープ・エレベーター・上りと下りのエスカレーター・出入口の7種類があり、エスカレーターは決まった向きにしか通れない有向のエッジとして登録する。出入口には一定のコストを加え、建物を不必要に出入りする経路を避ける。
+
+利用者の条件に応じて、使うエッジを変えられる。「エレベーターを使わない」ではエレベーターを除き、2026年11月に加えた「階段・エスカレーターを使わない」では階段とエスカレーターを除いて、階の移動をエレベーターだけで行う。後者は車いす・ベビーカー・大きな荷物での移動を想定したものである。
+
+GPSの現在地は、球面上の距離で最も近い屋外ノードに合わせて出発地とする。GPSの誤差が30mを超えるときは案内板も見るよう促し、最も近いノードまで500mを超えるときはキャンパスの外にいると判断して出発地に使わない。
+
+\subsection{データの整備と品質の確認}
+
+ノード・エッジ・経路写真の対応などのデータはスプレッドシートで編集し、スクリプトでGitHubのリポジトリにCSVとして反映する。プログラムを書かないメンバーもデータ整備に参加できるようにするためである。
+
+データの誤りは経路の誤りに直結するため、確認の仕組みを重ねた。経路写真の重複やファイル名の誤り、行き帰りの経路が引けない教室、どこにもつながらないノードの増加は、データが更新されるたびにGitHub Actionsで自動的に調べる。全教室の組み合わせについて経路を求め、同じ階の間なのに別の階を通る、関係のない号館を通るといった不自然な経路を見つける検証ツールも作った。これらはマップ編集、経路写真の確認、写真に写った人物のぼかしなどとあわせて、デスクトップアプリ「IKU NAVI ツール」にまとめた。経路探索と画面の組み合わせについては、200件あまりの自動テストを用意した。
+
+% ================================================================
+\section{案内画面}
+
+\subsection{屋外と屋内の切り替え}
+
+画面は特定のフレームワークを使わずにJavaScriptで実装した。経路の各ノードが属する号館を見て、屋外ならGoogle Maps、屋内ならその号館・階のフロアマップ（SVG）に自動で切り替える。フロアマップ上では、通った区間と進む向きを色と矢印で示し、表示範囲を経路に合わせて動かす。検索の条件と進んでいる区間はURLに書き込み、ページを読み込み直しても同じ区間から続けられるようにした。
+
+\subsection{写真のARと屋外のAR}
+
+屋内では、区間ごとに撮影した通路の写真に、左・右・直進の矢印を重ねて表示する。経路が決まった時点で全区間の写真を先に読み込み、区間を進めたときに待ち時間なく切り替わるようにした。
+
+屋外では、カメラの映像にThree.js（three.js authors, n.d.）で描いた矢印を重ねる。緯度・経度を基準点からの距離に直し、GPSが更新されるたびに現在地を原点として配置し直す。端末の向きの取り方は機種やOSで異なるため、使えるものを順に試す。カメラと位置情報は、経路に屋外の区間があるときだけ起動し、屋外の区間が残っていなければ止める。利用者の許可が必要な端末では、確認を一つずつ順に出すようにした。
+
+\subsection{音声案内}
+
+区間ごとの案内はWeb Speech API（W3C Speech API Community Group, n.d.）で読み上げる。読み上げる文は、Griceの協調の原理（Grice, 1975）の4つの公理に沿って組み立てた。たとえば、その区間で必要な曲がる向き・距離・行き先の階だけを言い（量）、データにない教室名は言わない（質）。画面を見られない場面や、視覚に障害のある利用者を想定した機能である。
+
+\subsection{困ったときの支援}
+
+画面上の「？」ボタンから、よくある質問、AIへの質問、人への相談の順に支援を受けられる。AIへの質問では、よくある質問の内容だけを根拠に答えるようGeminiに指示し、場所を推測で答えないようにした。APIキーはサーバー側にだけ置いている。AIで解決しないときは、受け付けている運営者がいる場合に限り、管理画面の運営者へ相談を送れる。
+
+\subsection{画面の比較と評価}
+
+同じ機能のまま見た目と配置だけを変えた9種類の画面を作り、使いやすさを比べる材料とした\chu{1}。また、本番の画面を撮影した8枚をGeminiとClaudeに同じ条件で渡し、評価を求めた。どちらも10点満点で7点とし、写真と矢印による案内を高く評価した一方で、到着時の表示が最後の案内を覆う、歩きながら片手で写真を23回送るのは負担が大きい、といった問題を挙げた。これらは今後の改善の候補として整理した。
+
+% ================================================================
+\section{運用}
+
+\subsection{インフラ}
+
+当初はVPS上のNginxが画面の配信と振り分けを担っていたが、2026年7月にNginxを撤去し、画面をCloudflare Pages、経路探索APIをCloudflare Tunnelから直接配信する形に移した。これによりVPSの負荷が下がり、平常時はメモリ2GBのサーバーで運用できている。Docker Swarmの各サービスはPrometheusとGrafanaで監視する。テストが通った変更だけがGitHub Actionsで本番用のイメージになり、サーバーへ順に入れ替えられるため、更新の際にもサービスは止まらない。
+
+大学祭の期間中は、Cloudflareそのものの障害に備え、別のサーバーと別のドメインでバックアップ環境を動かした。切り替えは手動とし、障害のときはSNSや掲示で別のURLを案内する計画とした。大学祭の後、この環境は撤去した。
+
+\subsection{大学祭での運用}
+
+2026年11月6日から8日の大学祭「鳳祭」\chu{2}では、イベントモードを用いて案内した。企画134件を目的地として登録し、企画の一覧ページ（開催日で絞り込める）、企画ごとに目的地が入った状態で開くURL、トップページの案内、配布用のビラを用意した。案内係にはそれぞれのQRコードを持たせ、そのQRから開いたナビで目的地に着いた件数を、係ごとに1回だけ数える集計の仕組みを作った\chu{3}。
+
+アクセスの増加に備え、期間中はSwarmを2台から8台に増やし、経路探索APIを各台に分けて動かした。期間中は企画の場所の変更が直前まで続いたため、スプレッドシートでの管理を一時的に止め、CSVを直接書き換えて素早く反映する運用に切り替えた。
+
+\subsection{関連するサービス}
+
+ナビ本体のほかに、号館ごとの教室一覧のページ、キャンパス全体を回して見られる3Dマップ、他のWebサイトにフロアマップや道順をiframeで載せられる埋め込みマップ、大学のGoogleアカウントでだけログインできる時間割共有サービスを作った。活動の経過はブログに15本の記事として公開した。
+
+% ================================================================
+\section{成果と課題}
+
+\subsection{成果}
+
+2026年2月12日の最初のコミットから11月12日までに933回のコミットを重ね、9つの号館・46階分のフロアマップと約1,300枚の経路写真をそろえた（表\ref{tab:data}）。教室名を入れるだけで、屋外から号館の中の教室の前まで、写真と矢印と音声で案内するという当初の目標は、本番のサービスとして実現できた。大学祭では、134件の企画への道案内と、案内係による案内の集計という形で、実際の来場者に使われる場面を作れた。
+
+\subsection{課題}
+
+第一に、データの不足である。5号館と7号館にはエレベーターのデータがないため、「階段・エスカレーターを使わない」では5号館の2・3階と7号館の地下1階・2・3階の計46室へ案内できない。写真がまだない区間も残っている。
+
+第二に、画面の使いやすさである。4.5節で挙げた到着時の表示と写真の送り方に加え、初めての利用者が出発地を入れにくい点も指摘されており、改善が必要である。英語での表示もまだない。
+
+第三に、運用の継続である。経路探索をサーバーからブラウザ側に移し、静的な配信だけで動かせば、サーバーの費用と管理の手間を減らせる。セキュリティの確認と、プロジェクトの終了後に誰がどのようにサービスを引き継ぐかの決定も残っている。大学祭については、実行委員会と早い段階から連携できれば、案内をより広く届けられたと考える。
+
+% ================================================================
+\section{おわりに}
+
+本プロジェクトでは、専修大学生田キャンパスの道案内を、通路の写真に矢印を重ねる簡易なARから始めて、屋外のAR、音声案内、階段を使わない経路、AIと人による支援へと段階的に広げた。データの整備、画面、インフラまでを学生で作り、大学祭で実際に運用するところまで到達した。今後はデータの不足を埋め、使える製品として引き継げる形に整えることが課題である。
+
+% ================================================================
+\section*{注}
+
+\noindent(1)\ \ 本番の画面（\texttt{/navi/}）と同じ処理をそのまま読み込み、見た目と配置だけを変えている（\texttt{/navi1/}〜\texttt{/navi9/}）。
+
+\noindent(2)\ \ 専修大学生田キャンパスで開かれる大学祭。
+
+\noindent(3)\ \ 同じ端末からの読み込み直しでは数が増えない。一方で、意図的な水増しは防げないため、集計は目安として扱う。
+
+% ================================================================
+\section*{参考文献}
+
+{\setlength{\parindent}{0pt}\setlength{\hangindent}{1\zw}\raggedright
+\everypar{\hangindent=1\zw}
+
+Cloudflare (n.d.), ``Cloudflare Pages,'' \url{https://developers.cloudflare.com/pages/}, 2026年11月12日最終確認.\par
+
+Dijkstra, E. W. (1959), ``A Note on Two Problems in Connexion with Graphs,'' \textit{Numerische Mathematik}, 1, pp.~269--271.\par
+
+Grice, H. P. (1975), ``Logic and Conversation,'' in P. Cole and J. L. Morgan (eds.), \textit{Syntax and Semantics, Vol.~3: Speech Acts}, Academic Press, pp.~41--58.\par
+
+Hagberg, A. A., D. A. Schult and P. J. Swart (2008), ``Exploring Network Structure, Dynamics, and Function using NetworkX,'' in G. Varoquaux, T. Vaught and J. Millman (eds.), \textit{Proceedings of the 7th Python in Science Conference (SciPy 2008)}, pp.~11--15.\par
+
+生亀プロジェクト（2026）、「IKU NAVI」、\url{https://iku-navi.net/}、2026年11月12日最終確認。\par
+
+three.js authors (n.d.), ``three.js,'' \url{https://threejs.org/}, 2026年11月12日最終確認.\par
+
+W3C Speech API Community Group (n.d.), ``Web Speech API,'' \url{https://webaudio.github.io/web-speech-api/}, 2026年11月12日最終確認.\par
+}
+
+\end{document}
