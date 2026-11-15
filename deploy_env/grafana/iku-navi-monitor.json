@@ -53,7 +53,7 @@
         "hide": false,
         "iconColor": "#c3c2b7",
         "name": "コンテナの起動（デプロイ・再起動）",
-        "expr": "count by (service) (time() - max by (service, name) (container_start_time_seconds{service=~\"iku_(python|counter|db|cloudflared)\"}) < 60)",
+        "expr": "count by (service) (time() - max by (service, name) (container_start_time_seconds{service=~\"iku_(python|cloudflared)\"}) < 60)",
         "step": "60s",
         "titleFormat": "コンテナ起動",
         "textFormat": "{{service}}",
@@ -205,7 +205,7 @@
       },
       "gridPos": {
         "h": 4,
-        "w": 4,
+        "w": 6,
         "x": 0,
         "y": 1
       },
@@ -289,8 +289,8 @@
       },
       "gridPos": {
         "h": 4,
-        "w": 4,
-        "x": 4,
+        "w": 6,
+        "x": 6,
         "y": 1
       },
       "id": 3
@@ -377,183 +377,11 @@
       },
       "gridPos": {
         "h": 4,
-        "w": 4,
-        "x": 8,
-        "y": 1
-      },
-      "id": 4
-    },
-    {
-      "type": "stat",
-      "title": "counter（QR転送）",
-      "description": "動いているコンテナ数。平常時は2、鳳祭の期間は .env の COUNTER_REPLICAS の値が正常です。0 だと QR の転送が止まります。",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${datasource}"
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "editorMode": "code",
-          "expr": "count(count by (name) (container_memory_working_set_bytes{service=\"iku_counter\"})) or vector(0)",
-          "legendFormat": "__auto",
-          "range": false,
-          "refId": "A",
-          "instant": true
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "none",
-          "decimals": 0,
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "#e34948",
-                "value": null
-              },
-              {
-                "color": "#eda100",
-                "value": 1
-              },
-              {
-                "color": "#2e9e5b",
-                "value": 2
-              }
-            ]
-          },
-          "color": {
-            "mode": "thresholds"
-          },
-          "min": 0,
-          "noValue": "取得不可",
-          "mappings": [
-            {
-              "type": "special",
-              "options": {
-                "match": "null+nan",
-                "result": {
-                  "text": "取得不可",
-                  "color": "#6e6e68",
-                  "index": 0
-                }
-              }
-            }
-          ]
-        },
-        "overrides": []
-      },
-      "options": {
-        "colorMode": "background_solid",
-        "graphMode": "none",
-        "justifyMode": "center",
-        "orientation": "auto",
-        "textMode": "value",
-        "wideLayout": true,
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "showPercentChange": false
-      },
-      "gridPos": {
-        "h": 4,
-        "w": 4,
+        "w": 6,
         "x": 12,
         "y": 1
       },
-      "id": 5
-    },
-    {
-      "type": "stat",
-      "title": "db（MariaDB）",
-      "description": "動いているコンテナ数（正常は1）。0 だと counter の計上が止まります。",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${datasource}"
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "editorMode": "code",
-          "expr": "count(count by (name) (container_memory_working_set_bytes{service=\"iku_db\"})) or vector(0)",
-          "legendFormat": "__auto",
-          "range": false,
-          "refId": "A",
-          "instant": true
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "none",
-          "decimals": 0,
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "#e34948",
-                "value": null
-              },
-              {
-                "color": "#2e9e5b",
-                "value": 1
-              }
-            ]
-          },
-          "color": {
-            "mode": "thresholds"
-          },
-          "min": 0,
-          "noValue": "取得不可",
-          "mappings": [
-            {
-              "type": "special",
-              "options": {
-                "match": "null+nan",
-                "result": {
-                  "text": "取得不可",
-                  "color": "#6e6e68",
-                  "index": 0
-                }
-              }
-            }
-          ]
-        },
-        "overrides": []
-      },
-      "options": {
-        "colorMode": "background_solid",
-        "graphMode": "none",
-        "justifyMode": "center",
-        "orientation": "auto",
-        "textMode": "value",
-        "wideLayout": true,
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "showPercentChange": false
-      },
-      "gridPos": {
-        "h": 4,
-        "w": 4,
-        "x": 16,
-        "y": 1
-      },
-      "id": 6
+      "id": 4
     },
     {
       "type": "stat",
@@ -633,8 +461,8 @@
       },
       "gridPos": {
         "h": 4,
-        "w": 4,
-        "x": 20,
+        "w": 6,
+        "x": 18,
         "y": 1
       },
       "id": 7
@@ -1927,36 +1755,6 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "counter"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "#d95926",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "db"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "#199e70",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
               "options": "cloudflared"
             },
             "properties": [
@@ -2109,36 +1907,6 @@
                 "id": "color",
                 "value": {
                   "fixedColor": "#3987e5",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "counter"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "#d95926",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "db"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "#199e70",
                   "mode": "fixed"
                 }
               }
@@ -2306,36 +2074,6 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "counter"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "#d95926",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "db"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "#199e70",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
               "options": "cloudflared"
             },
             "properties": [
@@ -2487,36 +2225,6 @@
                 "id": "color",
                 "value": {
                   "fixedColor": "#3987e5",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "counter"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "#d95926",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "db"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "#199e70",
                   "mode": "fixed"
                 }
               }
