@@ -4,7 +4,7 @@
 静的な JSON として書き出し、`https://iku-navi.net/data/` から配っている。
 
 サーバーを通らないので速く、Pages の静的な配信は無料・無制限で、Pages Functions の回数の枠（1日10万回。
-AIへの質問・集計・時間割と共有）も使わない。経路計算を Python から JS（ブラウザと Pages Functions）へ移し、
+AIへの質問・集計と共有）も使わない。経路計算を Python から JS（ブラウザと Pages Functions）へ移し、
 最終的に VPS をなくす移行の1段目にあたる。
 
 ## 書き出すファイル
@@ -53,10 +53,10 @@ Flask（VPS）は段階5まで動かしたままにしてあるので、いつ�
 | `/api/help-chat` | 今までどおり `functions/api/help-chat.js` |
 
 - **回数の上限**: Functions は Workers と合わせて1日10万回まで（無料。超えると課金ではなくエラー）。画面はブラウザで計算するので
-  ここを呼ばない。呼ぶのは時間割共有（`/api/all`）と外部の利用者だけ。全教室の組み合わせを調べる IKU NAVI ツールの
+  ここを呼ばない。呼ぶのは外部の利用者だけ。全教室の組み合わせを調べる IKU NAVI ツールの
   ルート検証は、上限に当たらないよう Flask（`old-api.iku-navi.net`）を使う（`iku_tools/common/api.py` の `DEFAULT_API`）。
 - **計算の時間**: 無料の Functions は1回あたり CPU 10ms まで。教室どうしの経路・最寄りの施設とも、ふだんは1ms前後で終わる。
-- **CORS**: `iku-navi.net`・`www.iku-navi.net`・`timetables.iku-navi.net`・`*.pages.dev` からの読み込みを許可（Flask と同じ）。
+- **CORS**: `iku-navi.net`・`www.iku-navi.net`・`timetables.iku-navi.net`・`*.pages.dev` からの読み込みを許可（Flask と同じ。時間割共有は 2026-11-15 に消したが、許可はそのまま残している）。
 
 ## api.iku-navi.net の切り替え手順（Cloudflare の画面での作業）
 
@@ -77,8 +77,7 @@ Flask はすでに `old-api.iku-navi.net`（Tunnel）でも答えている（202
    Rules → Redirect Rules → 新しいルール:
    - 条件（式）: `(http.host eq "api.iku-navi.net" and not starts_with(http.request.uri.path, "/api/"))`
    - 飛ばし先: 動的 `concat("https://iku-navi.net", http.request.uri.path)`、301、クエリ文字列を残す
-6. 確かめる: `https://api.iku-navi.net/api/all` が JSON を返す・`https://api.iku-navi.net/` が `iku-navi.net` へ飛ぶ・
-   時間割共有の教室の選択肢が出る
+6. 確かめる: `https://api.iku-navi.net/api/all` が JSON を返す・`https://api.iku-navi.net/` が `iku-navi.net` へ飛ぶ
 
 戻すときは、4 のカスタムドメインを外し、3 の Public Hostname（`api.iku-navi.net` → `http://python:8000`）を足し直す。
 

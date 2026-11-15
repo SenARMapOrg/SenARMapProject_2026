@@ -83,33 +83,6 @@ jobs:
         working-directory: programs/3D_Graph
         run: python check_data.py ${BASE_DATA:+--base "$BASE_DATA"}
 
-  timetables:
-    name: 時間割サービスのテスト
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: programs/timetables
-    steps:
-      - uses: actions/checkout@v7
-
-      - uses: actions/setup-node@v7
-        with:
-          node-version: "22"
-          cache: npm
-          cache-dependency-path: programs/timetables/package-lock.json
-
-      - name: 依存をインストール
-        run: npm ci
-
-      - name: 型チェック
-        run: npm run typecheck
-
-      - name: vitest
-        run: npm run test
-
-      - name: ビルドが通るか
-        run: npm run build
-
   event-guide-counter:
     name: 鳳祭 案内人数集計のテスト
     runs-on: ubuntu-latest
