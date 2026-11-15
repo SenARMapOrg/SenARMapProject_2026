@@ -1,15 +1,12 @@
-"""ナビの「使い方」（navi/faq.json・navi/script/help.js・functions/api/help-chat.js）の噛み合わせチェック。
+"""ナビの「使い方」（navi/faq.json・navi/script/help.js）の噛み合わせチェック。
 説明は docs/help_chat.md。"""
 import json
-import re
 from pathlib import Path
 
 HTML_DIR = Path(__file__).resolve().parents[1]
 REPO_DIR = HTML_DIR.parents[1]
 FAQ = HTML_DIR / "navi" / "faq.json"
 HELP_JS = HTML_DIR / "navi" / "script" / "help.js"
-CHAT_FN = REPO_DIR / "functions" / "api" / "help-chat.js"
-SUPPORT_GUARD = REPO_DIR / "programs" / "event_guide_counter" / "functions" / "api" / "_lib" / "support-guard.ts"
 
 
 def test_よくある質問の形が正しい():
@@ -28,19 +25,10 @@ def test_ナビ画面にボタンとスクリプトがある():
     assert '<script src="script/help.js"></script>' in html
 
 
-def test_サーバーがよくある質問を読む場所が正しい():
-    path = re.search(r'FAQ_PATH = "([^"]+)"', CHAT_FN.read_text(encoding="utf-8")).group(1)
-    assert (HTML_DIR / path.lstrip("/")) == FAQ
-
-
-def test_画面とサーバーで上限の値が同じ():
-    def consts(path):
-        text = path.read_text(encoding="utf-8")
-        return {name: int(re.search(rf"const {name} = (\d+);", text).group(1)) for name in ("MAX_CHARS", "MAX_TURNS")}
-    assert consts(HELP_JS) == consts(CHAT_FN)
-
-
-def test_オペレーターへのメッセージの上限が集計システムと同じ():
-    front = re.search(r"const SUPPORT_MAX_CHARS = (\d+);", HELP_JS.read_text(encoding="utf-8")).group(1)
-    server = re.search(r"export const MAX_SUPPORT_MESSAGE_CHARS = (\d+);", SUPPORT_GUARD.read_text(encoding="utf-8")).group(1)
-    assert front == server
+def test_よくある質問だけを出しサーバーには送らない():
+    # AI への質問（/api/help-chat）とオペレーターへの相談（/api/support/*）は 2026-11-15 に外した
+    js = HELP_JS.read_text(encoding="utf-8")
+    assert 'FAQ_URL = "faq.json"' in js
+    for gone in ("/api/help-chat", "/api/support", "method: \"POST\""):
+        assert gone not in js, gone
+    assert not (REPO_DIR / "functions" / "api" / "help-chat.js").exists()

@@ -57,6 +57,6 @@ def test_画面からサーバーを直接呼んでいない():
     offenders = []
     for path in [*HTML.glob("navi/script/*.js"), *HTML.glob("embed/**/*.js"), HTML / "map3d" / "map3d.js"]:
         for n, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
-            if re.search(r"\bfetch\([^)]*/api/(?!support|help-chat)", line):
+            if re.search(r"\bfetch\([^)]*/api/", line):
                 offenders.append(f"{path.relative_to(HTML)}:{n}: {line.strip()}")
     assert not offenders, "\n".join(offenders)

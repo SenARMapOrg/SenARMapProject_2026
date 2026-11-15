@@ -4,7 +4,7 @@
 静的な JSON として書き出し、`https://iku-navi.net/data/` から配っている。
 
 サーバーを通らないので速く、Pages の静的な配信は無料・無制限で、Pages Functions の回数の枠（1日10万回。
-AIへの質問・集計と共有）も使わない。経路計算を Python から JS（ブラウザと Pages Functions）へ移し、
+集計システムなどと共有）も使わない。経路計算を Python から JS（ブラウザと Pages Functions）へ移し、
 最終的に VPS をなくす移行の1段目にあたる。
 
 ## 書き出すファイル
@@ -50,7 +50,6 @@ Flask（VPS）は段階5まで動かしたままにしてあるので、いつ�
 | 一覧（`/api/all`・`/api/graph`・`/api/edge_images`・`/api/events`・`/api/cafeterias`・`/api/facilities`） | `/data/*.json` をそのまま返す |
 | 経路（`/api/route`・`/api/shortest_path`・`/api/nearest_*`・`/api/edges`） | `route-core.mjs` で計算する（ブラウザと同じ） |
 | `/api/rooms`・`/api/navigate_to_room`・`/3d` | 提供しない（404）。Flask の `old-api.iku-navi.net` に残してある |
-| `/api/help-chat` | 今までどおり `functions/api/help-chat.js` |
 
 - **回数の上限**: Functions は Workers と合わせて1日10万回まで（無料。超えると課金ではなくエラー）。画面はブラウザで計算するので
   ここを呼ばない。呼ぶのは外部の利用者だけ。全教室の組み合わせを調べる IKU NAVI ツールの
