@@ -11,7 +11,7 @@ from ..search import (
 )
 from ..naming import first_display_label
 from ..serialize import apply_dest_info, apply_event_dest_info, edge_to_dict, path_result
-from ._common import FromSpec, edge_or_404, edges_for_room_or_404, use_elevator_param
+from ._common import FromSpec, edge_or_404, edges_for_room_or_404, graph_from_request
 
 bp = Blueprint("navigation", __name__)
 
@@ -56,6 +56,7 @@ def api_route():
 
     条件:
       use_elevator=0/1  （省略時 1）
+      step_free=0/1     （省略時 0。1 なら階段・エスカレーターを使わず、エレベーターは必ず使う）
     """
     from_spec = FromSpec.from_request()
 
@@ -69,7 +70,7 @@ def api_route():
     if not to_room and not to_event and to_edge_id is None and to_node_id is None:
         raise ApiError("to_room（＋to_building）・to_event・to_edge・to_node のいずれかを指定してください")
 
-    G = cache.get_graph(use_elevator=use_elevator_param())
+    G = graph_from_request()
     start_candidates = from_spec.candidates(G)
     dest_candidates  = _dest_candidates(G, to_room, to_building, to_node_id, to_event, to_edge_id)
 
@@ -109,7 +110,7 @@ def api_shortest_path():
     if start is None or goal is None:
         raise ApiError("start と goal のノードIDを指定してください")
 
-    G = cache.get_graph(use_elevator=use_elevator_param())
+    G = graph_from_request()
 
     if start not in G.nodes:
         raise ApiError(f"ノード {start} が存在しません", 404)

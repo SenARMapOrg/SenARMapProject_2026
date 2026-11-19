@@ -29,6 +29,10 @@ jobs:
       - name: 依存をインストール
         run: pip install -r programs/3D_Graph/requirements-dev.txt
 
+      # JS の経路計算（programs/html/shared/route-core.mjs）を Python と比べるテストで node を使う（ランナーに入っている）
+      - name: node の確認
+        run: node --version
+
       - name: pytest
         run: pytest
 
@@ -79,33 +83,6 @@ jobs:
         working-directory: programs/3D_Graph
         run: python check_data.py ${BASE_DATA:+--base "$BASE_DATA"}
 
-  timetables:
-    name: 時間割サービスのテスト
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: programs/timetables
-    steps:
-      - uses: actions/checkout@v7
-
-      - uses: actions/setup-node@v7
-        with:
-          node-version: "22"
-          cache: npm
-          cache-dependency-path: programs/timetables/package-lock.json
-
-      - name: 依存をインストール
-        run: npm ci
-
-      - name: 型チェック
-        run: npm run typecheck
-
-      - name: vitest
-        run: npm run test
-
-      - name: ビルドが通るか
-        run: npm run build
-
   event-guide-counter:
     name: 鳳祭 案内人数集計のテスト
     runs-on: ubuntu-latest
@@ -147,7 +124,7 @@ jobs:
       # 構文エラーがあると本番でページごと動かなくなる
       - name: node --check
         run: |
-          for f in programs/html/navi/script/*.js programs/html/embed/*.js programs/html/embed/builder/*.js; do
+          for f in programs/html/navi/script/*.js programs/html/embed/*.js programs/html/embed/builder/*.js programs/html/map3d/*.js programs/html/shared/*.js programs/html/shared/*.mjs functions/_lib/*.mjs functions/api/*.js; do
             echo "checking $f"
             node --check "$f"
           done

@@ -8,9 +8,7 @@
 平常時                          イベント時
 ┌─────────────────────┐         ┌─────────────────────┐
 │  Manager (2GB VPS)  │         │  Manager (2GB VPS)  │
-│  ・db               │   ───→  │  ・db               │
-│  ・python ×1        │         │  ・python ×2        │
-│  ・counter ×1       │         │  ・counter ×2       │
+│  ・python ×2        │   ───→  │  ・python ×2        │
 │  ・grafana          │         │  ・grafana          │
 │  ・prometheus       │         │  ・prometheus       │
 │  ・cloudflared      │         │  ・cloudflared      │
@@ -19,23 +17,22 @@
                                 ┌─────────────────────┐
                                 │  Worker (4GB)       │
                                 │  ・python ×2        │
-                                │  ・counter ×2       │
                                 │  ・cadvisor         │
                                 └─────────────────────┘
 ```
 
 > **注:** 静的コンテンツは Cloudflare Pages が配信し、nginx はスタックから撤去済み。
-> `api.iku-navi.net` へのリクエストは cloudflared が python / counter に直接振り分ける
-> （詳細: `docs/cloudflare_pages_migration.md`）。
+> `old-api.iku-navi.net` へのリクエストは cloudflared が python に直接振り分ける
+> （詳細: `docs/cloudflare_pages_migration.md`・`docs/static_data.md`）。
+> QR コードの転送とアクセス数の記録（counter・Rails）と記録用の db（MariaDB）は、
+> QR コードを使わなくなったので 2026-11-15 にスタックから外した。
 
 ### サービスの配置ルール
 
 | サービス | 配置 | 理由 |
 |---|---|---|
 | python | 全ノードに分散 | スケール対象 |
-| counter | 全ノードに分散 | スケール対象 |
 | cadvisor | 全ノード（global） | 各ノードのメトリクス収集 |
-| db | マネージャー固定 | ボリュームデータがある |
 | prometheus | マネージャー固定 | docker.sock 参照 + ボリューム |
 | grafana | マネージャー固定 | ボリュームデータがある |
 | cloudflared | マネージャー固定 | トンネルの入口 |
@@ -167,6 +164,14 @@ docker exec $(docker ps -q -f name=iku_prometheus) \
   wget -qO- 'http://localhost:9090/api/v1/query?query=up' | python3 -m json.tool
 ```
 
+### Grafana ダッシュボード
+
+`deploy_env/grafana/iku-navi-monitor.json` を Grafana の「Dashboards → New → Import」で読み込む（同じ uid で読み込むと上書きになる）。Prometheus の設定変更は要らない。
+
+上から「止まっていないか → 余裕はあるか → どのノードか → どのサービスか → どのコンテナか」の順に読む。各パネルの見方は、タイトル横の ⓘ に書いてある。
+
+cAdvisor の値だけを使っているので、リクエスト数・エラー率・応答時間は出ない（アクセスの増減は cloudflared の受信量で見る）。
+
 ---
 
 ## コンテナのお掃除（ハウスキーピング）
@@ -204,7 +209,7 @@ docker system prune -f
 
 > **注意:** `docker image prune -a` は「現在使われていない全イメージ」を消すため、
 > ロールバック用の旧イメージも消える。`-a` は付けないこと。
-> `--volumes` も db_data 等を守るため付けないこと。
+> `--volumes` も grafana_data・prometheus_data を守るため付けないこと。
 
 ### 設定変更の反映方法（cadvisor / prometheus.yml を更新した場合）
 
@@ -295,16 +300,16 @@ docker node ls
 
 cadvisor は `mode: global` のため、ワーカー参加と同時に自動でデプロイされる。
 
-### 手順5. python / counter をスケールアップ
+### 手順5. python をスケールアップ
 
-台数は `.env` の `PYTHON_REPLICAS` / `COUNTER_REPLICAS` で決める（未設定なら2）。
+台数は `.env` の `PYTHON_REPLICAS` で決める（未設定なら2）。
 `docker stack deploy` は台数を compose の値に戻すため、`docker service scale` だけで増やすと、
 cron の `update.sh`（30分ごと）で2台に戻ってしまう。
 
 ```bash
-# マネージャーで実行。イベント規模に応じて調整（例: 各4レプリカ）
+# マネージャーで実行。イベント規模に応じて調整（例: 4レプリカ）
 cd <リポジトリ>/deploy_env
-vim .env    # PYTHON_REPLICAS=4 と COUNTER_REPLICAS=4 を書く
+vim .env    # PYTHON_REPLICAS=4 を書く
 
 set -a && . .env && set +a
 docker stack deploy --with-registry-auth -c docker-compose.yml iku
@@ -336,11 +341,11 @@ watch docker stack ps iku
 
 ### 手順2. サービスを平常時のレプリカ数に戻す
 
-`.env` の `PYTHON_REPLICAS` / `COUNTER_REPLICAS` を消す（または 2 にする）。
+`.env` の `PYTHON_REPLICAS` を消す（または 2 にする）。
 `docker service scale` で減らしただけだと、次の `update.sh` で `.env` の台数に戻ってしまう。
 
 ```bash
-vim .env    # PYTHON_REPLICAS / COUNTER_REPLICAS を消す
+vim .env    # PYTHON_REPLICAS を消す
 set -a && . .env && set +a
 docker stack deploy --with-registry-auth -c docker-compose.yml iku
 ```
@@ -411,17 +416,6 @@ docker service ps iku_python --no-trunc
 
 # ログ確認
 docker service logs iku_python --tail 50
-```
-
-### counter が DB に繋がらない
-
-Swarm では `depends_on` が無視されるため、DB が起動する前に counter が起動してしまう場合がある。
-`restart_policy.delay: 15s` と `max_attempts: 5` が設定されているので、通常は自動リトライで回復する。
-
-手動でリトライを促したい場合:
-
-```bash
-docker service update --force iku_counter
 ```
 
 ### cloudflared が起動しない / Cloudflare Tunnel error

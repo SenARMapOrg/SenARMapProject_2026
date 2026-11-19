@@ -21,7 +21,7 @@
 
 イベント時は 4GB サーバーを追加増設し、Docker Swarm のワーカーとして参加させる。詳細は [`swarm.md`](./swarm.md) を参照。
 
-> 静的コンテンツ（`programs/html`）は Cloudflare Pages 上で配信されており、上記 VPS はホストしない（[`cloudflare_pages_migration.md`](./cloudflare_pages_migration.md) 参照）。VPS が担うのは Flask API・3D ビューア・アクセスカウンター・DB・監視基盤・Cloudflare Tunnel の入口のみ。
+> 静的コンテンツ（`programs/html`）は Cloudflare Pages 上で配信されており、上記 VPS はホストしない（[`cloudflare_pages_migration.md`](./cloudflare_pages_migration.md) 参照）。VPS が担うのは Flask API（`old-api.iku-navi.net`）・3D ビューア・監視基盤・Cloudflare Tunnel の入口のみ。
 
 ### コスト試算（まとめトク 6ヶ月契約）
 
@@ -35,13 +35,11 @@
 
 ### コンテナ（Swarm サービス）構成
 
-nginx は Cloudflare Pages 移行に伴い完全撤去済み（`deploy_env/docker-compose.yml` にサービス定義なし）。外部からの振り分けは cloudflared の Public Hostname パスルーティングが直接行う（`/redirect/*` → counter、それ以外 → python）。CORS ヘッダは Flask（`ikunavi/__init__.py` の `after_request`）が返す。
+nginx は Cloudflare Pages 移行に伴い完全撤去済み（`deploy_env/docker-compose.yml` にサービス定義なし）。外部からの振り分けは cloudflared の Public Hostname が直接行う（`old-api.iku-navi.net` → python）。アクセスカウンター（counter・Rails）と記録用の db（MariaDB）は、QR コードを使わなくなったので 2026-11-15 に外した。CORS ヘッダは Flask（`ikunavi/__init__.py` の `after_request`）が返す。
 
 | サービス名 | 役割 | 平常時レプリカ |
 | :--- | :--- | :---: |
 | `iku_python` | Flask API + `/3d` ビューア（gunicorn 4 workers） | 2 |
-| `iku_counter` | アクセスカウンター（Rails） | 2 |
-| `iku_db` | MariaDB 11 | 1 |
 | `iku_cloudflared` | Cloudflare Tunnel（外部公開・パスルーティング） | 1 |
 | `iku_prometheus` | メトリクス収集 | 1 |
 | `iku_grafana` | 監視ダッシュボード | 1 |

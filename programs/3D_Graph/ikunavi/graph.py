@@ -15,6 +15,8 @@ ESCALATOR_UP_EDGE_TYPE = "5"
 ESCALATOR_DOWN_EDGE_TYPE = "6"
 ELEVATOR_EDGE_TYPE = "4"
 ENTRANCE_EDGE_TYPE = "7"
+# 段差のある移動（階段・エスカレータ）。「階段・エスカレーターを使わない」（step_free）のときに外す
+STEP_EDGE_TYPES = {"2", "3", "5", "6"}
 
 
 def _node_attrs(row):
@@ -64,7 +66,11 @@ def _reversed_attrs(edge_attrs):
                 left=_reverse_order(edge_attrs["right"]))
 
 
-def build_graph(nodes_df, edges_df, use_elevator=True):
+def build_graph(nodes_df, edges_df, use_elevator=True, step_free=False):
+    """step_free=True のときは階段・エスカレータ（STEP_EDGE_TYPES）を張らない。
+    階を移るにはエレベータしか無くなるので、use_elevator に関わらずエレベータは使う"""
+    if step_free:
+        use_elevator = True
     G = nx.DiGraph()
     for _, row in nodes_df.iterrows():
         G.add_node(int(row["id"]), **_node_attrs(row))
@@ -72,6 +78,8 @@ def build_graph(nodes_df, edges_df, use_elevator=True):
     for _, row in edges_df.iterrows():
         edge_type = str(row["type"]).strip()
         if not use_elevator and edge_type == ELEVATOR_EDGE_TYPE:
+            continue
+        if step_free and edge_type in STEP_EDGE_TYPES:
             continue
         u, v = int(row["from"]), int(row["to"])
         edge_attrs = _edge_attrs(row, edge_type)

@@ -77,6 +77,18 @@ def test_エレベータは無効時にグラフから消える():
     assert not build_graph(*frames, use_elevator=False).has_edge(2, 3)
 
 
+def test_段差なしのときは階段とエスカレータが消えエレベータは残る():
+    frames = _frames([
+        _edge(id=1, **{"from": 1, "to": 2, "type": 2}),   # 階段
+        _edge(id=2, **{"from": 2, "to": 3, "type": 5}),   # 上りESC
+        _edge(id=3, **{"from": 1, "to": 3, "type": 4}),   # エレベータ
+    ])
+    G = build_graph(*frames, step_free=True, use_elevator=False)
+    assert not G.has_edge(1, 2) and not G.has_edge(2, 1)
+    assert not G.has_edge(2, 3)
+    assert G.has_edge(1, 3)   # use_elevator=False でもエレベータは使う
+
+
 def test_重みは距離かける係数():
     G = build_graph(*_frames([_edge(weight=2.0, length=10.0)]))
     assert G.edges[1, 2]["weight"] == 20.0
@@ -105,6 +117,14 @@ def test_エレベータ無効のグラフは別にキャッシュされる(tiny
     assert with_ev.has_edge(B2[1], B2[5])
     assert not without_ev.has_edge(B2[1], B2[5])
     assert get_graph(use_elevator=True) is with_ev   # 2回目はキャッシュを返す
+
+
+def test_段差なしのグラフは別にキャッシュされエレベータの指定に関わらず同じ(tiny_campus):
+    step_free = get_graph(step_free=True)
+    assert get_graph(use_elevator=False, step_free=True) is step_free
+    assert step_free is not get_graph()
+    assert not step_free.has_edge(B2[2], B2[3])   # 上りESC
+    assert step_free.has_edge(B2[1], B2[5])       # エレベータ
 
 
 def test_ノードとエッジの件数(tiny_campus):

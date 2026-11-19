@@ -35,60 +35,10 @@ services:
         delay: 5s
         max_attempts: 3
 
-  # nginx は Cloudflare Pages 移行に伴い撤去済み。
-  # 静的配信は Pages、/api・/3d → python、/redirect → counter は
-  # cloudflared の Public Hostname（パスルーティング）が直接振り分ける。
-  # 詳細: docs/cloudflare_pages_migration.md
-
-  db:
-    image: mariadb:11
-    environment:
-      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
-      MARIADB_DATABASE: ${DB_NAME}
-      MARIADB_USER: ${DB_USER}
-      MARIADB_PASSWORD: ${DB_PASSWORD}
-    volumes:
-      - db_data:/var/lib/mysql  # ボリュームがマネージャーにあるため固定
-    networks:
-      - app_net
-    healthcheck:
-      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
-      interval: 5s
-      timeout: 5s
-      retries: 15
-    deploy:
-      replicas: 1
-      placement:
-        constraints:
-          - node.role == manager
-      restart_policy:
-        condition: on-failure
-
-  counter:
-    image: ghcr.io/senarmaporg/iki_project_2026_counter:latest
-    environment:
-      SECRET_KEY_BASE: ${SECRET_KEY_BASE}
-      DB_HOST: db
-      DB_NAME: ${DB_NAME}
-      DB_USER: ${DB_USER}
-      DB_PASSWORD: ${DB_PASSWORD}
-    networks:
-      - app_net
-    deploy:
-      replicas: ${COUNTER_REPLICAS:-2}  # .env の COUNTER_REPLICAS（未設定なら2）
-      placement:
-        preferences:
-          - spread: node.id
-      update_config:
-        parallelism: 1
-        delay: 10s
-        order: start-first
-        failure_action: rollback
-      restart_policy:
-        condition: on-failure
-        # Swarm は depends_on を無視するため delay で DB 起動を待つ
-        delay: 15s
-        max_attempts: 5
+  # nginx は Cloudflare Pages 移行に伴い撤去済み。静的配信は Pages、/api・/3d → python は
+  # cloudflared の Public Hostname が直接振り分ける（詳細: docs/cloudflare_pages_migration.md）。
+  # QR コードの転送とアクセス数の記録（counter・Rails）と、その記録用の db（MariaDB）は、
+  # QR コードを使わなくなったので 2026-11-15 に外した。
 
   prometheus:
     image: prom/prometheus:latest
@@ -165,6 +115,5 @@ services:
         condition: on-failure
 
 volumes:
-  db_data:
   grafana_data:
   prometheus_data:

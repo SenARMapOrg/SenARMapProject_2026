@@ -609,7 +609,7 @@ cd programs/timetables && npm ci && npm run typecheck && npm test
 
 ### 8.5 監視（Prometheus / Grafana / cAdvisor）
 
-`prometheus.yml` は `scrape_interval:15s`、`dockerswarm_sd_configs`（`role: tasks`）でSwarmタスクを動的ディスカバリ。`relabel_configs` でcadvisorタスクのみ対象化、`metric_relabel_configs` で `container_label_com_docker_swarm_service_name` から短い `service` ラベル（例 `iku_python`）を生成（ローリング更新での系列増殖対策、Grafana集計は必ずこの `service` ラベル単位）。Grafanaダッシュボードは ID 14282 推奨。cAdvisorは `--docker_only=true`（非コンテナcgroup除外）、`--housekeeping_interval=15s`（負荷抑制）。
+`prometheus.yml` は `scrape_interval:15s`、`dockerswarm_sd_configs`（`role: tasks`）でSwarmタスクを動的ディスカバリ。`relabel_configs` でcadvisorタスクのみ対象化、`metric_relabel_configs` で `container_label_com_docker_swarm_service_name` から短い `service` ラベル（例 `iku_python`）を生成（ローリング更新での系列増殖対策、Grafana集計は必ずこの `service` ラベル単位）。Grafanaダッシュボードは `deploy_env/grafana/iku-navi-monitor.json` をインポートして使う。cAdvisorは `--docker_only=true`（非コンテナcgroup除外）、`--housekeeping_interval=15s`（負荷抑制）。
 
 ### 8.6 ローカル開発環境（`enviroments/`）
 

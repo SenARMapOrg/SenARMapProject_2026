@@ -15,8 +15,7 @@ from .naming import TOILET_NAMES, display_name, get_ignore_set
 
 _nodes_df = None
 _edges_df = None
-_graph_with_ev = None
-_graph_without_ev = None
+_graphs = {}          # {(use_elevator, step_free): 経路探索用グラフ}
 _room_index = None    # {(教室名, building): [edge行, ...]}
 _rooms_list = None    # /api/rooms・/api/all 用の整形済み教室リスト
 _nodes_list = None    # /api/all 用の整形済みノードリスト
@@ -37,17 +36,14 @@ def get_data():
     return _nodes_df, _edges_df
 
 
-def get_graph(use_elevator=True):
-    """経路探索用グラフ。エレベータ有無で別々にキャッシュする"""
-    global _graph_with_ev, _graph_without_ev
-    nodes_df, edges_df = get_data()
-    if use_elevator:
-        if _graph_with_ev is None:
-            _graph_with_ev = build_graph(nodes_df, edges_df, use_elevator=True)
-        return _graph_with_ev
-    if _graph_without_ev is None:
-        _graph_without_ev = build_graph(nodes_df, edges_df, use_elevator=False)
-    return _graph_without_ev
+def get_graph(use_elevator=True, step_free=False):
+    """経路探索用グラフ。エレベータの有無・階段とエスカレータを使うかで別々にキャッシュする。
+    step_free（階段・エスカレータを使わない）のときはエレベータを必ず使う"""
+    key = (True, True) if step_free else (bool(use_elevator), False)
+    if key not in _graphs:
+        nodes_df, edges_df = get_data()
+        _graphs[key] = build_graph(nodes_df, edges_df, use_elevator=key[0], step_free=key[1])
+    return _graphs[key]
 
 
 def get_node_xyz():
@@ -410,14 +406,13 @@ def get_facility_categories():
 
 
 def clear_caches():
-    global _nodes_df, _edges_df, _graph_with_ev, _graph_without_ev
+    global _nodes_df, _edges_df
     global _room_index, _rooms_list, _nodes_list, _node_xyz
     global _event_index, _events_list, _event_extra, _cafeteria_list, _facility_list, _edge_by_id
     _edge_by_id = None
     _nodes_df = None
     _edges_df = None
-    _graph_with_ev = None
-    _graph_without_ev = None
+    _graphs.clear()
     _room_index = None
     _rooms_list = None
     _nodes_list = None

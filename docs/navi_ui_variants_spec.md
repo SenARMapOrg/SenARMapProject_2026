@@ -29,6 +29,7 @@ IKU NAVI（専修大学 生田キャンパスのAR教室検索ナビ）には現
   <body>
     ...（あなたのHTML）...
 
+    <script src="/shared/api-client.js"></script>
     <script src="../navi/script/state.js"></script>
     <script src="../navi/script/data.js"></script>
     <script src="../navi/script/search-form.js"></script>
@@ -47,6 +48,8 @@ IKU NAVI（専修大学 生田キャンパスのAR教室検索ナビ）には現
   - `config.js` は Cloudflare Pages のビルド時に自動生成される（Google Maps APIキーを含む）。
     `programs/html/navi/script/config.js` にしか生成されないため、必ず `../navi/script/config.js`
     という相対パスで参照すること（コピーしても動かない）。
+  - `/shared/api-client.js` は経路探索API の呼び出し（`ikunaviFetch`。ブラウザでの経路計算・静的データ・サーバーを
+    振り分ける。docs/static_data.md）。`data.js` などが使うので、それより前に読み込むこと。
   - `state.js` 〜 `page.js` がページの全ロジック（検索・経路計算・音声案内・SVGフロアマップ・
     写真AR）で、いずれも通常のスクリプト（`type="module"` ではない）。**`state.js` を必ず最初に**
     読み込むこと（共有する定数・状態をここで宣言しているため）。残りの順序は入れ替えても動くが、

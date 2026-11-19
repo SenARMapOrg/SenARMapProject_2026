@@ -6,7 +6,7 @@ from ..errors import ApiError
 from ..naming import building_display_name, first_display_label
 from ..search import best_route, candidates_from_edges, extend_to_far_endpoint
 from ..serialize import apply_dest_info, edge_to_dict, path_result
-from ._common import edge_or_404, edges_for_room_or_404, use_elevator_param
+from ._common import edge_or_404, edges_for_room_or_404, graph_from_request
 
 bp = Blueprint("rooms", __name__)
 
@@ -117,7 +117,7 @@ def api_navigate_to_room():
     if not start_room and start_node is None:
         raise ApiError("start_room（＋start_building）または start を指定してください")
 
-    G = cache.get_graph(use_elevator=use_elevator_param())
+    G = graph_from_request()
 
     dest_edges = edges_for_room_or_404(room_name, building)
     dest_candidates = candidates_from_edges(G, dest_edges)

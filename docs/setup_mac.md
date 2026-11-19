@@ -7,7 +7,6 @@ Apple シリコン（M1〜）・Intel のどちらの Mac でも同じ手順で�
 |---|---|---|---|
 | IKU NAVI ツール | `programs/IKU_NAVI_Tools` | `requirements.txt` | マップ編集・ID一覧・イベント設定・ルート検証・画像チェック・画像リネーム・人物ぼかし・SVG座標取得（デスクトップアプリ） |
 | 経路探索API | `programs/3D_Graph` | `requirements.txt`（テストもするなら `requirements-dev.txt`） | ナビの経路探索。ルート検証・画像チェックのタブもこれを使う |
-| 時間割共有 | `programs/timetables` | `package.json`（Node.js） | Web アプリ（Python ではない。[最後の章](#7-時間割共有nodejs)を参照） |
 
 
 > **IKU NAVI ツールだけ使うなら**、ターミナルで次の1行を実行すれば、Python・ライブラリのインストールから起動まで
@@ -94,7 +93,7 @@ python main.py route_checker   # タブを指定して起動（map_editor / id_v
                                #   image_checker / image_renamer / human_remover / svg_pointer）
 ```
 
-ルート検証・画像チェックのタブは経路探索APIを使う。既定は本番の `https://api.iku-navi.net` なので、そのまま使える。
+ルート検証・画像チェックのタブは経路探索APIを使う。既定は本番の Flask（`https://old-api.iku-navi.net`）なので、そのまま使える。
 手元で編集した `data/` を確かめたいときは、**別のターミナル**で次の API を起動し、画面の API の欄を `http://localhost:5001` に書き換える。
 
 ### 経路探索API
@@ -135,18 +134,14 @@ OS ごとの直し方は `programs/IKU_NAVI_Tools/README.md` の「起動しな�
 | 人物ぼかしのタブに「必要なライブラリが入っていません」 | `ultralytics` を入れていない。`pip install ultralytics`（または requirements.txt を丸ごと）を実行する |
 | `SSL: CERTIFICATE_VERIFY_FAILED` | python.org のインストーラーで入れた Python を使っている。「アプリケーション」→「Python 3.x」→「Install Certificates.command」を実行するか、Homebrew の Python で venv を作り直す |
 
-## 7. 時間割共有（Node.js）
+## 7. node（経路計算のテスト用）
 
-時間割共有（`programs/timetables`）だけは Python ではなく Node.js で動く。GitHub Actions と同じ Node 22 を入れる。
+`pytest` には、JS の経路計算（`programs/html/shared/route-core.mjs`）が Python と同じ答えを返すかのテストがあり、node を使う。
+node が無いとそのテストは飛ばされる（GitHub Actions では必ず動く）。GitHub Actions と同じ Node 22 を入れる。
 
 ```bash
 brew install node@22
 echo 'export PATH="/opt/homebrew/opt/node@22/bin:$PATH"' >> ~/.zprofile   # Intel Mac は /usr/local/opt/node@22/bin
 source ~/.zprofile
 node --version       # v22.x と出れば OK
-
-cd programs/timetables
-npm install          # 依存を入れる（初回・package-lock.json が変わったとき）
-npm run build        # 初回は先に1回ビルドしておく
-npm run dev          # http://localhost:8788 で起動（詳しくは programs/timetables/README.md の「1. ローカル開発」）
 ```

@@ -646,7 +646,7 @@
         </table>
         <div class="empty" id="emptyState">
           <strong>イベントが見つかりませんでした</strong
-          >検索ワードやジャンルを変更してみてください。
+          >検索ワードやジャンル、開催日を変更してみてください。
         </div>
       </div>
     </main>
@@ -773,6 +773,27 @@
       const emptyState = document.getElementById("emptyState");
       let activeCategory = "すべて";
       let activeDate = "すべて";
+
+      // 鳳祭の開催中に開いたら、その日で絞り込んだ状態で始める（それ以外の日は「すべての日」）。
+      // 端末のタイムゾーンによらず日本時間の日付で判定する。
+      function festivalDateToday() {
+        const jstToday = new Date(Date.now() + 9 * 60 * 60 * 1000)
+          .toISOString()
+          .slice(0, 10);
+        return (
+          {
+            "2026-11-06": "11/6",
+            "2026-11-07": "11/7",
+            "2026-11-08": "11/8",
+          }[jstToday] || "すべて"
+        );
+      }
+      activeDate = festivalDateToday();
+      document
+        .querySelectorAll("#dateFilters .date-filter")
+        .forEach((b) =>
+          b.classList.toggle("active", b.dataset.date === activeDate),
+        );
 
       function escapeHTML(value) {
         return String(value).replace(
