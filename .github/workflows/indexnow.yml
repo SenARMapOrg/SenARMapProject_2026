@@ -1,0 +1,42 @@
+name: IndexNow
+
+# サイトを更新したら、IndexNow で検索エンジン（Bing など）にすぐ知らせる（deploy_env/pages/indexnow.py）。
+# main への push で Cloudflare Pages が作り直されるので、そのデプロイが終わるのを待ってから送る。
+# Actions の画面から手動でも実行できる。
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "programs/html/**"
+      - "data/**"
+      - "deploy_env/pages/**"
+  workflow_dispatch:
+
+# 続けて push されたときは、最後の 1 回だけ送る（送りすぎると 429 になる）
+concurrency:
+  group: indexnow
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  submit:
+    name: 更新した URL を検索エンジンに知らせる
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+
+      # Pages のビルド（data/ からのページ生成・静的データの書き出し）が終わるのを待つ。
+      # 手動実行のときは、もう公開されているものとして待たない
+      - name: Pages のデプロイを待つ
+        if: github.event_name == 'push'
+        run: sleep 360
+
+      - name: IndexNow に送る
+        run: python3 deploy_env/pages/indexnow.py
