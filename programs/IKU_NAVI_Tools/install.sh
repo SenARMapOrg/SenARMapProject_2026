@@ -18,7 +18,7 @@
 #   4. デスクトップに起動用のファイルを作り、ツールを起動する
 #
 # オプション（curl … | bash -s -- --lite のように付ける）:
-#   --lite         人物ぼかし（ultralytics・PyTorch、約1GB）を入れない。ほかのタブは使える
+#   --lite         人物ぼかし（ultralytics・PyTorch、約1GB）と3Dグラフ（PyQt6-WebEngine、約300MB）を入れない。ほかのタブは使える
 #   --no-launch    入れるだけで起動しない
 #   --no-shortcut  デスクトップに起動用のファイルを作らない
 #   --repo <場所>  リポジトリの場所を決める（探さない。環境変数 IKU_REPO でも指定できる）
@@ -123,15 +123,15 @@ main() {
     ok "必要なライブラリは入っています"
   else
     if [ "$LITE" = 1 ]; then
-      info "ライブラリを入れます（人物ぼかしは入れません。数百MB・数分かかります）"
+      info "ライブラリを入れます（人物ぼかし・3Dグラフは入れません。数百MB・数分かかります）"
     else
-      info "ライブラリを入れます（合計約1.3GB。初回は数分〜十数分かかります。大半は人物ぼかし用です）"
-      info "人物ぼかしを使わないなら、Ctrl+C で止めて「curl -fsSL https://cdn.iku-navi.net/tools/install.sh | bash -s -- --lite」"
+      info "ライブラリを入れます（合計約1.6GB。初回は数分〜十数分かかります。大半は人物ぼかし用と3Dグラフ用です）"
+      info "人物ぼかし・3Dグラフを使わないなら、Ctrl+C で止めて「curl -fsSL https://cdn.iku-navi.net/tools/install.sh | bash -s -- --lite」"
     fi
     local REQ_USE="$REQ"
     if [ "$LITE" = 1 ]; then
       REQ_USE="$(mktemp)"
-      grep -v '^ultralytics' "$REQ" >"$REQ_USE"
+      grep -v -E '^(ultralytics|PyQt6-WebEngine)' "$REQ" >"$REQ_USE"
     fi
     "$VPY" -m pip install --disable-pip-version-check --quiet --upgrade pip </dev/null || true
     "$VPY" -m pip install --disable-pip-version-check --progress-bar on -r "$REQ_USE" </dev/null \

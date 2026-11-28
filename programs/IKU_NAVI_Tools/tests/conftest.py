@@ -10,14 +10,18 @@ from pathlib import Path
 import pytest
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+os.environ["IKU_TOOLS_GRAPH3D_NO_AUTOLOAD"] = "1"   # 3Dグラフのタブは、テストではページを読み込まない
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 
 
 @pytest.fixture(scope="session")
 def qapp():
+    from PyQt6.QtCore import QCoreApplication, Qt
     from PyQt6.QtWidgets import QApplication
-    app = QApplication.instance() or QApplication([])
+    if not QApplication.instance():
+        QCoreApplication.setAttribute(Qt.ApplicationAttribute.AA_ShareOpenGLContexts)   # 3Dグラフ（WebEngine）用
+    app = QApplication.instance() or QApplication(["iku_tools_tests"])   # 空だと Qt WebEngine が落ちる
     yield app
 
 

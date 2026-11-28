@@ -42,6 +42,7 @@ TOOLS: tuple[ToolSpec, ...] = (
     ToolSpec("id_viewer", "ID一覧", "建物・階ごとに、ノードIDとエッジIDをすべて地図の上に表示する（読み取りだけ）"),
     ToolSpec("events", "イベント設定", "イベントモードの検索候補（data/event.csv）を編集する"),
     ToolSpec("route_checker", "ルート検証", "全教室ペア間のルートを取得して異常を検出する"),
+    ToolSpec("graph3d", "3Dグラフ", "経路探索APIの3Dグラフ（/3d）を開く。自動で回るなど、動画の撮影用の操作つき"),
     ToolSpec("image_checker", "画像チェック", "CDN 上の経路写真の有無をエッジごとに確認する"),
     ToolSpec("image_renamer", "画像リネーム", "経路写真を一括でリネーム・リサイズする"),
     ToolSpec("human_remover", "人物ぼかし", "経路写真に写った人物を検出してぼかす"),

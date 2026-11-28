@@ -24,7 +24,7 @@ curl -fsSL https://cdn.iku-navi.net/tools/install.sh | bash
   開くたびに最新の install.sh を `cdn.iku-navi.net` から取ってきて実行するので、リポジトリ・ライブラリ・この .command 自体が
   最新になってから起動する（`--lite` で入れたなら `--lite` のまま）。ネットにつながらないときは、手元の install.sh か、今あるツールのまま起動する。
   前の版の install.sh で作った .command は最新にしないので、一度この1行を実行して作り直す
-- 人物ぼかしを使わないなら `… | bash -s -- --lite`（約1GB の ultralytics・PyTorch を入れない）。
+- 人物ぼかし・3Dグラフを使わないなら `… | bash -s -- --lite`（約1GB の ultralytics・PyTorch と、約300MB の PyQt6-WebEngine を入れない）。
   ほかに `--no-launch`（入れるだけ）・`--no-shortcut`（デスクトップに作らない）
 - 起動できないと分かったときは、環境診断（`--doctor`）の結果を出して止まる
 
@@ -72,6 +72,7 @@ Anaconda や別の Qt が残した `QT_PLUGIN_PATH` などの設定は、自動�
 | **Linux**: `Could not load the Qt platform plugin "xcb"` | `sudo apt install libxcb-cursor0`（Qt 6.5 以降で必要）。WSL なら WSLg が使えるか、SSH なら `ssh -X` を確かめる |
 | **Mac（Apple シリコン）**: ライブラリが入らない・`incompatible architecture` | Intel 用の Python（Rosetta）で動いている。`--doctor` の CPU が `arm64` になる Python（Homebrew など）を使う |
 | `Populating font family aliases took … Replace uses of missing font family …` | 害の無い警告（無いフォントの代わりを探した）。最新のツールでは出ないようにしてある（ツール内のフォント指定を OS の標準フォントに変え、手描きのフロアマップの中のフォント指定による警告は表示しない） |
+| 3Dグラフのタブだけ使えない（`No module named 'PyQt6.QtWebEngineWidgets'`） | `pip install -r requirements.txt`（PyQt6-WebEngine が入る） |
 | 人物ぼかしのタブだけ使えない | `pip install ultralytics`（PyTorch ごと入るので数百MB〜1GB）。ほかのタブはこれが無くても使える |
 
 ## タブ一覧
@@ -82,6 +83,7 @@ Anaconda や別の Qt が残した `QT_PLUGIN_PATH` などの設定は、自動�
 | ID一覧 | `id_viewer` | 建物・階ごとに、今のノードとエッジを描き、ノードIDとエッジIDをクリックせずにすべて地図の上に表示する。階段・エレベーターなどほかの階へつながる線は、ノードの下に「番号 種類↑行き先の階」で出す。フロアマップ（SVG）は位置を合わせられる階だけ背景に重ね、svg_x・svg_y が無い建物は座標（x・y）と5mの方眼で描く。全体ID（建物番号×100000＋番号）への切り替え、番号での検索（`e12` でエッジ）、表での一覧、PNG での保存ができる。「PDFで保存」で、表示している建物の全部の階を、フロアマップに番号を重ねた PDF（1ページ1フロア・A3横）にできる（フロアマップの座標 svg_x・svg_y で重ねるので、画面では重ねられない階も重なる）。読み取りだけで CSV は変更しない | （新規） |
 | イベント設定 | `events` | イベントモードの検索候補（`data/event.csv`）を編集する（[詳しい使い方](iku_tools/events/README.md)） | `programs/events` |
 | ルート検証 | `route_checker` | 全教室ペア間のルートを経路探索APIから取得し、異常を検出する | `programs/Route_Checker` |
+| 3Dグラフ | `graph3d` | 経路探索API の 3D グラフ（`/3d`、Plotly の3D経路ビューア）をツールの中で開く。動画の撮影用に、自動で回る（1周の秒数・向き・高さも変えながら回る）、ゆっくり寄る・離れる、視点（斜め・真上・横から）、ページの操作パネル・凡例・軸を隠す、縦横比（16:9・9:16・1:1・4:3）、3Dの部分だけを全画面で映す（Esc で戻る）を右のパネルから操作できる。マウスで回すと、自動の動きはその向きから続く。録画は OS の画面収録（Mac は Shift+Command+5）で撮る。既定は本番（`old-api.iku-navi.net`）で、手元の `data/` を映すなら API の欄を `http://localhost:5001` にする。ページとデータは変えない（`iku_tools/graph3d/video.js` をページに流し込み、Plotly のカメラを外から動かすだけ）。PyQt6-WebEngine が要る | （新規） |
 | 画像チェック | `image_checker` | CDN 上の経路写真がエッジごとに揃っているかを確認する。屋外は別の AR で案内するので、「屋外を除く」（既定でオン）で確認から外せる | `programs/Image_Checker` |
 | 画像リネーム | `image_renamer` | 経路写真を一括でリネーム・リサイズする（リサイズは裏で進み、下のステータスバーに進み具合と中止ボタンが出る） | `programs/Image_Renamer` |
 | 人物ぼかし | `human_remover` | YOLOv8 で経路写真の人物を検出し、ぼかし・モザイクで匿名化する | `programs/Human_Remover` |
@@ -115,6 +117,7 @@ IKU_NAVI_Tools/
 │   ├── id_viewer/       # ID一覧（data.py が CSV の読み込みと SVG の位置合わせ、window.py が画面）
 │   ├── events/
 │   ├── route_checker/
+│   ├── graph3d/         # 3Dグラフ（window.py が画面、video.js がページに流し込む撮影用の操作）
 │   ├── image_checker/
 │   ├── image_renamer/
 │   ├── human_remover/   # yolov8n-seg.pt を置くとそれを使う（無ければ初回に自動ダウンロード。Git 管理外）

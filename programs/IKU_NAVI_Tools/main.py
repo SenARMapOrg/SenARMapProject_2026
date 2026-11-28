@@ -7,7 +7,7 @@
     python main.py route_checker   # 指定したタブで起動
     python main.py --doctor        # 起動しないときの環境診断（表示をそのまま相談相手に送る）
 
-タブ: map_editor / id_viewer / events / route_checker / image_checker / image_renamer / human_remover / svg_pointer
+タブ: map_editor / id_viewer / events / route_checker / graph3d / image_checker / image_renamer / human_remover / svg_pointer
 """
 
 from __future__ import annotations
@@ -41,6 +41,9 @@ def main() -> int:
         print(f"不明なタブです: {initial}\n使えるタブ: {', '.join(TOOL_KEYS)}", file=sys.stderr)
         return 2
 
+    # 3Dグラフのタブ（Qt WebEngine）は、アプリを作る前にこの設定が要る（タブは開いたときに読み込むため）
+    from PyQt6.QtCore import QCoreApplication, Qt
+    QCoreApplication.setAttribute(Qt.ApplicationAttribute.AA_ShareOpenGLContexts)
     app = QApplication(sys.argv)
     app.setStyle("Fusion")
     app.setApplicationName("IKU NAVI ツール")

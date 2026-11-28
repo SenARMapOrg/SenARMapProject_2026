@@ -41,6 +41,7 @@ TAB_REQUIREMENTS = {
     "全タブ共通": [("PyQt6.QtWidgets", "PyQt6"), ("PyQt6.QtSvgWidgets", "PyQt6")],
     "マップ編集": [("cv2", "opencv-python"), ("numpy", "numpy")],
     "ルート検証・画像チェック": [("requests", "requests")],
+    "3Dグラフ": [("PyQt6.QtWebEngineWidgets", "PyQt6-WebEngine")],
     "画像リネーム": [("PIL", "Pillow")],
     "人物ぼかし": [("cv2", "opencv-python"), ("numpy", "numpy"), ("ultralytics", "ultralytics")],
 }
